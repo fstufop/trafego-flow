@@ -6,7 +6,7 @@ export class CreateClientsTable1779911649000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "clients" (
-        "id"          uuid              NOT NULL DEFAULT uuid_generate_v4(),
+        "id"          uuid              NOT NULL DEFAULT gen_random_uuid(),
         "created_at"  TIMESTAMP         NOT NULL DEFAULT now(),
         "updated_at"  TIMESTAMP         NOT NULL DEFAULT now(),
         "deleted_at"  TIMESTAMP,
