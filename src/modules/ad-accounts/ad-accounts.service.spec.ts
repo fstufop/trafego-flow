@@ -179,4 +179,63 @@ describe('AdAccountsService', () => {
       expect(mockCache.del).toHaveBeenCalledWith('ad-account:act:act_123456789');
     });
   });
+
+  describe('findExpiring', () => {
+    it('should return accounts expiring within daysAhead for a specific client', async () => {
+      mockRepo.find.mockResolvedValue([mockAccount]);
+
+      const result = await service.findExpiring('uuid-client-1', 7);
+
+      expect(result).toEqual([mockAccount]);
+      expect(mockRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            clientId: 'uuid-client-1',
+            isActive: true,
+          }),
+        }),
+      );
+    });
+
+    it('should include tokenExpiresAt LessThanOrEqual condition', async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      await service.findExpiring('uuid-client-1', 7);
+
+      const callArgs = mockRepo.find.mock.calls[0][0];
+      expect(callArgs.where.tokenExpiresAt).toBeDefined();
+    });
+
+    it('should return empty array when no accounts are expiring', async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      const result = await service.findExpiring('uuid-client-1', 7);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findAllExpiring', () => {
+    it('should return all expiring accounts across all clients', async () => {
+      mockRepo.find.mockResolvedValue([mockAccount]);
+
+      const result = await service.findAllExpiring(7);
+
+      expect(result).toEqual([mockAccount]);
+      expect(mockRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isActive: true }),
+        }),
+      );
+    });
+
+    it('should not filter by clientId', async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      await service.findAllExpiring(7);
+
+      const callArgs = mockRepo.find.mock.calls[0][0];
+      expect(callArgs.where.clientId).toBeUndefined();
+    });
+  });
 });

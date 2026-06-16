@@ -41,3 +41,8 @@ export interface MetaApiPaginatedResponse<T> {
     next?: string;
   };
 }
+
+export interface PaginatedResult<T> {
+  data: T[];
+  paging: { next?: string };
+}

@@ -9,4 +9,6 @@ export interface IAdAccountsService {
   findByAdAccountId(adAccountId: string): Promise<AdAccountEntity>;
   update(id: string, dto: UpdateAdAccountDto): Promise<AdAccountEntity>;
   remove(id: string): Promise<void>;
+  findExpiring(clientId: string, daysAhead: number): Promise<AdAccountEntity[]>;
+  findAllExpiring(daysAhead: number): Promise<AdAccountEntity[]>;
 }

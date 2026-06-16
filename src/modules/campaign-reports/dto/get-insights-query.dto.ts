@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
+
 export enum MetaDatePreset {
   TODAY = 'today',
   YESTERDAY = 'yesterday',
@@ -33,4 +34,9 @@ export class GetInsightsQueryDto {
   @IsOptional()
   @IsEnum(MetaInsightsLevel)
   level?: MetaInsightsLevel = MetaInsightsLevel.CAMPAIGN;
+
+  @ApiPropertyOptional({ description: 'Cursor de paginação retornado em paging.next' })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }

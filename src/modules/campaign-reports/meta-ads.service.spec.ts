@@ -7,7 +7,7 @@ import { AxiosResponse } from 'axios';
 import { MetaAdsService } from './meta-ads.service.js';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
 import { MetaDatePreset, MetaInsightsLevel } from './dto/get-insights-query.dto.js';
-import { MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
+import { MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
 
 const mockCampaigns: MetaCampaign[] = [
   { id: '111', name: 'Campanha A', status: 'ACTIVE', objective: 'OUTCOME_TRAFFIC', created_time: '2026-01-01T00:00:00Z' },
@@ -60,18 +60,46 @@ describe('MetaAdsService', () => {
   });
 
   describe('fetchCampaigns', () => {
-    it('should return campaigns from data array', async () => {
-      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockCampaigns })));
+    it('should return paginated response without cursor', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaCampaign> = { data: mockCampaigns, paging: {} };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
 
       const result = await service.fetchCampaigns('act_123', 'token-abc');
 
-      expect(result).toEqual(mockCampaigns);
+      expect(result).toEqual(apiResponse);
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'https://graph.facebook.com/v21.0/act_123/campaigns',
         expect.objectContaining({
-          params: expect.objectContaining({ access_token: 'token-abc' }),
+          params: expect.not.objectContaining({ after: expect.anything() }),
         }),
       );
+    });
+
+    it('should include after param when cursor is provided', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaCampaign> = {
+        data: mockCampaigns,
+        paging: { next: 'cursor_xyz', cursors: { before: 'b', after: 'cursor_xyz' } },
+      };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
+
+      const result = await service.fetchCampaigns('act_123', 'token-abc', 'cursor_abc');
+
+      expect(result).toEqual(apiResponse);
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/act_123/campaigns',
+        expect.objectContaining({
+          params: expect.objectContaining({ after: 'cursor_abc' }),
+        }),
+      );
+    });
+
+    it('should return empty paging on last page', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaCampaign> = { data: mockCampaigns, paging: {} };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
+
+      const result = await service.fetchCampaigns('act_123', 'token-abc', 'last_cursor');
+
+      expect(result.paging).toEqual({});
     });
 
     it('should throw OAuthTokenExpiredException on error code 190', async () => {
@@ -93,15 +121,16 @@ describe('MetaAdsService', () => {
   });
 
   describe('fetchInsights', () => {
-    it('should pass date_preset and level params', async () => {
-      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights })));
+    it('should return paginated response without cursor', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaInsights> = { data: mockInsights, paging: {} };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
 
       const result = await service.fetchInsights('act_123', 'token-abc', {
         datePreset: MetaDatePreset.LAST_30D,
         level: MetaInsightsLevel.CAMPAIGN,
       });
 
-      expect(result).toEqual(mockInsights);
+      expect(result).toEqual(apiResponse);
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'https://graph.facebook.com/v21.0/act_123/insights',
         expect.objectContaining({
@@ -109,6 +138,20 @@ describe('MetaAdsService', () => {
             date_preset: 'last_30d',
             level: 'campaign',
           }),
+        }),
+      );
+    });
+
+    it('should include after param when cursor is provided', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaInsights> = { data: mockInsights, paging: {} };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
+
+      await service.fetchInsights('act_123', 'token-abc', { datePreset: MetaDatePreset.LAST_7D }, 'cursor_abc');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({ after: 'cursor_abc' }),
         }),
       );
     });

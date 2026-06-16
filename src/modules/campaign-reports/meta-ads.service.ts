@@ -25,25 +25,31 @@ export class MetaAdsService implements IMetaAdsService {
     private readonly config: ConfigService,
   ) {}
 
-  async fetchCampaigns(adAccountId: string, accessToken: string): Promise<MetaCampaign[]> {
+  async fetchCampaigns(
+    adAccountId: string,
+    accessToken: string,
+    cursor?: string,
+  ): Promise<MetaApiPaginatedResponse<MetaCampaign>> {
     const url = `${this.baseUrl}/${adAccountId}/campaigns`;
     const response = await firstValueFrom(
       this.httpService.get<MetaApiPaginatedResponse<MetaCampaign>>(url, {
         params: {
           fields: 'id,name,status,objective,created_time',
           access_token: accessToken,
+          ...(cursor && { after: cursor }),
         },
       }),
     ).catch((err: MetaErrorResponse) => this.handleError(err, adAccountId));
 
-    return response.data.data;
+    return response.data;
   }
 
   async fetchInsights(
     adAccountId: string,
     accessToken: string,
     params: MetaInsightsParams,
-  ): Promise<MetaInsights[]> {
+    cursor?: string,
+  ): Promise<MetaApiPaginatedResponse<MetaInsights>> {
     const url = `${this.baseUrl}/${adAccountId}/insights`;
     const response = await firstValueFrom(
       this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
@@ -52,11 +58,12 @@ export class MetaAdsService implements IMetaAdsService {
           date_preset: params.datePreset,
           level: params.level,
           access_token: accessToken,
+          ...(cursor && { after: cursor }),
         },
       }),
     ).catch((err: MetaErrorResponse) => this.handleError(err, adAccountId));
 
-    return response.data.data;
+    return response.data;
   }
 
   async fetchCampaignInsights(

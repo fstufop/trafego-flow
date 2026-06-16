@@ -1,6 +1,6 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { LessThanOrEqual, QueryFailedError, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { AdAccountEntity } from './entities/ad-account.entity.js';
@@ -90,5 +90,21 @@ export class AdAccountsService implements IAdAccountsService {
     await this.repo.softRemove(account);
     await this.cache.del(cacheById(id));
     await this.cache.del(cacheByAct(account.adAccountId));
+  }
+
+  findExpiring(clientId: string, daysAhead: number): Promise<AdAccountEntity[]> {
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + daysAhead);
+    return this.repo.find({
+      where: { clientId, isActive: true, tokenExpiresAt: LessThanOrEqual(deadline) },
+    });
+  }
+
+  findAllExpiring(daysAhead: number): Promise<AdAccountEntity[]> {
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + daysAhead);
+    return this.repo.find({
+      where: { isActive: true, tokenExpiresAt: LessThanOrEqual(deadline) },
+    });
   }
 }

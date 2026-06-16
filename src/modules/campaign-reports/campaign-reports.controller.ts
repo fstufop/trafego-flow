@@ -14,8 +14,12 @@ export class CampaignReportsController {
   @Get('campaigns')
   @ApiOperation({ summary: 'List campaigns for an ad account' })
   @ApiQuery({ name: 'adAccountId', required: true, example: 'act_123456789' })
-  listCampaigns(@Query('adAccountId') adAccountId: string) {
-    return this.campaignReportsService.listCampaigns(adAccountId);
+  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor de paginação retornado em paging.next' })
+  listCampaigns(
+    @Query('adAccountId') adAccountId: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    return this.campaignReportsService.listCampaigns(adAccountId, cursor);
   }
 
   @Get('insights')

@@ -20,4 +20,5 @@ export const validationSchema = Joi.object({
   META_GRAPH_API_URL: Joi.string().uri().default('https://graph.facebook.com'),
   META_GRAPH_API_VERSION: Joi.string().default('v21.0'),
   META_ADS_API_VERSION: Joi.string().default('v21.0'),
+  INSIGHTS_CACHE_TTL_SECONDS: Joi.number().min(30).max(3600).default(300),
 });

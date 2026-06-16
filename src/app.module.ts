@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
+import { ScheduleModule } from '@nestjs/schedule';
 import { createKeyv } from '@keyv/redis';
 import { configLoads, validationSchema } from './config/configuration.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -37,6 +38,7 @@ import { CampaignReportsModule } from './modules/campaign-reports/campaign-repor
         ttl: config.get<number>('redis.cacheTtlSeconds')! * 1000,
       }),
     }),
+    ScheduleModule.forRoot(),
     HealthModule,
     ClientsModule,
     IntegrationsModule,

@@ -17,6 +17,7 @@ import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 import { AdAccountsService } from './ad-accounts.service.js';
 import { CreateAdAccountDto } from './dto/create-ad-account.dto.js';
 import { UpdateAdAccountDto } from './dto/update-ad-account.dto.js';
+import { GetExpiringQueryDto } from './dto/get-expiring-query.dto.js';
 
 @ApiTags('ad-accounts')
 @ApiSecurity('x-api-key')
@@ -37,6 +38,12 @@ export class AdAccountsController {
   @ApiQuery({ name: 'clientId', required: true, type: String })
   findAll(@Query('clientId', ParseUUIDPipe) clientId: string) {
     return this.adAccountsService.findAll(clientId);
+  }
+
+  @Get('expiring')
+  @ApiOperation({ summary: 'List ad accounts with tokens expiring soon' })
+  findExpiring(@Query() query: GetExpiringQueryDto) {
+    return this.adAccountsService.findExpiring(query.clientId, query.daysAhead ?? 7);
   }
 
   @Get(':id')
