@@ -6,6 +6,10 @@ import { createKeyv } from '@keyv/redis';
 import { configLoads, validationSchema } from './config/configuration.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ClientsModule } from './modules/clients/clients.module.js';
+import { IntegrationsModule } from './modules/integrations/integrations.module.js';
+import { WebhookModule } from './modules/webhook/webhook.module.js';
+import { AdAccountsModule } from './modules/ad-accounts/ad-accounts.module.js';
+import { CampaignReportsModule } from './modules/campaign-reports/campaign-reports.module.js';
 
 @Module({
   imports: [
@@ -35,6 +39,10 @@ import { ClientsModule } from './modules/clients/clients.module.js';
     }),
     HealthModule,
     ClientsModule,
+    IntegrationsModule,
+    WebhookModule,
+    AdAccountsModule,
+    CampaignReportsModule,
   ],
 })
 export class AppModule {}
