@@ -6,7 +6,7 @@ import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { MetaAdsService } from './meta-ads.service.js';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
-import { MetaDatePreset, MetaInsightsLevel } from './dto/get-insights-query.dto.js';
+import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from './dto/get-insights-query.dto.js';
 import { MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
 
 const mockCampaigns: MetaCampaign[] = [
@@ -156,6 +156,68 @@ describe('MetaAdsService', () => {
       );
     });
 
+    it('should include time_increment param when timeIncrement is provided', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        timeIncrement: MetaTimeIncrement.DAILY,
+      });
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({ time_increment: '1' }),
+        }),
+      );
+    });
+
+    it('should include breakdowns param when breakdowns is provided', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        breakdowns: 'age,gender',
+      });
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({ breakdowns: 'age,gender' }),
+        }),
+      );
+    });
+
+    it('should include both time_increment and breakdowns when both provided', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_30D,
+        timeIncrement: MetaTimeIncrement.DAILY,
+        breakdowns: 'country',
+      });
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            time_increment: '1',
+            breakdowns: 'country',
+          }),
+        }),
+      );
+    });
+
+    it('should NOT include time_increment when timeIncrement is undefined', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', { datePreset: MetaDatePreset.LAST_7D });
+
+      const callParams = mockHttpService.get.mock.calls[0][1].params;
+      expect(callParams).not.toHaveProperty('time_increment');
+      expect(callParams).not.toHaveProperty('breakdowns');
+    });
+
     it('should throw OAuthTokenExpiredException on error code 190', async () => {
       mockHttpService.get.mockReturnValue(
         throwError(() => ({ response: { data: { error: { code: 190 } } } })),
@@ -168,7 +230,7 @@ describe('MetaAdsService', () => {
   });
 
   describe('fetchCampaignInsights', () => {
-    it('should return first element of data array', async () => {
+    it('should return single MetaInsights when no timeIncrement or breakdowns', async () => {
       mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights })));
 
       const result = await service.fetchCampaignInsights('111', 'token-abc', {
@@ -182,6 +244,74 @@ describe('MetaAdsService', () => {
       );
     });
 
+    it('should return full MetaApiPaginatedResponse when timeIncrement is provided', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaInsights> = {
+        data: [
+          { ...mockInsights[0], date_start: '2026-06-10', date_stop: '2026-06-10' },
+          { ...mockInsights[0], date_start: '2026-06-11', date_stop: '2026-06-11' },
+        ],
+        paging: {},
+      };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
+
+      const result = await service.fetchCampaignInsights('111', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        timeIncrement: MetaTimeIncrement.DAILY,
+      });
+
+      expect(result).toEqual(apiResponse);
+      expect((result as MetaApiPaginatedResponse<MetaInsights>).data).toHaveLength(2);
+    });
+
+    it('should return full MetaApiPaginatedResponse when breakdowns are provided', async () => {
+      const apiResponse: MetaApiPaginatedResponse<MetaInsights> = {
+        data: [
+          { ...mockInsights[0], age: '18-24', gender: 'male' },
+          { ...mockInsights[0], age: '25-34', gender: 'female' },
+        ],
+        paging: {},
+      };
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(apiResponse)));
+
+      const result = await service.fetchCampaignInsights('111', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        breakdowns: 'age,gender',
+      });
+
+      expect(result).toEqual(apiResponse);
+    });
+
+    it('should NOT throw NotFoundException when timeIncrement provided and data is empty', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: [], paging: {} })));
+
+      const result = await service.fetchCampaignInsights('111', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        timeIncrement: MetaTimeIncrement.DAILY,
+      });
+
+      expect((result as MetaApiPaginatedResponse<MetaInsights>).data).toEqual([]);
+    });
+
+    it('should include time_increment and breakdowns in the HTTP call', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchCampaignInsights('111', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        timeIncrement: MetaTimeIncrement.WEEKLY,
+        breakdowns: 'country',
+      });
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            time_increment: '7',
+            breakdowns: 'country',
+          }),
+        }),
+      );
+    });
+
     it('should throw OAuthTokenExpiredException on error code 190', async () => {
       mockHttpService.get.mockReturnValue(
         throwError(() => ({ response: { data: { error: { code: 190 } } } })),
@@ -192,7 +322,7 @@ describe('MetaAdsService', () => {
       ).rejects.toThrow(OAuthTokenExpiredException);
     });
 
-    it('should throw NotFoundException when Meta returns empty data array', async () => {
+    it('should throw NotFoundException when Meta returns empty data array (no breakdowns)', async () => {
       mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: [] })));
 
       await expect(

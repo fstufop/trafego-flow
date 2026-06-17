@@ -1,4 +1,4 @@
-import { MetaDatePreset, MetaInsightsLevel } from '../dto/get-insights-query.dto.js';
+import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from '../dto/get-insights-query.dto.js';
 
 export interface MetaCampaign {
   id: string;
@@ -22,6 +22,29 @@ export interface MetaInsights {
   cost_per_action_type?: MetaAction[];
   date_start: string;
   date_stop: string;
+
+  // Frequência e cliques únicos
+  frequency?: string;
+  unique_clicks?: string;
+  cost_per_unique_click?: string;
+
+  // ROAS
+  purchase_roas?: MetaAction[];
+
+  // Métricas de vídeo
+  video_play_actions?: MetaAction[];
+  video_p25_watched_actions?: MetaAction[];
+  video_p50_watched_actions?: MetaAction[];
+  video_p75_watched_actions?: MetaAction[];
+  video_p100_watched_actions?: MetaAction[];
+
+  // Campos de breakdown (presentes quando breakdowns são solicitados)
+  age?: string;
+  gender?: string;
+  country?: string;
+  region?: string;
+  publisher_platform?: string;
+  device_platform?: string;
 }
 
 export interface MetaAction {
@@ -32,6 +55,8 @@ export interface MetaAction {
 export interface MetaInsightsParams {
   datePreset: MetaDatePreset;
   level?: MetaInsightsLevel;
+  timeIncrement?: MetaTimeIncrement;
+  breakdowns?: string;
 }
 
 export interface MetaApiPaginatedResponse<T> {

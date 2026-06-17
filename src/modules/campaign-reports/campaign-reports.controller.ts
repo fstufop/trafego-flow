@@ -2,7 +2,11 @@ import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 import { CampaignReportsService } from './campaign-reports.service.js';
-import { GetInsightsQueryDto, MetaDatePreset } from './dto/get-insights-query.dto.js';
+import {
+  GetInsightsQueryDto,
+  MetaDatePreset,
+  MetaTimeIncrement,
+} from './dto/get-insights-query.dto.js';
 
 @ApiTags('campaign-reports')
 @ApiSecurity('x-api-key')
@@ -32,11 +36,21 @@ export class CampaignReportsController {
   @ApiOperation({ summary: 'Get insights for a specific campaign' })
   @ApiQuery({ name: 'adAccountId', required: true, example: 'act_123456789' })
   @ApiQuery({ name: 'datePreset', required: false, enum: MetaDatePreset })
+  @ApiQuery({ name: 'timeIncrement', required: false, enum: MetaTimeIncrement, description: '1=diário, 7=semanal, monthly, all_days' })
+  @ApiQuery({ name: 'breakdowns', required: false, description: 'age, gender, country, region, publisher_platform, device_platform (separados por vírgula)' })
   getCampaignInsights(
     @Param('campaignId') campaignId: string,
     @Query('adAccountId') adAccountId: string,
     @Query('datePreset') datePreset: MetaDatePreset = MetaDatePreset.LAST_30D,
+    @Query('timeIncrement') timeIncrement?: MetaTimeIncrement,
+    @Query('breakdowns') breakdowns?: string,
   ) {
-    return this.campaignReportsService.getCampaignInsights(campaignId, adAccountId, datePreset);
+    return this.campaignReportsService.getCampaignInsights(
+      campaignId,
+      adAccountId,
+      datePreset,
+      timeIncrement,
+      breakdowns,
+    );
   }
 }

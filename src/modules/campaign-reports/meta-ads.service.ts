@@ -5,14 +5,18 @@ import { firstValueFrom } from 'rxjs';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
 import { IMetaAdsService } from './interfaces/meta-ads-service.interface.js';
 import {
+  MetaApiPaginatedResponse,
   MetaCampaign,
   MetaInsights,
   MetaInsightsParams,
-  MetaApiPaginatedResponse,
 } from './interfaces/meta-campaign.interface.js';
 
 const INSIGHTS_FIELDS =
-  'campaign_id,campaign_name,impressions,clicks,spend,reach,cpm,cpc,ctr,actions,cost_per_action_type,date_start,date_stop';
+  'campaign_id,campaign_name,impressions,clicks,spend,reach,cpm,cpc,ctr,' +
+  'actions,cost_per_action_type,date_start,date_stop,' +
+  'purchase_roas,frequency,unique_clicks,cost_per_unique_click,' +
+  'video_play_actions,video_p25_watched_actions,video_p50_watched_actions,' +
+  'video_p75_watched_actions,video_p100_watched_actions';
 
 type MetaErrorResponse = { response?: { data?: { error?: { code?: number } } } };
 
@@ -59,6 +63,8 @@ export class MetaAdsService implements IMetaAdsService {
           level: params.level,
           access_token: accessToken,
           ...(cursor && { after: cursor }),
+          ...(params.timeIncrement && { time_increment: params.timeIncrement }),
+          ...(params.breakdowns && { breakdowns: params.breakdowns }),
         },
       }),
     ).catch((err: MetaErrorResponse) => this.handleError(err, adAccountId));
@@ -70,7 +76,7 @@ export class MetaAdsService implements IMetaAdsService {
     campaignId: string,
     accessToken: string,
     params: MetaInsightsParams,
-  ): Promise<MetaInsights> {
+  ): Promise<MetaInsights | MetaApiPaginatedResponse<MetaInsights>> {
     const url = `${this.baseUrl}/${campaignId}/insights`;
     const response = await firstValueFrom(
       this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
@@ -78,9 +84,16 @@ export class MetaAdsService implements IMetaAdsService {
           fields: INSIGHTS_FIELDS,
           date_preset: params.datePreset,
           access_token: accessToken,
+          ...(params.timeIncrement && { time_increment: params.timeIncrement }),
+          ...(params.breakdowns && { breakdowns: params.breakdowns }),
         },
       }),
     ).catch((err: MetaErrorResponse) => this.handleError(err, campaignId));
+
+    // With breakdowns or timeIncrement multiple rows are expected — return full paginated response
+    if (params.timeIncrement || params.breakdowns) {
+      return response.data;
+    }
 
     const insight = response.data.data[0];
     if (!insight) {
