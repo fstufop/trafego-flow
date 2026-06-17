@@ -15,7 +15,7 @@ export class AdAccountEntity extends BaseEntity {
   @Column({ name: 'ad_account_id', unique: true })
   adAccountId: string;
 
-  @Column({ name: 'account_name', nullable: true })
+  @Column({ name: 'account_name', type: 'varchar', nullable: true })
   accountName: string | null;
 
   @Exclude()
