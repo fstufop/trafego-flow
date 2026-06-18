@@ -1,0 +1,81 @@
+export enum MetaInsightsColumn {
+  CAMPAIGN_ID          = 'campaign_id',
+  CAMPAIGN_NAME        = 'campaign_name',
+  DATE_START           = 'date_start',
+  DATE_STOP            = 'date_stop',
+  IMPRESSIONS          = 'impressions',
+  CLICKS               = 'clicks',
+  REACH                = 'reach',
+  FREQUENCY            = 'frequency',
+  UNIQUE_CLICKS        = 'unique_clicks',
+  SPEND                = 'spend',
+  CPM                  = 'cpm',
+  CPC                  = 'cpc',
+  COST_PER_UNIQUE_CLICK = 'cost_per_unique_click',
+  CTR                  = 'ctr',
+  PURCHASE_ROAS        = 'purchase_roas',
+  LINK_CLICKS          = 'link_clicks',
+  LANDING_PAGE_VIEWS   = 'landing_page_views',
+  LEADS                = 'leads',
+  PURCHASES            = 'purchases',
+  VIDEO_PLAYS          = 'video_plays',
+  VIDEO_P25            = 'video_p25',
+  VIDEO_P50            = 'video_p50',
+  VIDEO_P75            = 'video_p75',
+  VIDEO_P100           = 'video_p100',
+  AGE                  = 'age',
+  GENDER               = 'gender',
+  COUNTRY              = 'country',
+  REGION               = 'region',
+  PUBLISHER_PLATFORM   = 'publisher_platform',
+  DEVICE_PLATFORM      = 'device_platform',
+}
+
+export type ColumnType = 'text' | 'count' | 'monetary' | 'percentage' | 'decimal' | 'date';
+
+export interface ColumnMeta {
+  label: string;
+  type: ColumnType;
+}
+
+export const COLUMN_META: Record<MetaInsightsColumn, ColumnMeta> = {
+  [MetaInsightsColumn.CAMPAIGN_ID]:           { label: 'ID da Campanha',        type: 'text' },
+  [MetaInsightsColumn.CAMPAIGN_NAME]:         { label: 'Campanha',               type: 'text' },
+  [MetaInsightsColumn.DATE_START]:            { label: 'Início',                 type: 'date' },
+  [MetaInsightsColumn.DATE_STOP]:             { label: 'Fim',                    type: 'date' },
+  [MetaInsightsColumn.IMPRESSIONS]:           { label: 'Impressões',             type: 'count' },
+  [MetaInsightsColumn.CLICKS]:                { label: 'Cliques',                type: 'count' },
+  [MetaInsightsColumn.REACH]:                 { label: 'Alcance',                type: 'count' },
+  [MetaInsightsColumn.FREQUENCY]:             { label: 'Frequência',             type: 'decimal' },
+  [MetaInsightsColumn.UNIQUE_CLICKS]:         { label: 'Cliques Únicos',         type: 'count' },
+  [MetaInsightsColumn.SPEND]:                 { label: 'Investimento',           type: 'monetary' },
+  [MetaInsightsColumn.CPM]:                   { label: 'CPM',                    type: 'monetary' },
+  [MetaInsightsColumn.CPC]:                   { label: 'CPC',                    type: 'monetary' },
+  [MetaInsightsColumn.COST_PER_UNIQUE_CLICK]: { label: 'Custo/Clique Único',     type: 'monetary' },
+  [MetaInsightsColumn.CTR]:                   { label: 'CTR',                    type: 'percentage' },
+  [MetaInsightsColumn.PURCHASE_ROAS]:         { label: 'ROAS',                   type: 'decimal' },
+  [MetaInsightsColumn.LINK_CLICKS]:           { label: 'Cliques no Link',        type: 'count' },
+  [MetaInsightsColumn.LANDING_PAGE_VIEWS]:    { label: 'Visualiz. de Página',    type: 'count' },
+  [MetaInsightsColumn.LEADS]:                 { label: 'Leads',                  type: 'count' },
+  [MetaInsightsColumn.PURCHASES]:             { label: 'Compras',                type: 'count' },
+  [MetaInsightsColumn.VIDEO_PLAYS]:           { label: 'Reproduções de Vídeo',   type: 'count' },
+  [MetaInsightsColumn.VIDEO_P25]:             { label: 'Vídeo 25%',              type: 'count' },
+  [MetaInsightsColumn.VIDEO_P50]:             { label: 'Vídeo 50%',              type: 'count' },
+  [MetaInsightsColumn.VIDEO_P75]:             { label: 'Vídeo 75%',              type: 'count' },
+  [MetaInsightsColumn.VIDEO_P100]:            { label: 'Vídeo 100%',             type: 'count' },
+  [MetaInsightsColumn.AGE]:                   { label: 'Faixa Etária',           type: 'text' },
+  [MetaInsightsColumn.GENDER]:                { label: 'Gênero',                 type: 'text' },
+  [MetaInsightsColumn.COUNTRY]:               { label: 'País',                   type: 'text' },
+  [MetaInsightsColumn.REGION]:                { label: 'Região',                 type: 'text' },
+  [MetaInsightsColumn.PUBLISHER_PLATFORM]:    { label: 'Plataforma',             type: 'text' },
+  [MetaInsightsColumn.DEVICE_PLATFORM]:       { label: 'Dispositivo',            type: 'text' },
+};
+
+export const BREAKDOWN_COLUMNS: MetaInsightsColumn[] = [
+  MetaInsightsColumn.AGE,
+  MetaInsightsColumn.GENDER,
+  MetaInsightsColumn.COUNTRY,
+  MetaInsightsColumn.REGION,
+  MetaInsightsColumn.PUBLISHER_PLATFORM,
+  MetaInsightsColumn.DEVICE_PLATFORM,
+];

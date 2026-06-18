@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.git
+.env*
+!.env.example
+*.spec.ts
+tasks
+docs
+test
+README.md
+CLAUDE.md

@@ -53,7 +53,9 @@ export interface MetaAction {
 }
 
 export interface MetaInsightsParams {
-  datePreset: MetaDatePreset;
+  datePreset?: MetaDatePreset;
+  since?: string;
+  until?: string;
   level?: MetaInsightsLevel;
   timeIncrement?: MetaTimeIncrement;
   breakdowns?: string;

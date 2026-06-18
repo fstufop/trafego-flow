@@ -1,7 +1,14 @@
-import { Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
+import { CsvFormatterService } from '../../common/csv/csv-formatter.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { MetaAdsService } from './meta-ads.service.js';
 import { ICampaignReportsService } from './interfaces/campaign-reports-service.interface.js';
@@ -9,6 +16,7 @@ import {
   MetaApiPaginatedResponse,
   MetaCampaign,
   MetaInsights,
+  MetaInsightsParams,
   PaginatedResult,
 } from './interfaces/meta-campaign.interface.js';
 import {
@@ -17,14 +25,24 @@ import {
   MetaInsightsLevel,
   MetaTimeIncrement,
 } from './dto/get-insights-query.dto.js';
+import { ExportInsightsCsvDto } from './dto/export-insights-csv.dto.js';
+import {
+  BREAKDOWN_COLUMNS,
+  MetaInsightsColumn,
+} from './enums/insights-column.enum.js';
+
+const MAX_EXPORT_PAGES = 50;
 
 @Injectable()
 export class CampaignReportsService implements ICampaignReportsService {
+  private readonly logger = new Logger(CampaignReportsService.name);
+
   constructor(
     private readonly adAccountsService: AdAccountsService,
     private readonly metaAdsService: MetaAdsService,
     private readonly crypto: AesCryptoService,
     private readonly config: ConfigService,
+    private readonly csvFormatter: CsvFormatterService,
     @Inject(CACHE_MANAGER)
     private readonly cache: Cache,
   ) {}
@@ -147,5 +165,89 @@ export class CampaignReportsService implements ICampaignReportsService {
 
     await this.cache.set(cacheKey, toCache, this.insightsTtlMs);
     return toCache;
+  }
+
+  async exportInsightsCsv(dto: ExportInsightsCsvDto): Promise<string> {
+    if (dto.datePreset && (dto.since || dto.until)) {
+      throw new BadRequestException('Informe datePreset OU since+until, não ambos');
+    }
+    if (!!dto.since !== !!dto.until) {
+      throw new BadRequestException('since e until devem ser informados juntos');
+    }
+
+    const columns = this.resolveColumns(dto.columns, dto.breakdowns);
+    const period = this.resolvePeriod(dto);
+    const level = dto.level ?? MetaInsightsLevel.CAMPAIGN;
+
+    const account = await this.adAccountsService.findByAdAccountId(dto.adAccountId);
+    if (!account.isActive) {
+      throw new UnprocessableEntityException(`Ad account ${dto.adAccountId} is inactive`);
+    }
+    const token = this.crypto.decrypt(account.accessToken);
+
+    const allRows: MetaInsights[] = [];
+    let cursor: string | undefined;
+    let pageCount = 0;
+
+    do {
+      const cacheKey = this.buildExportCacheKey(dto.adAccountId, period, level, dto.timeIncrement, dto.breakdowns, cursor);
+      let page = await this.cache.get<PaginatedResult<MetaInsights>>(cacheKey);
+
+      if (!page) {
+        const result = await this.metaAdsService.fetchInsights(
+          dto.adAccountId,
+          token,
+          { ...period, level, timeIncrement: dto.timeIncrement, breakdowns: dto.breakdowns },
+          cursor,
+        );
+        page = { data: result.data, paging: { next: result.paging?.cursors?.after } };
+        await this.cache.set(cacheKey, page, this.insightsTtlMs);
+      }
+
+      allRows.push(...page.data);
+      cursor = page.paging.next;
+      pageCount++;
+
+      if (pageCount >= MAX_EXPORT_PAGES) {
+        this.logger.warn(`exportInsightsCsv: MAX_EXPORT_PAGES (${MAX_EXPORT_PAGES}) reached for ${dto.adAccountId}`);
+        break;
+      }
+    } while (cursor);
+
+    return this.csvFormatter.format(allRows, columns);
+  }
+
+  private resolveColumns(columns?: MetaInsightsColumn[], breakdowns?: string): MetaInsightsColumn[] {
+    if (columns?.length) return columns;
+    const activeBreakdowns = breakdowns
+      ? breakdowns.split(',').map(s => s.trim())
+      : [];
+    return Object.values(MetaInsightsColumn).filter(
+      col => !BREAKDOWN_COLUMNS.includes(col) || activeBreakdowns.includes(col),
+    );
+  }
+
+  private resolvePeriod(dto: ExportInsightsCsvDto): Pick<MetaInsightsParams, 'datePreset' | 'since' | 'until'> {
+    if (dto.since && dto.until) return { since: dto.since, until: dto.until };
+    return { datePreset: dto.datePreset ?? MetaDatePreset.LAST_30D };
+  }
+
+  private buildExportCacheKey(
+    adAccountId: string,
+    period: Pick<MetaInsightsParams, 'datePreset' | 'since' | 'until'>,
+    level: MetaInsightsLevel,
+    timeIncrement?: MetaTimeIncrement,
+    breakdowns?: string,
+    cursor?: string,
+  ): string {
+    const periodPart = period.since
+      ? `since:${period.since}:until:${period.until}`
+      : period.datePreset;
+    return this.buildInsightsCacheKey(
+      `meta:insights:${adAccountId}:${level}:${periodPart}`,
+      cursor,
+      timeIncrement,
+      breakdowns,
+    );
   }
 }

@@ -227,6 +227,32 @@ describe('MetaAdsService', () => {
         service.fetchInsights('act_123', 'token', { datePreset: MetaDatePreset.LAST_7D }),
       ).rejects.toThrow(OAuthTokenExpiredException);
     });
+
+    it('sends time_range JSON string and omits date_preset when since/until are provided', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        since: '2025-11-01',
+        until: '2025-11-30',
+        level: MetaInsightsLevel.CAMPAIGN,
+      });
+
+      const callParams = mockHttpService.get.mock.calls[0][1].params;
+      expect(callParams).toHaveProperty('time_range', '{"since":"2025-11-01","until":"2025-11-30"}');
+      expect(callParams).not.toHaveProperty('date_preset');
+    });
+
+    it('sends date_preset and omits time_range when only datePreset is provided', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_30D,
+      });
+
+      const callParams = mockHttpService.get.mock.calls[0][1].params;
+      expect(callParams).toHaveProperty('date_preset', 'last_30d');
+      expect(callParams).not.toHaveProperty('time_range');
+    });
   });
 
   describe('fetchCampaignInsights', () => {

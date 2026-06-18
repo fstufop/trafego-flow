@@ -1,14 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CampaignReportsService } from './campaign-reports.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { MetaAdsService } from './meta-ads.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
+import { CsvFormatterService } from '../../common/csv/csv-formatter.service.js';
 import { AdAccountEntity } from '../ad-accounts/entities/ad-account.entity.js';
 import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from './dto/get-insights-query.dto.js';
 import { MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
+import { MetaInsightsColumn } from './enums/insights-column.enum.js';
+import { ExportInsightsCsvDto } from './dto/export-insights-csv.dto.js';
 
 const mockAccount: AdAccountEntity = {
   id: 'uuid-acc-1',
@@ -67,6 +70,7 @@ const mockConfigService = {
     return undefined;
   }),
 };
+const mockCsvFormatter = { format: jest.fn().mockReturnValue('csv-output') };
 
 describe('CampaignReportsService', () => {
   let service: CampaignReportsService;
@@ -81,6 +85,7 @@ describe('CampaignReportsService', () => {
         { provide: MetaAdsService, useValue: mockMetaAdsService },
         { provide: AesCryptoService, useValue: mockCrypto },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: CsvFormatterService, useValue: mockCsvFormatter },
         { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
@@ -387,6 +392,136 @@ describe('CampaignReportsService', () => {
       await expect(
         service.getCampaignInsights('111', 'act_123456789', MetaDatePreset.LAST_7D),
       ).rejects.toThrow(UnprocessableEntityException);
+    });
+  });
+
+  describe('exportInsightsCsv', () => {
+    const baseExportDto: ExportInsightsCsvDto = {
+      adAccountId: 'act_123456789',
+      datePreset: MetaDatePreset.LAST_30D,
+      level: MetaInsightsLevel.CAMPAIGN,
+    };
+
+    const singlePageResponse: MetaApiPaginatedResponse<MetaInsights> = {
+      data: mockInsights,
+      paging: {},
+    };
+
+    beforeEach(() => {
+      mockCache.get.mockResolvedValue(null);
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
+      mockMetaAdsService.fetchInsights.mockResolvedValue(singlePageResponse);
+      mockCsvFormatter.format.mockReturnValue('csv-output');
+    });
+
+    it('returns csv string from CsvFormatterService', async () => {
+      const result = await service.exportInsightsCsv(baseExportDto);
+      expect(result).toBe('csv-output');
+      expect(mockCsvFormatter.format).toHaveBeenCalledWith(mockInsights, expect.any(Array));
+    });
+
+    it('uses all non-breakdown columns when columns is not provided', async () => {
+      await service.exportInsightsCsv(baseExportDto);
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      expect(columns).not.toContain(MetaInsightsColumn.AGE);
+      expect(columns).not.toContain(MetaInsightsColumn.GENDER);
+      expect(columns).toContain(MetaInsightsColumn.SPEND);
+    });
+
+    it('includes breakdown columns when breakdowns param matches', async () => {
+      await service.exportInsightsCsv({ ...baseExportDto, breakdowns: 'age,gender' });
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      expect(columns).toContain(MetaInsightsColumn.AGE);
+      expect(columns).toContain(MetaInsightsColumn.GENDER);
+      expect(columns).not.toContain(MetaInsightsColumn.COUNTRY);
+    });
+
+    it('uses only selected columns when columns array is provided', async () => {
+      const selected = [MetaInsightsColumn.CAMPAIGN_NAME, MetaInsightsColumn.SPEND];
+      await service.exportInsightsCsv({ ...baseExportDto, columns: selected });
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      expect(columns).toEqual(selected);
+    });
+
+    it('throws BadRequestException when datePreset and since are both provided', async () => {
+      await expect(
+        service.exportInsightsCsv({ ...baseExportDto, since: '2025-11-01', until: '2025-11-30' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when since is provided without until', async () => {
+      await expect(
+        service.exportInsightsCsv({ adAccountId: 'act_123456789', since: '2025-11-01' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when until is provided without since', async () => {
+      await expect(
+        service.exportInsightsCsv({ adAccountId: 'act_123456789', until: '2025-11-30' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('uses since/until cache key when since and until are provided', async () => {
+      await service.exportInsightsCsv({
+        adAccountId: 'act_123456789',
+        since: '2025-11-01',
+        until: '2025-11-30',
+        level: MetaInsightsLevel.CAMPAIGN,
+      });
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:act_123456789:campaign:since:2025-11-01:until:2025-11-30',
+      );
+    });
+
+    it('passes time_range params to MetaAdsService when since/until provided', async () => {
+      await service.exportInsightsCsv({
+        adAccountId: 'act_123456789',
+        since: '2025-11-01',
+        until: '2025-11-30',
+        level: MetaInsightsLevel.CAMPAIGN,
+      });
+      expect(mockMetaAdsService.fetchInsights).toHaveBeenCalledWith(
+        'act_123456789',
+        'plaintext-token',
+        expect.objectContaining({ since: '2025-11-01', until: '2025-11-30' }),
+        undefined,
+      );
+    });
+
+    it('accumulates all rows across multiple pages via cursor loop', async () => {
+      const page1: MetaApiPaginatedResponse<MetaInsights> = {
+        data: [{ ...mockInsights[0], impressions: '1000' }],
+        paging: { cursors: { before: 'b', after: 'cursor2' } },
+      };
+      const page2: MetaApiPaginatedResponse<MetaInsights> = {
+        data: [{ ...mockInsights[0], impressions: '2000' }],
+        paging: {},
+      };
+      mockMetaAdsService.fetchInsights
+        .mockResolvedValueOnce(page1)
+        .mockResolvedValueOnce(page2);
+
+      await service.exportInsightsCsv(baseExportDto);
+
+      const [rows] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      expect(rows).toHaveLength(2);
+      expect(mockMetaAdsService.fetchInsights).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses cache hit for second page without calling MetaAdsService again', async () => {
+      const cachedPage = { data: mockInsights, paging: {} };
+      mockCache.get.mockResolvedValue(cachedPage);
+
+      await service.exportInsightsCsv(baseExportDto);
+
+      expect(mockMetaAdsService.fetchInsights).not.toHaveBeenCalled();
+    });
+
+    it('defaults to last_30d when no period provided', async () => {
+      await service.exportInsightsCsv({ adAccountId: 'act_123456789' });
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:act_123456789:campaign:last_30d',
+      );
     });
   });
 });

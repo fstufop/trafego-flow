@@ -59,7 +59,9 @@ export class MetaAdsService implements IMetaAdsService {
       this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
         params: {
           fields: INSIGHTS_FIELDS,
-          date_preset: params.datePreset,
+          ...(params.since && params.until
+            ? { time_range: JSON.stringify({ since: params.since, until: params.until }) }
+            : { date_preset: params.datePreset }),
           level: params.level,
           access_token: accessToken,
           ...(cursor && { after: cursor }),

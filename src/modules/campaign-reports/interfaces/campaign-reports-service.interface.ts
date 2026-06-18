@@ -1,5 +1,6 @@
 import { MetaCampaign, MetaInsights, PaginatedResult } from './meta-campaign.interface.js';
 import { GetInsightsQueryDto, MetaDatePreset, MetaTimeIncrement } from '../dto/get-insights-query.dto.js';
+import { ExportInsightsCsvDto } from '../dto/export-insights-csv.dto.js';
 
 export interface ICampaignReportsService {
   listCampaigns(adAccountId: string, cursor?: string): Promise<PaginatedResult<MetaCampaign>>;
@@ -11,4 +12,5 @@ export interface ICampaignReportsService {
     timeIncrement?: MetaTimeIncrement,
     breakdowns?: string,
   ): Promise<MetaInsights | PaginatedResult<MetaInsights>>;
+  exportInsightsCsv(dto: ExportInsightsCsvDto): Promise<string>;
 }
