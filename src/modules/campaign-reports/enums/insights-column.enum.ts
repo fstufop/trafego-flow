@@ -1,6 +1,8 @@
 export enum MetaInsightsColumn {
   CAMPAIGN_ID          = 'campaign_id',
   CAMPAIGN_NAME        = 'campaign_name',
+  ADSET_NAME           = 'adset_name',
+  AD_NAME              = 'ad_name',
   DATE_START           = 'date_start',
   DATE_STOP            = 'date_stop',
   IMPRESSIONS          = 'impressions',
@@ -23,6 +25,7 @@ export enum MetaInsightsColumn {
   VIDEO_P50            = 'video_p50',
   VIDEO_P75            = 'video_p75',
   VIDEO_P100           = 'video_p100',
+  MESSAGING_CONVERSATIONS_STARTED = 'messaging_conversations_started',
   AGE                  = 'age',
   GENDER               = 'gender',
   COUNTRY              = 'country',
@@ -41,6 +44,8 @@ export interface ColumnMeta {
 export const COLUMN_META: Record<MetaInsightsColumn, ColumnMeta> = {
   [MetaInsightsColumn.CAMPAIGN_ID]:           { label: 'ID da Campanha',        type: 'text' },
   [MetaInsightsColumn.CAMPAIGN_NAME]:         { label: 'Campanha',               type: 'text' },
+  [MetaInsightsColumn.ADSET_NAME]:            { label: 'Conjunto de Anúncios',   type: 'text' },
+  [MetaInsightsColumn.AD_NAME]:               { label: 'Anúncio',                type: 'text' },
   [MetaInsightsColumn.DATE_START]:            { label: 'Início',                 type: 'date' },
   [MetaInsightsColumn.DATE_STOP]:             { label: 'Fim',                    type: 'date' },
   [MetaInsightsColumn.IMPRESSIONS]:           { label: 'Impressões',             type: 'count' },
@@ -58,6 +63,7 @@ export const COLUMN_META: Record<MetaInsightsColumn, ColumnMeta> = {
   [MetaInsightsColumn.LANDING_PAGE_VIEWS]:    { label: 'Visualiz. de Página',    type: 'count' },
   [MetaInsightsColumn.LEADS]:                 { label: 'Leads',                  type: 'count' },
   [MetaInsightsColumn.PURCHASES]:             { label: 'Compras',                type: 'count' },
+  [MetaInsightsColumn.MESSAGING_CONVERSATIONS_STARTED]: { label: 'Conversas Iniciadas', type: 'count' },
   [MetaInsightsColumn.VIDEO_PLAYS]:           { label: 'Reproduções de Vídeo',   type: 'count' },
   [MetaInsightsColumn.VIDEO_P25]:             { label: 'Vídeo 25%',              type: 'count' },
   [MetaInsightsColumn.VIDEO_P50]:             { label: 'Vídeo 50%',              type: 'count' },

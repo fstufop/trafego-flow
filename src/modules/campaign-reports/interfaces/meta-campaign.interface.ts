@@ -11,6 +11,8 @@ export interface MetaCampaign {
 export interface MetaInsights {
   campaign_id?: string;
   campaign_name?: string;
+  adset_name?: string;
+  ad_name?: string;
   impressions: string;
   clicks: string;
   spend: string;

@@ -12,6 +12,7 @@ const ACTION_TYPE_MAP: Partial<Record<MetaInsightsColumn, string>> = {
   [MetaInsightsColumn.LANDING_PAGE_VIEWS]: 'landing_page_view',
   [MetaInsightsColumn.LEADS]:              'lead',
   [MetaInsightsColumn.PURCHASES]:          'purchase',
+  [MetaInsightsColumn.MESSAGING_CONVERSATIONS_STARTED]: 'onsite_conversion.messaging_conversation_started_7d',
 };
 
 const VIDEO_FIELD_MAP: Partial<Record<MetaInsightsColumn, keyof MetaInsights>> = {
@@ -72,6 +73,8 @@ export class CsvFormatterService {
     const simple: MetaInsightsColumn[] = [
       MetaInsightsColumn.CAMPAIGN_ID,
       MetaInsightsColumn.CAMPAIGN_NAME,
+      MetaInsightsColumn.ADSET_NAME,
+      MetaInsightsColumn.AD_NAME,
       MetaInsightsColumn.DATE_START,
       MetaInsightsColumn.DATE_STOP,
       MetaInsightsColumn.IMPRESSIONS,

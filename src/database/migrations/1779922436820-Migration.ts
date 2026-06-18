@@ -6,7 +6,7 @@ export class Migration1779922436820 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`DROP INDEX "public"."UQ_clients_email"`);
         await queryRunner.query(`CREATE TYPE "public"."integrations_platform_enum" AS ENUM('instagram', 'whatsapp')`);
-        await queryRunner.query(`CREATE TABLE "integrations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "client_id" uuid NOT NULL, "platform" "public"."integrations_platform_enum" NOT NULL, "page_id" character varying NOT NULL, "access_token" text NOT NULL, "token_expires_at" TIMESTAMP WITH TIME ZONE, "isActive" boolean NOT NULL DEFAULT true, CONSTRAINT "UQ_d4a5575c26e055d30aec76a2cf4" UNIQUE ("page_id"), CONSTRAINT "PK_9adcdc6d6f3922535361ce641e8" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "integrations" ("id" uuid NOT NULL DEFAULT gen_random_uuid(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "client_id" uuid NOT NULL, "platform" "public"."integrations_platform_enum" NOT NULL, "page_id" character varying NOT NULL, "access_token" text NOT NULL, "token_expires_at" TIMESTAMP WITH TIME ZONE, "isActive" boolean NOT NULL DEFAULT true, CONSTRAINT "UQ_d4a5575c26e055d30aec76a2cf4" UNIQUE ("page_id"), CONSTRAINT "PK_9adcdc6d6f3922535361ce641e8" PRIMARY KEY ("id"))`);
         await queryRunner.query(`ALTER TABLE "clients" DROP COLUMN "created_at"`);
         await queryRunner.query(`ALTER TABLE "clients" DROP COLUMN "updated_at"`);
         await queryRunner.query(`ALTER TABLE "clients" DROP COLUMN "deleted_at"`);
