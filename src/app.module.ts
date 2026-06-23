@@ -11,6 +11,7 @@ import { IntegrationsModule } from './modules/integrations/integrations.module.j
 import { WebhookModule } from './modules/webhook/webhook.module.js';
 import { AdAccountsModule } from './modules/ad-accounts/ad-accounts.module.js';
 import { CampaignReportsModule } from './modules/campaign-reports/campaign-reports.module.js';
+import { AdLibraryModule } from './modules/ad-library/ad-library.module.js';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { CampaignReportsModule } from './modules/campaign-reports/campaign-repor
     WebhookModule,
     AdAccountsModule,
     CampaignReportsModule,
+    AdLibraryModule,
   ],
 })
 export class AppModule {}
