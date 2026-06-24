@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de Privacidade — Trafego Flow</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 60px auto;
+      padding: 0 24px;
+      color: #1a1a1a;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; margin-top: 36px; color: #333; }
+    p, li { font-size: 0.97rem; color: #444; }
+    ul { padding-left: 20px; }
+    .updated { font-size: 0.85rem; color: #888; margin-bottom: 40px; }
+    hr { border: none; border-top: 1px solid #e5e5e5; margin: 40px 0; }
+  </style>
+</head>
+<body>
+
+  <h1>Política de Privacidade</h1>
+  <p class="updated">Última atualização: junho de 2025</p>
+
+  <p>
+    Esta política de privacidade descreve como o <strong>Trafego Flow</strong>
+    coleta, usa e protege as informações no contexto de sua operação interna.
+    O Trafego Flow é uma ferramenta de uso interno desenvolvida para apoiar
+    a gestão de campanhas pagas em plataformas Meta (Facebook e Instagram).
+  </p>
+
+  <h2>1. Quem somos</h2>
+  <p>
+    O Trafego Flow é operado por Filipe Teodoro como uma ferramenta interna de uso pessoal.
+    Não é um produto público ou comercial. O acesso é restrito ao operador
+    e protegido por autenticação via chave de API.
+  </p>
+
+  <h2>2. Dados coletados</h2>
+  <p>A aplicação interage com as seguintes fontes de dados:</p>
+  <ul>
+    <li>
+      <strong>Meta Ad Library API</strong>: dados públicos sobre anúncios ativos em
+      plataformas Meta, incluindo nome da página anunciante, estimativas de gasto,
+      impressões, plataformas de veiculação e dados demográficos agregados.
+      Todos esses dados são de acesso público conforme disponibilizados pela própria Meta.
+    </li>
+    <li>
+      <strong>Meta Ads API</strong>: relatórios e métricas de campanhas de contas
+      de anúncios expressamente autorizadas pelo titular.
+    </li>
+    <li>
+      <strong>WhatsApp e Instagram (webhooks)</strong>: mensagens recebidas em contas
+      de negócios configuradas pelos clientes do operador, exclusivamente para fins
+      de automação de atendimento.
+    </li>
+  </ul>
+
+  <h2>3. Como usamos os dados</h2>
+  <ul>
+    <li>Análise competitiva e pesquisa de mercado para otimização de campanhas.</li>
+    <li>Geração de relatórios internos de performance.</li>
+    <li>Automação de respostas em canais de mensagem autorizados.</li>
+  </ul>
+  <p>
+    Nenhum dado é compartilhado com terceiros, revendido ou utilizado para fins
+    diferentes dos descritos acima.
+  </p>
+
+  <h2>4. Armazenamento e segurança</h2>
+  <p>
+    Os dados são armazenados em banco de dados PostgreSQL com acesso restrito.
+    Credenciais de API são criptografadas em repouso usando AES-256.
+    Nenhum dado sensível é registrado em logs de aplicação.
+  </p>
+
+  <h2>5. Retenção de dados</h2>
+  <p>
+    Dados da Ad Library são retidos pelo tempo necessário para análise histórica
+    e podem ser excluídos a qualquer momento pelo operador.
+    Dados de mensagens (WhatsApp/Instagram) são retidos conforme configuração
+    por conta de cliente e excluídos mediante solicitação.
+  </p>
+
+  <h2>6. Direitos dos titulares</h2>
+  <p>
+    Como a plataforma é de uso interno e não coleta dados de usuários finais
+    de forma direta, questões relacionadas a dados de terceiros processados
+    via webhooks são de responsabilidade do cliente que configurou a integração.
+    Para solicitações, entre em contato pelo e-mail abaixo.
+  </p>
+
+  <h2>7. Uso de dados da Meta</h2>
+  <p>
+    O uso de dados obtidos via APIs da Meta segue os
+    <a href="https://developers.facebook.com/terms/" target="_blank">Termos de Serviço da Plataforma Meta</a>
+    e a
+    <a href="https://www.facebook.com/policy.php" target="_blank">Política de Dados do Facebook</a>.
+    Dados da Ad Library são exclusivamente públicos e utilizados para fins analíticos internos.
+  </p>
+
+  <h2>8. Contato</h2>
+  <p>
+    Para dúvidas sobre esta política:<br />
+    <strong>E-mail:</strong> filipe.teodoro@usemobile.xyz
+  </p>
+
+  <hr />
+  <p style="font-size: 0.8rem; color: #aaa; text-align: center;">
+    Trafego Flow &mdash; Uso interno &mdash; 2025
+  </p>
+
+</body>
+</html>

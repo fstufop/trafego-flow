@@ -18,7 +18,6 @@ const AD_LIBRARY_FIELDS = [
   'spend',
   'impressions',
   'estimated_audience_size',
-  'br_total_reach',
   'ad_delivery_start_time',
   'ad_delivery_stop_time',
   'publisher_platforms',
