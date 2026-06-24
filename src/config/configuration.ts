@@ -2,8 +2,10 @@ import * as Joi from 'joi';
 import appConfig from './app.config';
 import databaseConfig from './database.config';
 import redisConfig from './redis.config';
+import metaConfig from './meta.config';
+import metaAdsConfig from './meta-ads.config';
 
-export const configLoads = [appConfig, databaseConfig, redisConfig];
+export const configLoads = [appConfig, databaseConfig, redisConfig, metaConfig, metaAdsConfig];
 
 export const validationSchema = Joi.object({
   PORT: Joi.number().default(3000),
@@ -12,4 +14,13 @@ export const validationSchema = Joi.object({
   DATABASE_URL: Joi.string().uri().required(),
   REDIS_URL: Joi.string().required(),
   CACHE_TTL_SECONDS: Joi.number().default(3600),
+  ENCRYPTION_KEY: Joi.string().length(64).required(),
+  META_APP_ID: Joi.string().required(),
+  META_APP_SECRET: Joi.string().required(),
+  META_SYSTEM_USER_TOKEN: Joi.string().optional(),
+  META_VERIFY_TOKEN: Joi.string().required(),
+  META_GRAPH_API_URL: Joi.string().uri().default('https://graph.facebook.com'),
+  META_GRAPH_API_VERSION: Joi.string().default('v21.0'),
+  META_ADS_API_VERSION: Joi.string().default('v21.0'),
+  INSIGHTS_CACHE_TTL_SECONDS: Joi.number().min(30).max(3600).default(300),
 });

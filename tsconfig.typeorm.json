@@ -4,5 +4,8 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "resolvePackageJsonExports": false
+  },
+  "ts-node": {
+    "experimentalResolver": true
   }
 }
