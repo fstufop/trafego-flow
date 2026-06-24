@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modeflow — Performance que Converte</title>
+  <meta name="description" content="Gestão de tráfego pago para e-commerce de moda. Analisamos toda a jornada e transformamos dados em vendas reais." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── Reset & tokens ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --obsidiana: #141210;
+      --terracota: #C4523A;
+      --ambar:     #C9955A;
+      --creme:     #F5EFE6;
+      --nevoa:     #B4AEA7;
+      --gap:       clamp(4rem, 8vw, 8rem);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--obsidiana);
+      color: var(--creme);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Utility ─────────────────────────────────────────────── */
+    .container {
+      max-width: 1160px;
+      margin-inline: auto;
+      padding-inline: clamp(1.5rem, 5vw, 3rem);
+    }
+
+    .label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--terracota);
+    }
+
+    .serif {
+      font-family: 'Cormorant Garamond', serif;
+    }
+
+    /* ─── NAV ─────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      inset-block-start: 0;
+      inset-inline: 0;
+      z-index: 100;
+      padding-block: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(20, 18, 16, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(196, 82, 58, 0.15);
+    }
+
+    nav .container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: var(--creme);
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: var(--terracota); }
+
+    .nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      color: var(--nevoa);
+      text-decoration: none;
+      transition: color 0.25s;
+    }
+
+    .nav-links a:hover { color: var(--creme); }
+
+    .nav-cta {
+      background: var(--terracota);
+      color: var(--creme) !important;
+      padding: 0.5rem 1.25rem;
+      border-radius: 2px;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: background 0.25s, opacity 0.25s;
+    }
+
+    .nav-cta:hover { opacity: 0.88; }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+    }
+
+    /* ─── HERO ─────────────────────────────────────────────────── */
+    #hero {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding-block: 8rem 5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 70% 40%, rgba(196, 82, 58, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 35% at 20% 70%, rgba(201, 149, 90, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 2rem;
+      height: 1px;
+      background: var(--terracota);
+    }
+
+    .hero-headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 7vw, 6rem);
+      font-weight: 300;
+      line-height: 1.08;
+      letter-spacing: -0.01em;
+      max-width: 14ch;
+      margin-bottom: 1.75rem;
+    }
+
+    .hero-headline em {
+      font-style: italic;
+      color: var(--terracota);
+    }
+
+    .hero-sub {
+      font-size: clamp(15px, 1.5vw, 17px);
+      font-weight: 300;
+      color: var(--nevoa);
+      max-width: 48ch;
+      line-height: 1.7;
+      margin-bottom: 2.75rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--terracota);
+      color: var(--creme);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 0.875rem 2rem;
+      border-radius: 2px;
+      transition: opacity 0.25s, transform 0.2s;
+    }
+
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: transparent;
+      color: var(--creme);
+      border: 1px solid rgba(245, 239, 230, 0.25);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      padding: 0.875rem 1.75rem;
+      border-radius: 2px;
+      transition: border-color 0.25s, color 0.25s;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--creme);
+    }
+
+    .hero-badge {
+      margin-top: 5rem;
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .hero-badge-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .hero-badge-item strong {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.25rem;
+      font-weight: 300;
+      color: var(--creme);
+      line-height: 1;
+    }
+
+    .hero-badge-item span {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--nevoa);
+    }
+
+    .hero-divider {
+      width: 1px;
+      height: 2.5rem;
+      background: rgba(180, 174, 167, 0.3);
+    }
+
+    /* ─── SOBRE ─────────────────────────────────────────────────── */
+    #sobre {
+      padding-block: var(--gap);
+      border-top: 1px solid rgba(180, 174, 167, 0.15);
+    }
+
+    .sobre-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 760px) {
+      .sobre-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    }
+
+    .sobre-headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.25rem, 4vw, 3.5rem);
+      font-weight: 300;
+      line-height: 1.15;
+      margin-block: 1rem 1.5rem;
+    }
+
+    .sobre-headline em {
+      font-style: italic;
+      color: var(--ambar);
+    }
+
+    .sobre-body {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--nevoa);
+      line-height: 1.75;
+      margin-bottom: 1.25rem;
+    }
+
+    .sobre-accent {
+      width: 3rem;
+      height: 2px;
+      background: var(--terracota);
+      margin-bottom: 2rem;
+    }
+
+    /* decorative block */
+    .sobre-visual {
+      aspect-ratio: 4/5;
+      background: linear-gradient(145deg, rgba(196, 82, 58, 0.12) 0%, rgba(201, 149, 90, 0.08) 100%);
+      border: 1px solid rgba(196, 82, 58, 0.2);
+      border-radius: 2px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sobre-visual-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.5rem;
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      color: rgba(245, 239, 230, 0.8);
+    }
+
+    .sobre-visual::after {
+      content: 'PERFORMANCE · CONVERSÃO · MODA';
+      position: absolute;
+      bottom: 1.5rem;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      color: var(--terracota);
+    }
+
+    /* ─── SERVIÇOS ─────────────────────────────────────────────── */
+    #servicos {
+      padding-block: var(--gap);
+      border-top: 1px solid rgba(180, 174, 167, 0.15);
+    }
+
+    .servicos-header {
+      max-width: 54ch;
+      margin-bottom: 4rem;
+    }
+
+    .servicos-headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 300;
+      line-height: 1.2;
+      margin-block: 0.75rem 1rem;
+    }
+
+    .servicos-sub {
+      font-size: 14px;
+      color: var(--nevoa);
+      font-weight: 300;
+    }
+
+    .servicos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5px;
+      background: rgba(180, 174, 167, 0.12);
+      border: 1px solid rgba(180, 174, 167, 0.12);
+    }
+
+    .servico-card {
+      background: var(--obsidiana);
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: background 0.3s;
+    }
+
+    .servico-card:hover {
+      background: rgba(196, 82, 58, 0.06);
+    }
+
+    .servico-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3rem;
+      font-weight: 300;
+      color: rgba(196, 82, 58, 0.3);
+      line-height: 1;
+    }
+
+    .servico-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--creme);
+    }
+
+    .servico-desc {
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--nevoa);
+      line-height: 1.7;
+    }
+
+    .servico-tag {
+      margin-top: auto;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--terracota);
+    }
+
+    /* ─── DIFERENCIAIS ─────────────────────────────────────────── */
+    #diferenciais {
+      padding-block: var(--gap);
+      background: var(--creme);
+      color: var(--obsidiana);
+    }
+
+    #diferenciais .label { color: var(--terracota); }
+
+    .dif-headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 300;
+      line-height: 1.2;
+      max-width: 26ch;
+      margin-block: 0.75rem 3.5rem;
+      color: var(--obsidiana);
+    }
+
+    .dif-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 3rem 4rem;
+    }
+
+    .dif-item h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem;
+      font-weight: 400;
+      margin-bottom: 0.5rem;
+      color: var(--obsidiana);
+    }
+
+    .dif-item p {
+      font-size: 14px;
+      font-weight: 300;
+      color: #5a5450;
+      line-height: 1.7;
+    }
+
+    .dif-item::before {
+      content: '';
+      display: block;
+      width: 1.5rem;
+      height: 2px;
+      background: var(--terracota);
+      margin-bottom: 1rem;
+    }
+
+    /* ─── CTA ────────────────────────────────────────────────────── */
+    #cta {
+      padding-block: var(--gap);
+      text-align: center;
+      border-top: 1px solid rgba(180, 174, 167, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 50% 60% at 50% 50%, rgba(196, 82, 58, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 300;
+      line-height: 1.1;
+      max-width: 20ch;
+      margin-inline: auto;
+      margin-bottom: 1.25rem;
+    }
+
+    .cta-sub {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--nevoa);
+      max-width: 46ch;
+      margin-inline: auto;
+      margin-bottom: 2.5rem;
+    }
+
+    .cta-actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────────────────── */
+    footer {
+      padding-block: 2.5rem;
+      border-top: 1px solid rgba(180, 174, 167, 0.15);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .footer-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: var(--creme);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-size: 12px;
+      color: var(--nevoa);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--creme); }
+
+    .footer-copy {
+      font-size: 11px;
+      color: rgba(180, 174, 167, 0.5);
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── SCROLL REVEAL (lightweight) ──────────────────────────── */
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    [data-reveal].visible {
+      opacity: 1;
+      transform: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="container">
+      <a href="#hero" class="nav-logo">mode<span>flow</span></a>
+      <ul class="nav-links">
+        <li><a href="#sobre">Sobre</a></li>
+        <li><a href="#servicos">Serviços</a></li>
+        <li><a href="#cta" class="nav-cta">Falar com a equipe</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="container">
+      <div class="hero-eyebrow">
+        <span class="label">Gestão de tráfego pago · E-commerce de moda</span>
+      </div>
+
+      <h1 class="hero-headline serif">
+        Performance<br>que <em>converte</em><br>de verdade.
+      </h1>
+
+      <p class="hero-sub">
+        Onde a moda encontra a performance e o fluxo de vendas vira ciência.
+        Analisamos toda a jornada, otimizamos canais e transformamos dados em
+        decisões que geram resultado real.
+      </p>
+
+      <div class="hero-actions">
+        <a href="https://wa.me/5532900000000" class="btn-primary" target="_blank" rel="noopener">
+          Quero crescer agora
+        </a>
+        <a href="#servicos" class="btn-ghost">Ver serviços</a>
+      </div>
+
+      <div class="hero-badge" data-reveal>
+        <div class="hero-badge-item">
+          <strong>100%</strong>
+          <span>Orientado a resultado</span>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-badge-item">
+          <strong>Meta</strong>
+          <span>Ads & Instagram</span>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-badge-item">
+          <strong>Moda</strong>
+          <span>Especialidade exclusiva</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOBRE -->
+  <section id="sobre">
+    <div class="container">
+      <div class="sobre-grid">
+        <div data-reveal>
+          <span class="label">Sobre a marca</span>
+          <h2 class="sobre-headline">
+            A essência<br>do <em>Modeflow</em>
+          </h2>
+          <div class="sobre-accent"></div>
+          <p class="sobre-body">
+            A Modeflow nasce da união entre visão estratégica, domínio técnico e profundo
+            conhecimento do e-commerce de moda. Mais do que gestores de tráfego, somos
+            parceiros de crescimento.
+          </p>
+          <p class="sobre-body">
+            Analisamos toda a jornada de compra, otimizamos canais, refinamos preços e
+            transformamos dados em decisões que geram resultado real.
+          </p>
+        </div>
+
+        <div class="sobre-visual" data-reveal>
+          <span class="sobre-visual-logo">modeflow</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVIÇOS -->
+  <section id="servicos">
+    <div class="container">
+      <div class="servicos-header" data-reveal>
+        <span class="label">O que fazemos</span>
+        <h2 class="servicos-headline serif">
+          Quatro pilares<br>de crescimento
+        </h2>
+        <p class="servicos-sub">
+          Cada etapa da nossa metodologia foi desenhada para o e-commerce de moda.
+        </p>
+      </div>
+
+      <div class="servicos-grid">
+        <div class="servico-card" data-reveal>
+          <span class="servico-num">01</span>
+          <h3 class="servico-title serif">Performance</h3>
+          <p class="servico-desc">
+            Tráfego pago orientado a resultado real. Campanhas no Meta Ads
+            calibradas para o comportamento de compra do consumidor de moda.
+          </p>
+          <span class="servico-tag">Meta Ads · Instagram · Facebook</span>
+        </div>
+
+        <div class="servico-card" data-reveal>
+          <span class="servico-num">02</span>
+          <h3 class="servico-title serif">Jornada</h3>
+          <p class="servico-desc">
+            Análise completa do canal de venda. Mapeamos cada ponto de contato
+            para identificar onde seu cliente abandona e onde converte.
+          </p>
+          <span class="servico-tag">CRO · UX · Funil de vendas</span>
+        </div>
+
+        <div class="servico-card" data-reveal>
+          <span class="servico-num">03</span>
+          <h3 class="servico-title serif">Estratégia</h3>
+          <p class="servico-desc">
+            Planejamento individual por loja. Sem receita genérica — cada plano
+            é construído para o seu nicho, seu produto e o seu público.
+          </p>
+          <span class="servico-tag">Consultoria · Precificação · Canais</span>
+        </div>
+
+        <div class="servico-card" data-reveal>
+          <span class="servico-num">04</span>
+          <h3 class="servico-title serif">Tecnologia</h3>
+          <p class="servico-desc">
+            Automação e inteligência de dados. Relatórios em tempo real e
+            automações que liberam sua equipe para focar no que importa.
+          </p>
+          <span class="servico-tag">Dashboard · Automação · BI</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIFERENCIAIS -->
+  <section id="diferenciais">
+    <div class="container">
+      <span class="label">Por que a Modeflow</span>
+      <h2 class="dif-headline serif">
+        Parceiros de crescimento,<br>não apenas gestores.
+      </h2>
+
+      <div class="dif-grid">
+        <div class="dif-item" data-reveal>
+          <h3>Especialização em moda</h3>
+          <p>
+            Entendemos as sazonalidades, as coleções e o comportamento
+            único do consumidor de moda no digital.
+          </p>
+        </div>
+        <div class="dif-item" data-reveal>
+          <h3>Dados que geram decisão</h3>
+          <p>
+            Cada real investido em mídia é rastreado e justificado.
+            Relatórios claros, sem jargão — só resultado.
+          </p>
+        </div>
+        <div class="dif-item" data-reveal>
+          <h3>Estratégia individual</h3>
+          <p>
+            Nenhuma loja é igual. Montamos um plano exclusivo para o
+            seu e-commerce com base em análise real, não template.
+          </p>
+        </div>
+        <div class="dif-item" data-reveal>
+          <h3>Visão de negócio completa</h3>
+          <p>
+            Além do tráfego, cuidamos de logística, precificação e
+            estratégia de canais para maximizar a margem.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta">
+    <div class="container">
+      <span class="label" data-reveal>Vamos conversar</span>
+      <h2 class="cta-headline serif" data-reveal>
+        Seu e-commerce de moda<br>no próximo nível.
+      </h2>
+      <p class="cta-sub" data-reveal>
+        Entre em contato e descubra o que a Modeflow pode fazer pela sua loja.
+        Análise gratuita, sem compromisso.
+      </p>
+      <div class="cta-actions" data-reveal>
+        <a href="https://wa.me/5532900000000" class="btn-primary" target="_blank" rel="noopener">
+          Falar no WhatsApp
+        </a>
+        <a href="mailto:contato@modeflow.com.br" class="btn-ghost">
+          contato@modeflow.com.br
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-logo">modeflow</span>
+        <ul class="footer-links">
+          <li><a href="https://instagram.com/modeflow.oficial" target="_blank" rel="noopener">@modeflow.oficial</a></li>
+          <li><a href="mailto:contato@modeflow.com.br">contato@modeflow.com.br</a></li>
+        </ul>
+        <span class="footer-copy">© 2025 Modeflow. Todos os direitos reservados.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
