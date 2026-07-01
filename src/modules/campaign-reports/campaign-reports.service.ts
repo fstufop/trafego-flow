@@ -31,7 +31,7 @@ import {
   MetaInsightsColumn,
 } from './enums/insights-column.enum.js';
 
-const MAX_EXPORT_PAGES = 50;
+const MAX_EXPORT_PAGES = 1000;
 
 @Injectable()
 export class CampaignReportsService implements ICampaignReportsService {
