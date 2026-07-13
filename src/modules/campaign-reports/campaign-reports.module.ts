@@ -11,5 +11,6 @@ import { MetaAdsService } from './meta-ads.service.js';
   imports: [HttpModule, AdAccountsModule, CryptoModule, CsvModule],
   controllers: [CampaignReportsController],
   providers: [CampaignReportsService, MetaAdsService],
+  exports: [CampaignReportsService],
 })
 export class CampaignReportsModule {}

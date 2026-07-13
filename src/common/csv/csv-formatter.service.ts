@@ -75,6 +75,8 @@ export class CsvFormatterService {
       MetaInsightsColumn.CAMPAIGN_NAME,
       MetaInsightsColumn.ADSET_NAME,
       MetaInsightsColumn.AD_NAME,
+      MetaInsightsColumn.THUMBNAIL_URL,
+      MetaInsightsColumn.INSTAGRAM_PERMALINK_URL,
       MetaInsightsColumn.DATE_START,
       MetaInsightsColumn.DATE_STOP,
       MetaInsightsColumn.IMPRESSIONS,

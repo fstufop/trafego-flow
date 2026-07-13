@@ -5,11 +5,14 @@ import { firstValueFrom } from 'rxjs';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
 import { IMetaAdsService } from './interfaces/meta-ads-service.interface.js';
 import {
+  MetaAdCreative,
+  MetaAdWithCreative,
   MetaApiPaginatedResponse,
   MetaCampaign,
   MetaInsights,
   MetaInsightsParams,
 } from './interfaces/meta-campaign.interface.js';
+import { MetaInsightsLevel } from './dto/get-insights-query.dto.js';
 
 const INSIGHTS_FIELDS =
   'campaign_id,campaign_name,impressions,clicks,spend,reach,cpm,cpc,ctr,' +
@@ -17,6 +20,16 @@ const INSIGHTS_FIELDS =
   'purchase_roas,frequency,unique_clicks,cost_per_unique_click,' +
   'video_play_actions,video_p25_watched_actions,video_p50_watched_actions,' +
   'video_p75_watched_actions,video_p100_watched_actions';
+
+// A Meta rejeita campos de identidade mais granulares que o level solicitado,
+// então eles só podem ser adicionados quando o level correspondente é usado.
+const LEVEL_IDENTITY_FIELDS: Partial<Record<MetaInsightsLevel, string>> = {
+  [MetaInsightsLevel.ADSET]: 'adset_id,adset_name',
+  [MetaInsightsLevel.AD]: 'adset_id,adset_name,ad_id,ad_name',
+};
+
+// Limite do Graph API para leitura em lote via ?ids=
+const ADS_BATCH_SIZE = 50;
 
 type MetaErrorResponse = { response?: { data?: { error?: { code?: number } } } };
 
@@ -58,7 +71,7 @@ export class MetaAdsService implements IMetaAdsService {
     const response = await firstValueFrom(
       this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
         params: {
-          fields: INSIGHTS_FIELDS,
+          fields: this.buildInsightsFields(params.level),
           ...(params.since && params.until
             ? { time_range: JSON.stringify({ since: params.since, until: params.until }) }
             : { date_preset: params.datePreset }),
@@ -102,6 +115,37 @@ export class MetaAdsService implements IMetaAdsService {
       throw new NotFoundException(`No insights found for campaign ${campaignId} on preset ${params.datePreset}`);
     }
     return insight;
+  }
+
+  async fetchAdCreatives(
+    adIds: string[],
+    accessToken: string,
+  ): Promise<Record<string, MetaAdCreative>> {
+    const creativesByAdId: Record<string, MetaAdCreative> = {};
+
+    for (let i = 0; i < adIds.length; i += ADS_BATCH_SIZE) {
+      const chunk = adIds.slice(i, i + ADS_BATCH_SIZE);
+      const response = await firstValueFrom(
+        this.httpService.get<Record<string, MetaAdWithCreative>>(`${this.baseUrl}/`, {
+          params: {
+            ids: chunk.join(','),
+            fields: 'creative{id,thumbnail_url,image_url,instagram_permalink_url}',
+            access_token: accessToken,
+          },
+        }),
+      ).catch((err: MetaErrorResponse) => this.handleError(err, `ads batch [${chunk[0]}...]`));
+
+      for (const [adId, ad] of Object.entries(response.data)) {
+        if (ad.creative) creativesByAdId[adId] = ad.creative;
+      }
+    }
+
+    return creativesByAdId;
+  }
+
+  private buildInsightsFields(level?: MetaInsightsLevel): string {
+    const identityFields = level && LEVEL_IDENTITY_FIELDS[level];
+    return identityFields ? `${INSIGHTS_FIELDS},${identityFields}` : INSIGHTS_FIELDS;
   }
 
   private get baseUrl(): string {

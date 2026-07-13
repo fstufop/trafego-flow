@@ -11,7 +11,9 @@ export interface MetaCampaign {
 export interface MetaInsights {
   campaign_id?: string;
   campaign_name?: string;
+  adset_id?: string;
   adset_name?: string;
+  ad_id?: string;
   ad_name?: string;
   impressions: string;
   clicks: string;
@@ -47,6 +49,26 @@ export interface MetaInsights {
   region?: string;
   publisher_platform?: string;
   device_platform?: string;
+
+  // Preenchidos via enriquecimento com o creative do anúncio (includeThumbnails, level=ad).
+  // URLs assinadas pela CDN da Meta — expiram; não persistir para uso posterior.
+  thumbnail_url?: string;
+  image_url?: string;
+  // Permalink do post no Instagram — estável, pode ser persistido.
+  // Ausente em dark posts ou anúncios sem posicionamento no Instagram.
+  instagram_permalink_url?: string;
+}
+
+export interface MetaAdCreative {
+  id: string;
+  thumbnail_url?: string;
+  image_url?: string;
+  instagram_permalink_url?: string;
+}
+
+export interface MetaAdWithCreative {
+  id: string;
+  creative?: MetaAdCreative;
 }
 
 export interface MetaAction {
