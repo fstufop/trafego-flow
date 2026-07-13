@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -76,4 +77,12 @@ export class ExportInsightsCsvDto {
   @IsOptional()
   @IsString()
   breakdowns?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Inclui as colunas Thumbnail e Link do Post (Instagram) do criativo de cada anúncio. Requer level=ad. As URLs de thumbnail são assinadas pela Meta e expiram; o link do post é estável.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  includeThumbnails?: boolean;
 }

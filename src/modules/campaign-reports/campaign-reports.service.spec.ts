@@ -61,6 +61,7 @@ const mockMetaAdsService = {
   fetchCampaigns: jest.fn(),
   fetchInsights: jest.fn(),
   fetchCampaignInsights: jest.fn(),
+  fetchAdCreatives: jest.fn(),
 };
 const mockCrypto = { decrypt: jest.fn().mockReturnValue('plaintext-token') };
 const mockCache = { get: jest.fn(), set: jest.fn() };
@@ -278,6 +279,107 @@ describe('CampaignReportsService', () => {
 
       expect(result).toEqual(cached);
       expect(mockMetaAdsService.fetchInsights).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getInsights — thumbnails', () => {
+    const adLevelInsights: MetaInsights[] = [
+      { ...mockInsights[0], ad_id: 'ad_1', ad_name: 'Anúncio 1' },
+      { ...mockInsights[0], ad_id: 'ad_2', ad_name: 'Anúncio 2' },
+    ];
+
+    beforeEach(() => {
+      mockCache.get.mockResolvedValue(null);
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
+      mockMetaAdsService.fetchInsights.mockResolvedValue({ data: adLevelInsights, paging: {} });
+    });
+
+    it('should throw BadRequestException when includeThumbnails is used without level=ad', async () => {
+      await expect(
+        service.getInsights('act_123456789', {
+          adAccountId: 'act_123456789',
+          includeThumbnails: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockMetaAdsService.fetchInsights).not.toHaveBeenCalled();
+    });
+
+    it('should enrich rows with thumbnail_url, image_url and instagram_permalink_url from ad creatives', async () => {
+      mockMetaAdsService.fetchAdCreatives.mockResolvedValue({
+        ad_1: {
+          id: 'cr_1',
+          thumbnail_url: 'https://cdn.fb/t1.jpg',
+          image_url: 'https://cdn.fb/i1.jpg',
+          instagram_permalink_url: 'https://www.instagram.com/p/ABC123/',
+        },
+      });
+
+      const result = await service.getInsights('act_123456789', {
+        adAccountId: 'act_123456789',
+        level: MetaInsightsLevel.AD,
+        includeThumbnails: true,
+      });
+
+      expect(mockMetaAdsService.fetchAdCreatives).toHaveBeenCalledWith(
+        ['ad_1', 'ad_2'],
+        'plaintext-token',
+      );
+      expect(result.data[0]).toMatchObject({
+        ad_id: 'ad_1',
+        thumbnail_url: 'https://cdn.fb/t1.jpg',
+        image_url: 'https://cdn.fb/i1.jpg',
+        instagram_permalink_url: 'https://www.instagram.com/p/ABC123/',
+      });
+      // ad_2 sem creative retornado permanece sem thumbnail
+      expect(result.data[1].thumbnail_url).toBeUndefined();
+      expect(result.data[1].instagram_permalink_url).toBeUndefined();
+    });
+
+    it('should include :thumbs in cache key when includeThumbnails is true', async () => {
+      mockMetaAdsService.fetchAdCreatives.mockResolvedValue({});
+
+      await service.getInsights('act_123456789', {
+        adAccountId: 'act_123456789',
+        datePreset: MetaDatePreset.LAST_7D,
+        level: MetaInsightsLevel.AD,
+        includeThumbnails: true,
+      });
+
+      expect(mockCache.get).toHaveBeenCalledWith('meta:insights:act_123456789:ad:last_7d:thumbs');
+    });
+
+    it('should NOT call fetchAdCreatives when includeThumbnails is false', async () => {
+      await service.getInsights('act_123456789', {
+        adAccountId: 'act_123456789',
+        level: MetaInsightsLevel.AD,
+      });
+
+      expect(mockMetaAdsService.fetchAdCreatives).not.toHaveBeenCalled();
+    });
+
+    it('should return rows without thumbnails when creative fetch fails (best-effort)', async () => {
+      mockMetaAdsService.fetchAdCreatives.mockRejectedValue(new Error('Meta API down'));
+
+      const result = await service.getInsights('act_123456789', {
+        adAccountId: 'act_123456789',
+        level: MetaInsightsLevel.AD,
+        includeThumbnails: true,
+      });
+
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].thumbnail_url).toBeUndefined();
+    });
+
+    it('should NOT call fetchAdCreatives when no row has ad_id', async () => {
+      mockMetaAdsService.fetchInsights.mockResolvedValue({ data: mockInsights, paging: {} });
+
+      await service.getInsights('act_123456789', {
+        adAccountId: 'act_123456789',
+        level: MetaInsightsLevel.AD,
+        includeThumbnails: true,
+      });
+
+      expect(mockMetaAdsService.fetchAdCreatives).not.toHaveBeenCalled();
     });
   });
 
@@ -522,6 +624,44 @@ describe('CampaignReportsService', () => {
       expect(mockCache.get).toHaveBeenCalledWith(
         'meta:insights:act_123456789:campaign:last_30d',
       );
+    });
+
+    it('excludes thumbnail_url and instagram_permalink_url columns by default', async () => {
+      await service.exportInsightsCsv(baseExportDto);
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      expect(columns).not.toContain(MetaInsightsColumn.THUMBNAIL_URL);
+      expect(columns).not.toContain(MetaInsightsColumn.INSTAGRAM_PERMALINK_URL);
+    });
+
+    it('throws BadRequestException when includeThumbnails is used without level=ad', async () => {
+      await expect(
+        service.exportInsightsCsv({ ...baseExportDto, includeThumbnails: true }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('includes thumbnail_url column and enriches rows when includeThumbnails with level=ad', async () => {
+      const adRows: MetaInsights[] = [{ ...mockInsights[0], ad_id: 'ad_1', ad_name: 'Anúncio 1' }];
+      mockMetaAdsService.fetchInsights.mockResolvedValue({ data: adRows, paging: {} });
+      mockMetaAdsService.fetchAdCreatives.mockResolvedValue({
+        ad_1: {
+          id: 'cr_1',
+          thumbnail_url: 'https://cdn.fb/t1.jpg',
+          instagram_permalink_url: 'https://www.instagram.com/p/ABC123/',
+        },
+      });
+
+      await service.exportInsightsCsv({
+        ...baseExportDto,
+        level: MetaInsightsLevel.AD,
+        includeThumbnails: true,
+      });
+
+      const [rows, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      expect(columns).toContain(MetaInsightsColumn.THUMBNAIL_URL);
+      expect(columns).toContain(MetaInsightsColumn.INSTAGRAM_PERMALINK_URL);
+      expect(rows[0].thumbnail_url).toBe('https://cdn.fb/t1.jpg');
+      expect(rows[0].instagram_permalink_url).toBe('https://www.instagram.com/p/ABC123/');
+      expect(mockMetaAdsService.fetchAdCreatives).toHaveBeenCalledWith(['ad_1'], 'plaintext-token');
     });
   });
 });

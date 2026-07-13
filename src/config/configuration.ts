@@ -4,12 +4,22 @@ import databaseConfig from './database.config';
 import redisConfig from './redis.config';
 import metaConfig from './meta.config';
 import metaAdsConfig from './meta-ads.config';
+import whatsappConfig from './whatsapp.config';
 
-export const configLoads = [appConfig, databaseConfig, redisConfig, metaConfig, metaAdsConfig];
+export const configLoads = [
+  appConfig,
+  databaseConfig,
+  redisConfig,
+  metaConfig,
+  metaAdsConfig,
+  whatsappConfig,
+];
 
 export const validationSchema = Joi.object({
   PORT: Joi.number().default(3000),
-  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
   MASTER_API_KEY: Joi.string().required(),
   DATABASE_URL: Joi.string().uri().required(),
   REDIS_URL: Joi.string().required(),
@@ -23,4 +33,5 @@ export const validationSchema = Joi.object({
   META_GRAPH_API_VERSION: Joi.string().default('v21.0'),
   META_ADS_API_VERSION: Joi.string().default('v21.0'),
   INSIGHTS_CACHE_TTL_SECONDS: Joi.number().min(30).max(3600).default(300),
+  WHATSAPP_DEDICATED_PHONE: Joi.string().optional(),
 });

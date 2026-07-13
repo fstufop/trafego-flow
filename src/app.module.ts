@@ -12,6 +12,9 @@ import { WebhookModule } from './modules/webhook/webhook.module.js';
 import { AdAccountsModule } from './modules/ad-accounts/ad-accounts.module.js';
 import { CampaignReportsModule } from './modules/campaign-reports/campaign-reports.module.js';
 import { AdLibraryModule } from './modules/ad-library/ad-library.module.js';
+import { WhatsAppGroupsModule } from './modules/whatsapp-groups/whatsapp-groups.module.js';
+import { WhatsAppSessionModule } from './modules/whatsapp-session/whatsapp-session.module.js';
+import { ReportDispatchesModule } from './modules/report-dispatches/report-dispatches.module.js';
 
 @Module({
   imports: [
@@ -47,6 +50,9 @@ import { AdLibraryModule } from './modules/ad-library/ad-library.module.js';
     AdAccountsModule,
     CampaignReportsModule,
     AdLibraryModule,
+    WhatsAppSessionModule,
+    WhatsAppGroupsModule,
+    ReportDispatchesModule,
   ],
 })
 export class AppModule {}

@@ -3,6 +3,8 @@ export enum MetaInsightsColumn {
   CAMPAIGN_NAME        = 'campaign_name',
   ADSET_NAME           = 'adset_name',
   AD_NAME              = 'ad_name',
+  THUMBNAIL_URL        = 'thumbnail_url',
+  INSTAGRAM_PERMALINK_URL = 'instagram_permalink_url',
   DATE_START           = 'date_start',
   DATE_STOP            = 'date_stop',
   IMPRESSIONS          = 'impressions',
@@ -46,6 +48,8 @@ export const COLUMN_META: Record<MetaInsightsColumn, ColumnMeta> = {
   [MetaInsightsColumn.CAMPAIGN_NAME]:         { label: 'Campanha',               type: 'text' },
   [MetaInsightsColumn.ADSET_NAME]:            { label: 'Conjunto de Anúncios',   type: 'text' },
   [MetaInsightsColumn.AD_NAME]:               { label: 'Anúncio',                type: 'text' },
+  [MetaInsightsColumn.THUMBNAIL_URL]:         { label: 'Thumbnail',              type: 'text' },
+  [MetaInsightsColumn.INSTAGRAM_PERMALINK_URL]: { label: 'Link do Post (Instagram)', type: 'text' },
   [MetaInsightsColumn.DATE_START]:            { label: 'Início',                 type: 'date' },
   [MetaInsightsColumn.DATE_STOP]:             { label: 'Fim',                    type: 'date' },
   [MetaInsightsColumn.IMPRESSIONS]:           { label: 'Impressões',             type: 'count' },
@@ -76,6 +80,12 @@ export const COLUMN_META: Record<MetaInsightsColumn, ColumnMeta> = {
   [MetaInsightsColumn.PUBLISHER_PLATFORM]:    { label: 'Plataforma',             type: 'text' },
   [MetaInsightsColumn.DEVICE_PLATFORM]:       { label: 'Dispositivo',            type: 'text' },
 };
+
+// Colunas preenchidas via enriquecimento com o creative (includeThumbnails, level=ad)
+export const CREATIVE_ENRICHMENT_COLUMNS: MetaInsightsColumn[] = [
+  MetaInsightsColumn.THUMBNAIL_URL,
+  MetaInsightsColumn.INSTAGRAM_PERMALINK_URL,
+];
 
 export const BREAKDOWN_COLUMNS: MetaInsightsColumn[] = [
   MetaInsightsColumn.AGE,
