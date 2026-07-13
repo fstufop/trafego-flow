@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export enum MetaTimeIncrement {
   DAILY    = '1',
@@ -70,4 +71,14 @@ export class GetInsightsQueryDto {
   @IsOptional()
   @IsString()
   breakdowns?: string;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      'Inclui thumbnail_url, image_url e instagram_permalink_url do criativo de cada anúncio. Requer level=ad. As URLs de imagem são assinadas pela Meta e expiram; o permalink do Instagram é estável.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => value === 'true' || value === true)
+  @IsBoolean()
+  includeThumbnails?: boolean;
 }

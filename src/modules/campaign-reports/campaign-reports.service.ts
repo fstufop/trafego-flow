@@ -28,10 +28,11 @@ import {
 import { ExportInsightsCsvDto } from './dto/export-insights-csv.dto.js';
 import {
   BREAKDOWN_COLUMNS,
+  CREATIVE_ENRICHMENT_COLUMNS,
   MetaInsightsColumn,
 } from './enums/insights-column.enum.js';
 
-const MAX_EXPORT_PAGES = 50;
+const MAX_EXPORT_PAGES = 1000;
 
 @Injectable()
 export class CampaignReportsService implements ICampaignReportsService {
@@ -56,6 +57,7 @@ export class CampaignReportsService implements ICampaignReportsService {
     cursor?: string,
     timeIncrement?: MetaTimeIncrement,
     breakdowns?: string,
+    includeThumbnails?: boolean,
   ): string {
     let key = base;
     if (timeIncrement) key += `:ti:${timeIncrement}`;
@@ -63,8 +65,42 @@ export class CampaignReportsService implements ICampaignReportsService {
       const sorted = breakdowns.split(',').map(s => s.trim()).sort().join(',');
       key += `:bd:${sorted}`;
     }
+    if (includeThumbnails) key += ':thumbs';
     if (cursor) key += `:cursor:${cursor}`;
     return key;
+  }
+
+  private assertThumbnailsLevel(includeThumbnails: boolean, level: MetaInsightsLevel): void {
+    if (includeThumbnails && level !== MetaInsightsLevel.AD) {
+      throw new BadRequestException('includeThumbnails requer level=ad');
+    }
+  }
+
+  /**
+   * Busca os creatives dos anúncios e anexa thumbnail_url/image_url às linhas.
+   * Best-effort: falha na busca de creatives não derruba o relatório.
+   */
+  private async enrichWithThumbnails(rows: MetaInsights[], accessToken: string): Promise<MetaInsights[]> {
+    const adIds = [...new Set(rows.map(r => r.ad_id).filter((id): id is string => !!id))];
+    if (!adIds.length) return rows;
+
+    try {
+      const creatives = await this.metaAdsService.fetchAdCreatives(adIds, accessToken);
+      return rows.map(row => {
+        const creative = row.ad_id ? creatives[row.ad_id] : undefined;
+        return creative
+          ? {
+              ...row,
+              thumbnail_url: creative.thumbnail_url,
+              image_url: creative.image_url,
+              instagram_permalink_url: creative.instagram_permalink_url,
+            }
+          : row;
+      });
+    } catch (err) {
+      this.logger.warn(`Falha ao buscar thumbnails dos anúncios: ${(err as Error)?.message ?? err}`);
+      return rows;
+    }
   }
 
   async listCampaigns(adAccountId: string, cursor?: string): Promise<PaginatedResult<MetaCampaign>> {
@@ -92,12 +128,16 @@ export class CampaignReportsService implements ICampaignReportsService {
 
   async getInsights(adAccountId: string, query: GetInsightsQueryDto): Promise<PaginatedResult<MetaInsights>> {
     const level = query.level ?? MetaInsightsLevel.CAMPAIGN;
-    const datePreset = query.datePreset ?? MetaDatePreset.LAST_30D;
+    const datePreset = query.datePreset ?? MetaDatePreset.LAST_7D;
+    const includeThumbnails = query.includeThumbnails ?? false;
+    this.assertThumbnailsLevel(includeThumbnails, level);
+
     const cacheKey = this.buildInsightsCacheKey(
       `meta:insights:${adAccountId}:${level}:${datePreset}`,
       query.cursor,
       query.timeIncrement,
       query.breakdowns,
+      includeThumbnails,
     );
 
     const cached = await this.cache.get<PaginatedResult<MetaInsights>>(cacheKey);
@@ -115,8 +155,11 @@ export class CampaignReportsService implements ICampaignReportsService {
       { datePreset, level, timeIncrement: query.timeIncrement, breakdowns: query.breakdowns },
       query.cursor,
     );
+    const rows = includeThumbnails
+      ? await this.enrichWithThumbnails(result.data, token)
+      : result.data;
     const paginated: PaginatedResult<MetaInsights> = {
-      data: result.data,
+      data: rows,
       paging: { next: result.paging?.cursors?.after },
     };
     await this.cache.set(cacheKey, paginated, this.insightsTtlMs);
@@ -175,9 +218,12 @@ export class CampaignReportsService implements ICampaignReportsService {
       throw new BadRequestException('since e until devem ser informados juntos');
     }
 
-    const columns = this.resolveColumns(dto.columns, dto.breakdowns);
-    const period = this.resolvePeriod(dto);
     const level = dto.level ?? MetaInsightsLevel.CAMPAIGN;
+    const includeThumbnails = dto.includeThumbnails ?? false;
+    this.assertThumbnailsLevel(includeThumbnails, level);
+
+    const columns = this.resolveColumns(dto.columns, dto.breakdowns, includeThumbnails);
+    const period = this.resolvePeriod(dto);
 
     const account = await this.adAccountsService.findByAdAccountId(dto.adAccountId);
     if (!account.isActive) {
@@ -214,16 +260,27 @@ export class CampaignReportsService implements ICampaignReportsService {
       }
     } while (cursor);
 
-    return this.csvFormatter.format(allRows, columns);
+    // Thumbnails são enriquecidos após o loop para não gravar no cache URLs que expiram
+    const rows = includeThumbnails
+      ? await this.enrichWithThumbnails(allRows, token)
+      : allRows;
+
+    return this.csvFormatter.format(rows, columns);
   }
 
-  private resolveColumns(columns?: MetaInsightsColumn[], breakdowns?: string): MetaInsightsColumn[] {
+  private resolveColumns(
+    columns?: MetaInsightsColumn[],
+    breakdowns?: string,
+    includeThumbnails = false,
+  ): MetaInsightsColumn[] {
     if (columns?.length) return columns;
     const activeBreakdowns = breakdowns
       ? breakdowns.split(',').map(s => s.trim())
       : [];
     return Object.values(MetaInsightsColumn).filter(
-      col => !BREAKDOWN_COLUMNS.includes(col) || activeBreakdowns.includes(col),
+      col =>
+        (!CREATIVE_ENRICHMENT_COLUMNS.includes(col) || includeThumbnails) &&
+        (!BREAKDOWN_COLUMNS.includes(col) || activeBreakdowns.includes(col)),
     );
   }
 

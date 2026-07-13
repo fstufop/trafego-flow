@@ -253,6 +253,108 @@ describe('MetaAdsService', () => {
       expect(callParams).toHaveProperty('date_preset', 'last_30d');
       expect(callParams).not.toHaveProperty('time_range');
     });
+
+    it('should NOT include ad identity fields at campaign level', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        level: MetaInsightsLevel.CAMPAIGN,
+      });
+
+      const fields = mockHttpService.get.mock.calls[0][1].params.fields as string;
+      expect(fields).not.toContain('ad_id');
+      expect(fields).not.toContain('adset_id');
+    });
+
+    it('should include adset identity fields at adset level', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        level: MetaInsightsLevel.ADSET,
+      });
+
+      const fields = mockHttpService.get.mock.calls[0][1].params.fields as string;
+      expect(fields).toContain('adset_id');
+      expect(fields).toContain('adset_name');
+      expect(fields).not.toContain('ad_id');
+    });
+
+    it('should include ad and adset identity fields at ad level', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({ data: mockInsights, paging: {} })));
+
+      await service.fetchInsights('act_123', 'token-abc', {
+        datePreset: MetaDatePreset.LAST_7D,
+        level: MetaInsightsLevel.AD,
+      });
+
+      const fields = mockHttpService.get.mock.calls[0][1].params.fields as string;
+      expect(fields).toContain('adset_id');
+      expect(fields).toContain('adset_name');
+      expect(fields).toContain('ad_id');
+      expect(fields).toContain('ad_name');
+    });
+  });
+
+  describe('fetchAdCreatives', () => {
+    const batchResponse = {
+      'ad_1': { id: 'ad_1', creative: { id: 'cr_1', thumbnail_url: 'https://cdn.fb/t1.jpg', image_url: 'https://cdn.fb/i1.jpg', instagram_permalink_url: 'https://www.instagram.com/p/ABC123/' } },
+      'ad_2': { id: 'ad_2', creative: { id: 'cr_2', thumbnail_url: 'https://cdn.fb/t2.jpg' } },
+    };
+
+    it('should return creatives keyed by ad id via batch ids request', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse(batchResponse)));
+
+      const result = await service.fetchAdCreatives(['ad_1', 'ad_2'], 'token-abc');
+
+      expect(result).toEqual({
+        ad_1: { id: 'cr_1', thumbnail_url: 'https://cdn.fb/t1.jpg', image_url: 'https://cdn.fb/i1.jpg', instagram_permalink_url: 'https://www.instagram.com/p/ABC123/' },
+        ad_2: { id: 'cr_2', thumbnail_url: 'https://cdn.fb/t2.jpg' },
+      });
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            ids: 'ad_1,ad_2',
+            fields: 'creative{id,thumbnail_url,image_url,instagram_permalink_url}',
+          }),
+        }),
+      );
+    });
+
+    it('should skip ads without creative', async () => {
+      mockHttpService.get.mockReturnValue(
+        of(makeAxiosResponse({ 'ad_3': { id: 'ad_3' } })),
+      );
+
+      const result = await service.fetchAdCreatives(['ad_3'], 'token-abc');
+
+      expect(result).toEqual({});
+    });
+
+    it('should chunk requests in batches of 50 ids', async () => {
+      mockHttpService.get.mockReturnValue(of(makeAxiosResponse({})));
+      const adIds = Array.from({ length: 51 }, (_, i) => `ad_${i}`);
+
+      await service.fetchAdCreatives(adIds, 'token-abc');
+
+      expect(mockHttpService.get).toHaveBeenCalledTimes(2);
+      const firstIds = (mockHttpService.get.mock.calls[0][1].params.ids as string).split(',');
+      const secondIds = (mockHttpService.get.mock.calls[1][1].params.ids as string).split(',');
+      expect(firstIds).toHaveLength(50);
+      expect(secondIds).toEqual(['ad_50']);
+    });
+
+    it('should throw OAuthTokenExpiredException on error code 190', async () => {
+      mockHttpService.get.mockReturnValue(
+        throwError(() => ({ response: { data: { error: { code: 190 } } } })),
+      );
+
+      await expect(service.fetchAdCreatives(['ad_1'], 'expired-token')).rejects.toThrow(
+        OAuthTokenExpiredException,
+      );
+    });
   });
 
   describe('fetchCampaignInsights', () => {
