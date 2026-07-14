@@ -1,8 +1,15 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
+import { MetaPermissionException } from '../../common/exceptions/meta-permission.exception.js';
 import { IMetaAdsService } from './interfaces/meta-ads-service.interface.js';
 import {
   MetaAdCreative,
@@ -31,7 +38,23 @@ const LEVEL_IDENTITY_FIELDS: Partial<Record<MetaInsightsLevel, string>> = {
 // Limite do Graph API para leitura em lote via ?ids=
 const ADS_BATCH_SIZE = 50;
 
-type MetaErrorResponse = { response?: { data?: { error?: { code?: number } } } };
+type MetaApiError = {
+  message?: string;
+  type?: string;
+  code?: number;
+  error_subcode?: number;
+  fbtrace_id?: string;
+};
+
+type MetaErrorResponse = {
+  response?: { status?: number; data?: { error?: MetaApiError } };
+  message?: string;
+};
+
+// Faixa reservada pela Meta para erros de permissão
+// https://developers.facebook.com/docs/graph-api/guides/error-handling
+const META_PERMISSION_ERROR_MIN = 200;
+const META_PERMISSION_ERROR_MAX = 299;
 
 @Injectable()
 export class MetaAdsService implements IMetaAdsService {
@@ -155,11 +178,36 @@ export class MetaAdsService implements IMetaAdsService {
   }
 
   private handleError(err: MetaErrorResponse, identifier: string): never {
-    const code = err?.response?.data?.error?.code;
-    if (code === 190) {
+    const metaError = err?.response?.data?.error;
+
+    if (!metaError) {
+      this.logger.error(`Meta Ads API unreachable for ${identifier}: ${err?.message}`);
+      throw new ServiceUnavailableException(
+        `Meta Ads API unreachable for ${identifier}: ${err?.message ?? 'unknown error'}`,
+      );
+    }
+
+    this.logger.error(
+      `Meta Ads API error for ${identifier}: [code ${metaError.code}] ${metaError.message} (fbtrace_id: ${metaError.fbtrace_id})`,
+    );
+
+    if (metaError.code === 190) {
       throw new OAuthTokenExpiredException(identifier);
     }
-    this.logger.error(`Meta Ads API error for ${identifier}: ${JSON.stringify(err?.response?.data)}`);
-    throw err;
+
+    if (
+      metaError.code !== undefined &&
+      metaError.code >= META_PERMISSION_ERROR_MIN &&
+      metaError.code <= META_PERMISSION_ERROR_MAX
+    ) {
+      throw new MetaPermissionException(identifier, metaError.message);
+    }
+
+    throw new BadGatewayException({
+      message: `Meta Ads API error for ${identifier}: ${metaError.message}`,
+      metaCode: metaError.code,
+      metaErrorSubcode: metaError.error_subcode,
+      fbtraceId: metaError.fbtrace_id,
+    });
   }
 }
