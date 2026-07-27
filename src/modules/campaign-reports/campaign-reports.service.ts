@@ -127,13 +127,23 @@ export class CampaignReportsService implements ICampaignReportsService {
   }
 
   async getInsights(adAccountId: string, query: GetInsightsQueryDto): Promise<PaginatedResult<MetaInsights>> {
+    if (query.datePreset && (query.since || query.until)) {
+      throw new BadRequestException('Informe datePreset OU since+until, não ambos');
+    }
+    if (!!query.since !== !!query.until) {
+      throw new BadRequestException('since e until devem ser informados juntos');
+    }
+
     const level = query.level ?? MetaInsightsLevel.CAMPAIGN;
-    const datePreset = query.datePreset ?? MetaDatePreset.LAST_7D;
     const includeThumbnails = query.includeThumbnails ?? false;
     this.assertThumbnailsLevel(includeThumbnails, level);
 
+    const period = this.resolveInsightsPeriod(query);
+    const periodPart = period.since
+      ? `since:${period.since}:until:${period.until}`
+      : period.datePreset;
     const cacheKey = this.buildInsightsCacheKey(
-      `meta:insights:${adAccountId}:${level}:${datePreset}`,
+      `meta:insights:${adAccountId}:${level}:${periodPart}`,
       query.cursor,
       query.timeIncrement,
       query.breakdowns,
@@ -152,7 +162,7 @@ export class CampaignReportsService implements ICampaignReportsService {
     const result = await this.metaAdsService.fetchInsights(
       adAccountId,
       token,
-      { datePreset, level, timeIncrement: query.timeIncrement, breakdowns: query.breakdowns },
+      { ...period, level, timeIncrement: query.timeIncrement, breakdowns: query.breakdowns },
       query.cursor,
     );
     const rows = includeThumbnails
@@ -164,6 +174,13 @@ export class CampaignReportsService implements ICampaignReportsService {
     };
     await this.cache.set(cacheKey, paginated, this.insightsTtlMs);
     return paginated;
+  }
+
+  private resolveInsightsPeriod(
+    query: Pick<GetInsightsQueryDto, 'since' | 'until' | 'datePreset'>,
+  ): Pick<MetaInsightsParams, 'datePreset' | 'since' | 'until'> {
+    if (query.since && query.until) return { since: query.since, until: query.until };
+    return { datePreset: query.datePreset ?? MetaDatePreset.LAST_30D };
   }
 
   async getCampaignInsights(

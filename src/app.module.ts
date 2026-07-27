@@ -5,6 +5,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
 import { createKeyv } from '@keyv/redis';
 import { configLoads, validationSchema } from './config/configuration.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ClientsModule } from './modules/clients/clients.module.js';
 import { IntegrationsModule } from './modules/integrations/integrations.module.js';
@@ -43,6 +44,7 @@ import { ReportDispatchesModule } from './modules/report-dispatches/report-dispa
       }),
     }),
     ScheduleModule.forRoot(),
+    AuthModule,
     HealthModule,
     ClientsModule,
     IntegrationsModule,

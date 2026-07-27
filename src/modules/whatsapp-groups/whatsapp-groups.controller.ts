@@ -12,15 +12,22 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { WhatsAppGroupsService } from './whatsapp-groups.service.js';
 import { CreateWhatsAppGroupDto } from './dto/create-whatsapp-group.dto.js';
 import { UpdateWhatsAppGroupDto } from './dto/update-whatsapp-group.dto.js';
 
 @ApiTags('whatsapp-groups')
+@ApiBearerAuth()
 @ApiSecurity('x-api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthGuard)
 @Controller('whatsapp-groups')
 export class WhatsAppGroupsController {
   constructor(private readonly whatsAppGroupsService: WhatsAppGroupsService) {}
@@ -41,7 +48,10 @@ export class WhatsAppGroupsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar label ou status de um grupo' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWhatsAppGroupDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateWhatsAppGroupDto,
+  ) {
     return this.whatsAppGroupsService.update(id, dto);
   }
 

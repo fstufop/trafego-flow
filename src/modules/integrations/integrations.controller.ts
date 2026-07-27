@@ -12,15 +12,22 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { IntegrationsService } from './integrations.service.js';
 import { CreateIntegrationDto } from './dto/create-integration.dto.js';
 import { UpdateIntegrationDto } from './dto/update-integration.dto.js';
 
 @ApiTags('integrations')
+@ApiBearerAuth()
 @ApiSecurity('x-api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthGuard)
 @Controller('integrations')
 export class IntegrationsController {
   constructor(private readonly integrationsService: IntegrationsService) {}
@@ -46,8 +53,13 @@ export class IntegrationsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update an integration (rotate token or toggle active)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateIntegrationDto) {
+  @ApiOperation({
+    summary: 'Update an integration (rotate token or toggle active)',
+  })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateIntegrationDto,
+  ) {
     return this.integrationsService.update(id, dto);
   }
 
