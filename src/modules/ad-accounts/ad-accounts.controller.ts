@@ -12,16 +12,23 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { AdAccountsService } from './ad-accounts.service.js';
 import { CreateAdAccountDto } from './dto/create-ad-account.dto.js';
 import { UpdateAdAccountDto } from './dto/update-ad-account.dto.js';
 import { GetExpiringQueryDto } from './dto/get-expiring-query.dto.js';
 
 @ApiTags('ad-accounts')
+@ApiBearerAuth()
 @ApiSecurity('x-api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthGuard)
 @Controller('ad-accounts')
 export class AdAccountsController {
   constructor(private readonly adAccountsService: AdAccountsService) {}
@@ -43,7 +50,10 @@ export class AdAccountsController {
   @Get('expiring')
   @ApiOperation({ summary: 'List ad accounts with tokens expiring soon' })
   findExpiring(@Query() query: GetExpiringQueryDto) {
-    return this.adAccountsService.findExpiring(query.clientId, query.daysAhead ?? 7);
+    return this.adAccountsService.findExpiring(
+      query.clientId,
+      query.daysAhead ?? 7,
+    );
   }
 
   @Get(':id')
@@ -53,8 +63,13 @@ export class AdAccountsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update an ad account (rotate token or toggle active)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAdAccountDto) {
+  @ApiOperation({
+    summary: 'Update an ad account (rotate token or toggle active)',
+  })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAdAccountDto,
+  ) {
     return this.adAccountsService.update(id, dto);
   }
 

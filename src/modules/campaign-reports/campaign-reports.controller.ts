@@ -1,7 +1,24 @@
-import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiProduces, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiProduces,
+  ApiQuery,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
+import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { CampaignReportsService } from './campaign-reports.service.js';
 import {
   GetInsightsQueryDto,
@@ -11,16 +28,23 @@ import {
 import { ExportInsightsCsvDto } from './dto/export-insights-csv.dto.js';
 
 @ApiTags('campaign-reports')
+@ApiBearerAuth()
 @ApiSecurity('x-api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthGuard)
 @Controller('campaign-reports')
 export class CampaignReportsController {
-  constructor(private readonly campaignReportsService: CampaignReportsService) {}
+  constructor(
+    private readonly campaignReportsService: CampaignReportsService,
+  ) {}
 
   @Get('campaigns')
   @ApiOperation({ summary: 'List campaigns for an ad account' })
   @ApiQuery({ name: 'adAccountId', required: true, example: 'act_123456789' })
-  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor de paginação retornado em paging.next' })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description: 'Cursor de paginação retornado em paging.next',
+  })
   listCampaigns(
     @Query('adAccountId') adAccountId: string,
     @Query('cursor') cursor?: string,
@@ -37,7 +61,9 @@ export class CampaignReportsController {
     @Res() res: Response,
   ): Promise<void> {
     const csv = await this.campaignReportsService.exportInsightsCsv(dto);
-    const period = dto.since ? `${dto.since}_${dto.until}` : (dto.datePreset ?? 'last_30d');
+    const period = dto.since
+      ? `${dto.since}_${dto.until}`
+      : (dto.datePreset ?? 'last_30d');
     const filename = `insights_${dto.adAccountId}_${period}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -54,8 +80,18 @@ export class CampaignReportsController {
   @ApiOperation({ summary: 'Get insights for a specific campaign' })
   @ApiQuery({ name: 'adAccountId', required: true, example: 'act_123456789' })
   @ApiQuery({ name: 'datePreset', required: false, enum: MetaDatePreset })
-  @ApiQuery({ name: 'timeIncrement', required: false, enum: MetaTimeIncrement, description: '1=diário, 7=semanal, monthly, all_days' })
-  @ApiQuery({ name: 'breakdowns', required: false, description: 'age, gender, country, region, publisher_platform, device_platform (separados por vírgula)' })
+  @ApiQuery({
+    name: 'timeIncrement',
+    required: false,
+    enum: MetaTimeIncrement,
+    description: '1=diário, 7=semanal, monthly, all_days',
+  })
+  @ApiQuery({
+    name: 'breakdowns',
+    required: false,
+    description:
+      'age, gender, country, region, publisher_platform, device_platform (separados por vírgula)',
+  })
   getCampaignInsights(
     @Param('campaignId') campaignId: string,
     @Query('adAccountId') adAccountId: string,

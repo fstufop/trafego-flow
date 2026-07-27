@@ -5,6 +5,7 @@ import redisConfig from './redis.config';
 import metaConfig from './meta.config';
 import metaAdsConfig from './meta-ads.config';
 import whatsappConfig from './whatsapp.config';
+import authConfig from './auth.config';
 
 export const configLoads = [
   appConfig,
@@ -13,6 +14,7 @@ export const configLoads = [
   metaConfig,
   metaAdsConfig,
   whatsappConfig,
+  authConfig,
 ];
 
 export const validationSchema = Joi.object({
@@ -21,6 +23,8 @@ export const validationSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   MASTER_API_KEY: Joi.string().required(),
+  JWT_SECRET: Joi.string().min(32).required(),
+  JWT_EXPIRES_IN: Joi.string().default('1d'),
   DATABASE_URL: Joi.string().uri().required(),
   REDIS_URL: Joi.string().required(),
   CACHE_TTL_SECONDS: Joi.number().default(3600),

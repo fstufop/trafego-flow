@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export enum MetaTimeIncrement {
   DAILY    = '1',
@@ -41,10 +41,23 @@ export class GetInsightsQueryDto {
   @IsNotEmpty()
   adAccountId: string;
 
-  @ApiPropertyOptional({ enum: MetaDatePreset, default: MetaDatePreset.LAST_30D })
+  @ApiPropertyOptional({
+    enum: MetaDatePreset,
+    description: 'Preset de data. Mutuamente exclusivo com since+until. Padrão: last_30d quando since/until não informados.',
+  })
   @IsOptional()
   @IsEnum(MetaDatePreset)
-  datePreset?: MetaDatePreset = MetaDatePreset.LAST_30D;
+  datePreset?: MetaDatePreset;
+
+  @ApiPropertyOptional({ description: 'Data de início no formato YYYY-MM-DD. Usar junto com until.', example: '2026-07-14' })
+  @IsOptional()
+  @IsDateString()
+  since?: string;
+
+  @ApiPropertyOptional({ description: 'Data de fim no formato YYYY-MM-DD. Usar junto com since.', example: '2026-07-26' })
+  @IsOptional()
+  @IsDateString()
+  until?: string;
 
   @ApiPropertyOptional({ enum: MetaInsightsLevel, default: MetaInsightsLevel.CAMPAIGN })
   @IsOptional()

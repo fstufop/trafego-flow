@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadGatewayException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { MetaAdsService } from './meta-ads.service.js';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
+import { MetaPermissionException } from '../../common/exceptions/meta-permission.exception.js';
 import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from './dto/get-insights-query.dto.js';
 import { MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
 
@@ -112,11 +113,51 @@ describe('MetaAdsService', () => {
       );
     });
 
-    it('should rethrow generic errors without transforming', async () => {
-      const genericError = new Error('Network error');
-      mockHttpService.get.mockReturnValue(throwError(() => genericError));
+    it('should throw MetaPermissionException on permission error codes (200-299)', async () => {
+      mockHttpService.get.mockReturnValue(
+        throwError(() => ({
+          response: {
+            status: 403,
+            data: {
+              error: {
+                message:
+                  '(#200) Ad account owner has NOT grant ads_management or ads_read permission',
+                type: 'OAuthException',
+                code: 200,
+              },
+            },
+          },
+        })),
+      );
 
-      await expect(service.fetchCampaigns('act_123', 'token')).rejects.toThrow('Network error');
+      await expect(service.fetchCampaigns('act_123', 'token')).rejects.toThrow(
+        MetaPermissionException,
+      );
+    });
+
+    it('should throw BadGatewayException on other Meta API errors', async () => {
+      mockHttpService.get.mockReturnValue(
+        throwError(() => ({
+          response: {
+            status: 400,
+            data: {
+              error: { message: 'Unsupported request', type: 'GraphMethodException', code: 100 },
+            },
+          },
+        })),
+      );
+
+      await expect(service.fetchCampaigns('act_123', 'token')).rejects.toThrow(
+        BadGatewayException,
+      );
+    });
+
+    it('should throw ServiceUnavailableException on network errors without Meta response', async () => {
+      mockHttpService.get.mockReturnValue(throwError(() => new Error('Network error')));
+
+      await expect(service.fetchCampaigns('act_123', 'token')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
   });
 

@@ -1,13 +1,19 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { AdLibraryService } from './ad-library.service.js';
 import { SearchAdLibraryDto } from './dto/search-ad-library.dto.js';
 import type { AdLibrarySearchResult } from './interfaces/ad-library.interface.js';
 
 @ApiTags('ad-library')
+@ApiBearerAuth()
 @ApiSecurity('x-api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthGuard)
 @Controller('ad-library')
 export class AdLibraryController {
   constructor(private readonly adLibraryService: AdLibraryService) {}
