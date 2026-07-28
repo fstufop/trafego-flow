@@ -154,5 +154,34 @@ describe('ReportDispatchesService', () => {
       });
       expect(result).toBe(logs);
     });
+
+    it('should return all logs when clientId is not provided', async () => {
+      const allLogs = [
+        { id: 'log-1', clientId: 'client-1' },
+        { id: 'log-2', clientId: 'client-2' },
+      ];
+      mockLogRepo.find.mockResolvedValue(allLogs);
+
+      const result = await service.findLogs(undefined);
+
+      expect(result).toEqual(allLogs);
+      expect(mockLogRepo.find).toHaveBeenCalledWith({
+        where: {},
+        order: { createdAt: 'DESC' },
+      });
+    });
+
+    it('should filter by clientId when provided', async () => {
+      const filtered = [{ id: 'log-1', clientId: 'client-1' }];
+      mockLogRepo.find.mockResolvedValue(filtered);
+
+      const result = await service.findLogs('client-1');
+
+      expect(result).toEqual(filtered);
+      expect(mockLogRepo.find).toHaveBeenCalledWith({
+        where: { clientId: 'client-1' },
+        order: { createdAt: 'DESC' },
+      });
+    });
   });
 });

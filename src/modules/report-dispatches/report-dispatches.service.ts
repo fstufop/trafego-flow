@@ -69,9 +69,9 @@ export class ReportDispatchesService implements IReportDispatchesService {
     this.logger.log('Envio semanal de relatórios concluído');
   }
 
-  async findLogs(clientId: string): Promise<ReportDispatchLogEntity[]> {
+  async findLogs(clientId?: string): Promise<ReportDispatchLogEntity[]> {
     return this.logRepo.find({
-      where: { clientId },
+      where: clientId ? { clientId } : {},
       order: { createdAt: 'DESC' },
     });
   }
