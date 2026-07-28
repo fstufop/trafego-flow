@@ -36,18 +36,18 @@ export class ClientsService implements IClientsService {
     if (billing) {
       await this.billingRepo.save(this.billingRepo.create({ ...billing, clientId: client.id }));
     }
-    return this.repo.findOne({ where: { id: client.id }, relations: ['billing'] }) as Promise<ClientEntity>;
+    return this.repo.findOne({ where: { id: client.id }, relations: { billing: true } }) as Promise<ClientEntity>;
   }
 
   findAll(): Promise<ClientEntity[]> {
-    return this.repo.find({ where: { isActive: true }, relations: ['billing'] });
+    return this.repo.find({ where: { isActive: true }, relations: { billing: true } });
   }
 
   async findOne(id: string): Promise<ClientEntity> {
     const cached = await this.cache.get<ClientEntity>(cacheKey(id));
     if (cached) return cached;
 
-    const client = await this.repo.findOne({ where: { id }, relations: ['billing'] });
+    const client = await this.repo.findOne({ where: { id }, relations: { billing: true } });
     if (!client) throw new NotFoundException(`Client ${id} not found`);
 
     await this.cache.set(cacheKey(id), client);
@@ -77,7 +77,7 @@ export class ClientsService implements IClientsService {
     }
 
     await this.cache.del(cacheKey(id));
-    return this.repo.findOne({ where: { id }, relations: ['billing'] }) as Promise<ClientEntity>;
+    return this.repo.findOne({ where: { id }, relations: { billing: true } }) as Promise<ClientEntity>;
   }
 
   async remove(id: string): Promise<void> {

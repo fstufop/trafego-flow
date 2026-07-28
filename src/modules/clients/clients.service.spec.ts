@@ -132,7 +132,7 @@ describe('ClientsService', () => {
       expect(result).toEqual([mockClient]);
       expect(mockRepo.find).toHaveBeenCalledWith({
         where: { isActive: true },
-        relations: ['billing'],
+        relations: { billing: true },
       });
     });
   });
@@ -156,7 +156,7 @@ describe('ClientsService', () => {
       expect(result).toEqual(mockClient);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'uuid-1' },
-        relations: ['billing'],
+        relations: { billing: true },
       });
     });
 
