@@ -11,10 +11,30 @@ export class AddClientBillingAndExpandClients1780300000000 implements MigrationI
         ADD COLUMN IF NOT EXISTS "google_drive_folder_url" text
     `);
 
-    await queryRunner.query(`CREATE TYPE "billing_type"        AS ENUM ('monthly', 'quarterly', 'semiannual', 'annual')`);
-    await queryRunner.query(`CREATE TYPE "payment_method_enum" AS ENUM ('pix', 'boleto', 'debit', 'credit')`);
-    await queryRunner.query(`CREATE TYPE "billing_status"      AS ENUM ('paid', 'pending', 'overdue')`);
-    await queryRunner.query(`CREATE TYPE "discount_type"       AS ENUM ('fixed', 'percentage')`);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "billing_type" AS ENUM ('monthly', 'quarterly', 'semiannual', 'annual');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "payment_method_enum" AS ENUM ('pix', 'boleto', 'debit', 'credit');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "billing_status" AS ENUM ('paid', 'pending', 'overdue');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "discount_type" AS ENUM ('fixed', 'percentage');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$
+    `);
 
     await queryRunner.query(`
       CREATE TABLE "client_billings" (

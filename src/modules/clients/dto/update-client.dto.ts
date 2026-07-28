@@ -1,6 +1,6 @@
 // src/modules/clients/dto/update-client.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsOptional, ValidateNested } from 'class-validator';
 import { CreateClientDto } from './create-client.dto.js';

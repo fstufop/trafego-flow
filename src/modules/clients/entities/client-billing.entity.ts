@@ -27,6 +27,11 @@ export enum DiscountType {
   PERCENTAGE = 'percentage',
 }
 
+const decimalTransformer = {
+  to: (value: number | null) => value,
+  from: (value: string | null) => (value != null ? parseFloat(value) : null),
+};
+
 @Entity('client_billings')
 export class ClientBillingEntity extends BaseEntity {
   @Column({ name: 'client_id' })
@@ -39,13 +44,13 @@ export class ClientBillingEntity extends BaseEntity {
   @Column({ type: 'enum', enum: BillingType })
   type: BillingType;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, transformer: decimalTransformer })
   amount: number;
 
   @Column({ name: 'discount_type', type: 'enum', enum: DiscountType, nullable: true })
   discountType: DiscountType | null;
 
-  @Column({ name: 'discount_value', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ name: 'discount_value', type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
   discountValue: number | null;
 
   @Column({ name: 'payment_method', type: 'enum', enum: PaymentMethod })

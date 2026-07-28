@@ -1,5 +1,5 @@
 // src/modules/clients/clients.service.ts
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
@@ -64,7 +64,15 @@ export class ClientsService implements IClientsService {
       if (existing) {
         await this.billingRepo.save({ ...existing, ...billing });
       } else {
-        await this.billingRepo.save(this.billingRepo.create({ ...billing, clientId: id } as any));
+        const { type, paymentMethod, dueDay, status } = billing;
+        if (!type || !paymentMethod || dueDay == null || !status) {
+          throw new BadRequestException(
+            'Cannot create billing with partial data — provide type, paymentMethod, dueDay and status',
+          );
+        }
+        await this.billingRepo.save(
+          this.billingRepo.create({ ...billing, clientId: id } as any),
+        );
       }
     }
 
