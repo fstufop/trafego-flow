@@ -9,7 +9,7 @@
 **Dependência:** O plano de backend (`2026-07-27-backend-expansion.md`) deve estar 100% concluído antes de iniciar este plano.
 
 **Tech Stack:** Next.js 15 (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query v5, TanStack Table v8, react-hook-form, zod
-V
+
 ## Global Constraints
 
 - Repo criado em `~/Github/trafegoflow-dashboard` (irmão de `trafegoflow`)
