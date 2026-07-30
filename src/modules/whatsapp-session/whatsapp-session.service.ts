@@ -51,7 +51,7 @@ export class WhatsAppSessionService
 
   private async startSocket(): Promise<void> {
     try {
-      const { default: makeWASocket, DisconnectReason } =
+      const { default: makeWASocket, DisconnectReason, fetchLatestWaWebVersion } =
         await import('@whiskeysockets/baileys');
       const { default: pino } = await import('pino');
 
@@ -65,8 +65,12 @@ export class WhatsAppSessionService
         this.phoneNumber,
       );
 
+      const { version } = await fetchLatestWaWebVersion();
+      this.logger.log(`Versão WhatsApp Web: ${version.join('.')}`)
+
       this.sock = makeWASocket({
         auth: state,
+        version,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
       });
