@@ -1,6 +1,6 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/database/base.entity.js';
-import { MetaInsights } from '../../campaign-reports/interfaces/meta-campaign.interface.js';
+import type { MetaInsights } from '../../campaign-reports/interfaces/meta-campaign.interface.js';
 
 @Entity('insight_snapshots')
 @Index(['adAccountId', 'weekStartDate'], { unique: true })

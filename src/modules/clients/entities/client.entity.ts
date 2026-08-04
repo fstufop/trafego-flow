@@ -11,4 +11,7 @@ export class ClientEntity extends BaseEntity {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ name: 'ai_strategy_context', type: 'text', nullable: true })
+  aiStrategyContext: string | null;
 }
