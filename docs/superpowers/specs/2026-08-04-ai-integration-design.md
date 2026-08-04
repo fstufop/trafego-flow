@@ -73,8 +73,8 @@ src/modules/
 ### Módulos atualizados
 
 - `clients/entities/client.entity.ts` — adiciona `aiStrategyContext: string | null`
-- `report-dispatches/report-dispatches.service.ts` — injeta `AiService` e `InsightSnapshotsService`
-- `AppModule` — importa `AiModule.forRootAsync()` e `InsightSnapshotsModule`
+- `report-dispatches/report-dispatches.module.ts` — importa `AiModule` e `InsightSnapshotsModule`; injeta `AiService` e `InsightSnapshotsService` no `ReportDispatchesService`
+- `AppModule` — importa `AiModule.forRootAsync()` (global); `InsightSnapshotsModule` é importado apenas por `ReportDispatchesModule`
 
 ---
 
@@ -114,7 +114,7 @@ export interface AiReportPayload {
   period: {
     since: string;       // 'YYYY-MM-DD'
     until: string;       // 'YYYY-MM-DD'
-    weekNumber: number;
+    weekNumber: number;  // semana ISO 8601 (1–53)
   };
   current: InsightsSummary;
   previous: InsightsSummary | null;
@@ -150,7 +150,7 @@ export interface InsightsSummary {
 | `snapshot_json` | jsonb | `MetaInsights` bruto da semana |
 | `created_at` | timestamptz | |
 
-**Índice único:** `(ad_account_id, week_start_date)` — um snapshot por conta por semana.
+**Índice único:** `(ad_account_id, week_start_date)` — um snapshot por conta por semana (upsert em re-execuções manuais da mesma semana).
 
 ### `ClientEntity` — campo novo
 
