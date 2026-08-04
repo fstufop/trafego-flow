@@ -203,7 +203,7 @@ Ambos os adapters seguem a mesma estrutura:
 **System prompt:**
 ```
 Você é um assistente de marketing digital que escreve relatórios semanais
-para clientes de tráfego pago. Escreva na primeira pessoa do singular,
+para clientes de tráfego pago. Escreva na primeira pessoa do plural (nós, nossa equipe),
 com tom amigável e profissional. Use emojis moderadamente.
 [Se clientContext presente]: Contexto da estratégia do cliente: {clientContext}
 ```
@@ -227,6 +227,22 @@ O texto retornado pela IA vai direto para o `WhatsAppSessionService.sendMessage(
 - Se a chamada à IA falhar → fallback para o template estático atual (sem regressão)
 - Se o snapshot da semana anterior não existir → `previous: null`, IA gera relatório sem comparativo
 - Erros são logados e registrados no `ReportDispatchLog` com status `FAILED`
+- Qualquer falha no dispatch (IA ou envio) dispara um alerta no canal de gestores via WhatsApp
+
+### Canal de alertas dos gestores
+
+```env
+MANAGERS_GROUP_JID=120363XXXXXXXXXX@g.us   # ID do grupo de gestores no WhatsApp
+```
+
+Formato do alerta:
+```
+⚠️ Falha no dispatch — {clientId} / {adAccountId}
+Semana: {since} a {until}
+Erro: {errorMessage}
+```
+
+O envio do alerta usa o mesmo `WhatsAppSessionService.sendMessage()`. Se o próprio alerta falhar, apenas loga — sem loop de retry.
 
 ---
 
