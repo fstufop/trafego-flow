@@ -38,4 +38,9 @@ export const validationSchema = Joi.object({
   META_ADS_API_VERSION: Joi.string().default('v21.0'),
   INSIGHTS_CACHE_TTL_SECONDS: Joi.number().min(30).max(3600).default(300),
   WHATSAPP_DEDICATED_PHONE: Joi.string().optional(),
+  AI_PROVIDER: Joi.string().valid('openai', 'gemini').default('openai'),
+  AI_MODEL: Joi.string().default('gpt-4o-mini'),
+  OPENAI_API_KEY: Joi.string().optional(),
+  GEMINI_API_KEY: Joi.string().optional(),
+  MANAGERS_GROUP_JID: Joi.string().optional(),
 });
