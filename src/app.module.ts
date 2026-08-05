@@ -15,6 +15,7 @@ import { CampaignReportsModule } from './modules/campaign-reports/campaign-repor
 import { AdLibraryModule } from './modules/ad-library/ad-library.module.js';
 import { WhatsAppGroupsModule } from './modules/whatsapp-groups/whatsapp-groups.module.js';
 import { WhatsAppSessionModule } from './modules/whatsapp-session/whatsapp-session.module.js';
+import { AiModule } from './modules/ai/ai.module.js';
 import { ReportDispatchesModule } from './modules/report-dispatches/report-dispatches.module.js';
 
 @Module({
@@ -54,6 +55,7 @@ import { ReportDispatchesModule } from './modules/report-dispatches/report-dispa
     AdLibraryModule,
     WhatsAppSessionModule,
     WhatsAppGroupsModule,
+    AiModule.forRootAsync(),
     ReportDispatchesModule,
   ],
 })
