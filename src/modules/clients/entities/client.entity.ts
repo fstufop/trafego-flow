@@ -22,6 +22,9 @@ export class ClientEntity extends BaseEntity {
   @Column({ name: 'google_drive_folder_url', type: 'text', nullable: true })
   googleDriveFolderUrl: string | null;
 
+  @Column({ name: 'ai_strategy_context', type: 'text', nullable: true })
+  aiStrategyContext: string | null;
+
   @OneToOne(() => ClientBillingEntity, (billing) => billing.client, { eager: false })
   billing: ClientBillingEntity;
 }

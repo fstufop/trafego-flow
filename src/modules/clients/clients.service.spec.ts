@@ -32,6 +32,7 @@ const mockClient: ClientEntity = {
   phone: null,
   whatsappGroupCode: null,
   googleDriveFolderUrl: null,
+  aiStrategyContext: null,
   billing: mockBilling,
   createdAt: new Date(),
   updatedAt: new Date(),

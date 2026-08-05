@@ -26,6 +26,7 @@
     "migration:show": "TS_NODE_PROJECT=tsconfig.typeorm.json typeorm-ts-node-commonjs migration:show -d src/config/datasource.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@keyv/redis": "^5.1.6",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/cache-manager": "^3.1.2",
@@ -46,6 +47,7 @@
     "class-validator": "^0.15.1",
     "joi": "^18.2.1",
     "keyv": "^5.6.0",
+    "openai": "^7.4.0",
     "pg": "^8.21.0",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
