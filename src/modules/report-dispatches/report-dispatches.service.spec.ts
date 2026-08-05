@@ -18,7 +18,7 @@ const makeRepo = () => ({
   findOne: jest.fn(),
 });
 
-async function buildService(overrides: Record<string, unknown> = {}) {
+async function buildService(overrides: Record<string, any> = {}) {
   const repo = makeRepo();
   const module = await Test.createTestingModule({
     providers: [

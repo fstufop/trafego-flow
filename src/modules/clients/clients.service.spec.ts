@@ -11,6 +11,7 @@ const mockClient: ClientEntity = {
   name: 'Agência XYZ',
   email: 'contato@xyz.com',
   isActive: true,
+  aiStrategyContext: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,

@@ -145,7 +145,13 @@ export class ReportDispatchesService implements IReportDispatchesService {
       };
 
       try {
-        text = await this.aiService.generateReport(payload);
+        const aiText = await this.aiService.generateReport(payload);
+        if (aiText && aiText.trim().length > 0) {
+          text = aiText;
+        } else {
+          this.logger.warn(`IA retornou saída vazia para ${account.adAccountId}, usando fallback estático`);
+          text = this.formatReportText(account.accountName ?? account.adAccountId, since, until, rawInsights);
+        }
       } catch (err) {
         this.logger.error(`Falha na geração IA para conta ${account.adAccountId}`, err);
         text = this.formatReportText(account.accountName ?? account.adAccountId, since, until, rawInsights);
@@ -292,6 +298,19 @@ export class ReportDispatchesService implements IReportDispatchesService {
     }
     const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
     const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+
+    // Aggregate actions array by action_type
+    const actionsMap = new Map<string, number>();
+    for (const row of rows) {
+      for (const action of row.actions ?? []) {
+        actionsMap.set(action.action_type, (actionsMap.get(action.action_type) ?? 0) + parseFloat(action.value ?? '0'));
+      }
+    }
+    const actions = Array.from(actionsMap.entries()).map(([action_type, value]) => ({
+      action_type,
+      value: value.toFixed(0),
+    }));
+
     return {
       ...base,
       spend: spend.toFixed(2),
@@ -300,6 +319,7 @@ export class ReportDispatchesService implements IReportDispatchesService {
       reach: String(reach),
       ctr: ctr.toFixed(2),
       cpm: cpm.toFixed(2),
+      actions,
     };
   }
 
