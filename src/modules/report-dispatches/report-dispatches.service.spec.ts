@@ -111,30 +111,35 @@ describe('ReportDispatchesService', () => {
       expect((service as any).getISOWeekNumber(new Date('2026-01-05'))).toBe(2);
     });
 
+  });
+
+  describe('findLogs', () => {
     it('should return all logs when clientId is not provided', async () => {
+      const { service, repo } = await buildService();
       const allLogs = [
         { id: 'log-1', clientId: 'client-1' },
         { id: 'log-2', clientId: 'client-2' },
       ];
-      mockLogRepo.find.mockResolvedValue(allLogs);
+      repo.find.mockResolvedValue(allLogs);
 
       const result = await service.findLogs(undefined);
 
       expect(result).toEqual(allLogs);
-      expect(mockLogRepo.find).toHaveBeenCalledWith({
+      expect(repo.find).toHaveBeenCalledWith({
         where: {},
         order: { createdAt: 'DESC' },
       });
     });
 
     it('should filter by clientId when provided', async () => {
+      const { service, repo } = await buildService();
       const filtered = [{ id: 'log-1', clientId: 'client-1' }];
-      mockLogRepo.find.mockResolvedValue(filtered);
+      repo.find.mockResolvedValue(filtered);
 
       const result = await service.findLogs('client-1');
 
       expect(result).toEqual(filtered);
-      expect(mockLogRepo.find).toHaveBeenCalledWith({
+      expect(repo.find).toHaveBeenCalledWith({
         where: { clientId: 'client-1' },
         order: { createdAt: 'DESC' },
       });
