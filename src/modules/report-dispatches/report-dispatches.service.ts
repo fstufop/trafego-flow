@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { splitAndAggregateCampaigns } from '../ai/utils/campaign-splitter.js';
+import { ClientProfileType } from '../clients/enums/client-profile-type.enum.js';
 import { CampaignReportsService } from '../campaign-reports/campaign-reports.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { WhatsAppGroupsService } from '../whatsapp-groups/whatsapp-groups.service.js';
@@ -94,7 +96,9 @@ export class ReportDispatchesService implements IReportDispatchesService {
     const since = this.formatDate(weekStart);
     const until = this.formatDate(new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000));
 
-    let rawInsights: MetaInsights | null = null;
+    let rawInsights: InsightsSummary | null = null;
+    let acquisition: InsightsSummary | null = null;
+    let sales: InsightsSummary | null = null;
 
     try {
       const result = await this.campaignReportsService.getInsights(account.adAccountId, {
@@ -104,7 +108,10 @@ export class ReportDispatchesService implements IReportDispatchesService {
         until,
       } as any);
       const rows = (result as PaginatedResult<MetaInsights>).data ?? [];
-      rawInsights = this.aggregateInsights(rows);
+      const split = splitAndAggregateCampaigns(rows);
+      rawInsights = split.total;
+      acquisition = split.acquisition;
+      sales = split.sales;
     } catch (err) {
       this.logger.error(`Erro ao buscar insights para conta ${account.adAccountId}`, err);
     }
@@ -117,7 +124,7 @@ export class ReportDispatchesService implements IReportDispatchesService {
           account.adAccountId,
           clientId,
           weekStart,
-          rawInsights,
+          rawInsights as any,
         );
       } catch (err) {
         this.logger.error(`Erro ao salvar snapshot para conta ${account.adAccountId}`, err);
@@ -131,14 +138,16 @@ export class ReportDispatchesService implements IReportDispatchesService {
         return null;
       });
 
-      const current = this.toInsightsSummary(rawInsights);
-      const previous = previousSnapshot ? this.toInsightsSummary(previousSnapshot.snapshotJson) : null;
+      const current = rawInsights;
+      const previous = previousSnapshot ? (previousSnapshot.snapshotJson as unknown as InsightsSummary) : null;
       const deltas = this.computeDeltas(current, previous);
 
       let clientContext: string | null = null;
+      let clientProfile: ClientProfileType = ClientProfileType.SITE_SALES;
       try {
         const client = await this.clientsService.findOne(clientId);
         clientContext = client.aiStrategyContext ?? null;
+        clientProfile = client.profileType ?? ClientProfileType.SITE_SALES;
       } catch {
         // cliente não encontrado; continua sem contexto
       }
@@ -148,6 +157,9 @@ export class ReportDispatchesService implements IReportDispatchesService {
         current,
         previous,
         deltas,
+        acquisition,
+        sales,
+        clientProfile,
         clientContext,
       };
 
@@ -251,6 +263,10 @@ export class ReportDispatchesService implements IReportDispatchesService {
       purchases: findAction('purchase'),
       addToCart: findAction('add_to_cart'),
       pageViews: findAction('landing_page_view'),
+      contentViews: findAction('view_content'),
+      checkoutInitiated: findAction('initiate_checkout'),
+      messagesStarted: findAction('messaging_conversation_started_7d'),
+      liveViews: findAction('video_play'),
     };
   }
 
@@ -262,6 +278,7 @@ export class ReportDispatchesService implements IReportDispatchesService {
     const keys: (keyof InsightsSummary)[] = [
       'spend', 'reach', 'impressions', 'clicks', 'ctr', 'cpm',
       'purchases', 'addToCart', 'pageViews',
+      'contentViews', 'checkoutInitiated', 'messagesStarted', 'liveViews',
     ];
     return Object.fromEntries(
       keys.map(key => [
@@ -288,54 +305,12 @@ export class ReportDispatchesService implements IReportDispatchesService {
     return log?.status ?? DispatchStatus.FAILED;
   }
 
-  private aggregateInsights(rows: MetaInsights[]): MetaInsights {
-    const base: MetaInsights = {
-      impressions: '0', clicks: '0', spend: '0', reach: '0',
-      cpm: '0', cpc: '0', ctr: '0',
-      date_start: rows[0]?.date_start ?? '',
-      date_stop: rows[rows.length - 1]?.date_stop ?? '',
-    };
-    if (!rows.length) return base;
-    let spend = 0, impressions = 0, clicks = 0, reach = 0;
-    for (const row of rows) {
-      spend += parseFloat(row.spend ?? '0');
-      impressions += parseInt(row.impressions ?? '0', 10);
-      clicks += parseInt(row.clicks ?? '0', 10);
-      reach += parseInt(row.reach ?? '0', 10);
-    }
-    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-    const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
-
-    // Aggregate actions array by action_type
-    const actionsMap = new Map<string, number>();
-    for (const row of rows) {
-      for (const action of row.actions ?? []) {
-        actionsMap.set(action.action_type, (actionsMap.get(action.action_type) ?? 0) + parseFloat(action.value ?? '0'));
-      }
-    }
-    const actions = Array.from(actionsMap.entries()).map(([action_type, value]) => ({
-      action_type,
-      value: value.toFixed(0),
-    }));
-
-    return {
-      ...base,
-      spend: spend.toFixed(2),
-      impressions: String(impressions),
-      clicks: String(clicks),
-      reach: String(reach),
-      ctr: ctr.toFixed(2),
-      cpm: cpm.toFixed(2),
-      actions,
-    };
-  }
-
-  private formatReportText(accountName: string, since: string, until: string, insights: MetaInsights): string {
-    const spend = parseFloat(insights.spend).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const impressions = parseInt(insights.impressions).toLocaleString('pt-BR');
-    const clicks = parseInt(insights.clicks).toLocaleString('pt-BR');
-    const ctr = parseFloat(insights.ctr).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const cpm = parseFloat(insights.cpm).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  private formatReportText(accountName: string, since: string, until: string, insights: InsightsSummary): string {
+    const spend = insights.spend.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const impressions = insights.impressions.toLocaleString('pt-BR');
+    const clicks = insights.clicks.toLocaleString('pt-BR');
+    const ctr = insights.ctr.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const cpm = insights.cpm.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     const [sinceDay, sinceMonth] = since.split('-').slice(1).reverse();
     const [untilDay, untilMonth, untilYear] = until.split('-').reverse();
     return [

@@ -26,7 +26,7 @@ async function buildService(overrides: Record<string, any> = {}) {
       { provide: getRepositoryToken(ReportDispatchLogEntity), useValue: repo },
       { provide: AiService, useValue: { generateReport: jest.fn().mockResolvedValue('texto da IA'), ...overrides.aiService } },
       { provide: InsightSnapshotsService, useValue: { saveSnapshot: jest.fn(), findPreviousSnapshot: jest.fn().mockResolvedValue(null), ...overrides.snapshotsService } },
-      { provide: ClientsService, useValue: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null }), ...overrides.clientsService } },
+      { provide: ClientsService, useValue: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: null }), ...overrides.clientsService } },
       { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(null) } },
       { provide: CampaignReportsService, useValue: { getInsights: jest.fn().mockResolvedValue({ data: [] }) } },
       { provide: AdAccountsService, useValue: { findAll: jest.fn().mockResolvedValue([]) } },
@@ -49,6 +49,10 @@ describe('ReportDispatchesService', () => {
           { action_type: 'purchase', value: '3' },
           { action_type: 'add_to_cart', value: '10' },
           { action_type: 'landing_page_view', value: '80' },
+          { action_type: 'view_content', value: '60' },
+          { action_type: 'initiate_checkout', value: '5' },
+          { action_type: 'messaging_conversation_started_7d', value: '2' },
+          { action_type: 'video_play', value: '15' },
         ],
       } as any;
 
@@ -57,6 +61,7 @@ describe('ReportDispatchesService', () => {
       expect(result).toEqual({
         spend: 100.50, reach: 500, impressions: 1000, clicks: 50,
         ctr: 5.00, cpm: 10.05, purchases: 3, addToCart: 10, pageViews: 80,
+        contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15,
       });
     });
 
@@ -71,20 +76,29 @@ describe('ReportDispatchesService', () => {
       expect(result.purchases).toBe(0);
       expect(result.addToCart).toBe(0);
       expect(result.pageViews).toBe(0);
+      expect(result.contentViews).toBe(0);
+      expect(result.checkoutInitiated).toBe(0);
+      expect(result.messagesStarted).toBe(0);
+      expect(result.liveViews).toBe(0);
     });
   });
 
   describe('computeDeltas', () => {
     it('returns empty object when previous is null', async () => {
       const { service } = await buildService();
-      const current = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 10, pageViews: 80 };
+      const current = {
+        spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10,
+        purchases: 3, addToCart: 10, pageViews: 80,
+        contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15,
+      };
       expect((service as any).computeDeltas(current, null)).toEqual({});
     });
 
     it('computes relative deltas correctly', async () => {
       const { service } = await buildService();
-      const current =  { spend: 110, reach: 565, impressions: 1100, clicks: 55, ctr: 5, cpm: 10, purchases: 3, addToCart: 10, pageViews: 80 };
-      const previous = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 10, pageViews: 80 };
+      const base = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 10, pageViews: 80, contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15 };
+      const current  = { ...base, spend: 110, reach: 565 };
+      const previous = { ...base };
       const deltas = (service as any).computeDeltas(current, previous);
       expect(deltas.reach).toBeCloseTo(0.13, 2);
       expect(deltas.spend).toBeCloseTo(0.10, 2);
@@ -92,8 +106,8 @@ describe('ReportDispatchesService', () => {
 
     it('returns null for delta where previous value is 0', async () => {
       const { service } = await buildService();
-      const current =  { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 0, pageViews: 80 };
-      const previous = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 0, addToCart: 0, pageViews: 80 };
+      const current =  { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 0, pageViews: 80, contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15 };
+      const previous = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 0, addToCart: 0, pageViews: 80, contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15 };
       const deltas = (service as any).computeDeltas(current, previous);
       expect(deltas.purchases).toBeNull();
       expect(deltas.addToCart).toBeNull();
