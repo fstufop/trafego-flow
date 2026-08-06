@@ -1,6 +1,7 @@
 import { Column, Entity, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/database/base.entity.js';
 import { ClientBillingEntity } from './client-billing.entity.js';
+import { ClientProfileType } from '../enums/client-profile-type.enum.js';
 
 @Entity('clients')
 export class ClientEntity extends BaseEntity {
@@ -24,6 +25,14 @@ export class ClientEntity extends BaseEntity {
 
   @Column({ name: 'ai_strategy_context', type: 'text', nullable: true })
   aiStrategyContext: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: ClientProfileType,
+    nullable: true,
+    name: 'profile_type',
+  })
+  profileType: ClientProfileType | null;
 
   @OneToOne(() => ClientBillingEntity, (billing) => billing.client, { eager: false })
   billing: ClientBillingEntity;
