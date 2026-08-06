@@ -17,9 +17,11 @@ export class InsightSnapshotsService {
     weekStartDate: Date,
     snapshotJson: MetaInsights,
   ): Promise<InsightSnapshotEntity> {
-    return this.repo.save(
-      this.repo.create({ adAccountId, clientId, weekStartDate, snapshotJson }),
+    await this.repo.upsert(
+      { adAccountId, clientId, weekStartDate, snapshotJson },
+      { conflictPaths: ['adAccountId', 'weekStartDate'], skipUpdateIfNoValuesChanged: true },
     );
+    return this.repo.findOne({ where: { adAccountId, weekStartDate } }) as Promise<InsightSnapshotEntity>;
   }
 
   async findPreviousSnapshot(

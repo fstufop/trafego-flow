@@ -21,6 +21,16 @@ JOB_NAME     = $(PROJECT_ID)-migrate
         update full-deploy \
         logs open
 
+# ── App build and config ──────────────────────────────────────────────────────
+docker-down: ## Para docker em execução
+	@docker compose down
+
+docker-up: ## Inicia docker em background
+	@docker compose up -d
+
+run: ## Inicia servidor local
+	npm run start:dev
+
 # ── Default target ────────────────────────────────────────────────────────────
 
 help: ## Exibe esta ajuda

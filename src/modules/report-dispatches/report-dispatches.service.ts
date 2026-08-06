@@ -112,17 +112,24 @@ export class ReportDispatchesService implements IReportDispatchesService {
     let text: string;
 
     if (rawInsights) {
-      await this.insightSnapshotsService.saveSnapshot(
-        account.adAccountId,
-        clientId,
-        weekStart,
-        rawInsights,
-      );
+      try {
+        await this.insightSnapshotsService.saveSnapshot(
+          account.adAccountId,
+          clientId,
+          weekStart,
+          rawInsights,
+        );
+      } catch (err) {
+        this.logger.error(`Erro ao salvar snapshot para conta ${account.adAccountId}`, err);
+      }
 
       const previousSnapshot = await this.insightSnapshotsService.findPreviousSnapshot(
         account.adAccountId,
         weekStart,
-      );
+      ).catch((err) => {
+        this.logger.error(`Erro ao buscar snapshot anterior para conta ${account.adAccountId}`, err);
+        return null;
+      });
 
       const current = this.toInsightsSummary(rawInsights);
       const previous = previousSnapshot ? this.toInsightsSummary(previousSnapshot.snapshotJson) : null;
