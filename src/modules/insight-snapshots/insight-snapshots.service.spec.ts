@@ -4,7 +4,7 @@ import { InsightSnapshotsService } from './insight-snapshots.service.js';
 import { InsightSnapshotEntity } from './entities/insight-snapshot.entity.js';
 
 const makeRepo = () => ({
-  save: jest.fn(),
+  upsert: jest.fn().mockResolvedValue(undefined),
   findOne: jest.fn(),
   create: jest.fn((v) => v),
 });
@@ -25,20 +25,16 @@ describe('InsightSnapshotsService', () => {
   });
 
   describe('saveSnapshot', () => {
-    it('calls repo.save with correct fields', async () => {
+    it('calls repo.upsert with correct fields', async () => {
       const weekStart = new Date('2026-07-27');
-      const snapshot = { impressions: '100' } as any;
-      repo.save.mockResolvedValue({ id: 'uuid', adAccountId: 'act_1' });
+      const snapshot = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 0, addToCart: 0, pageViews: 0, contentViews: 0, checkoutInitiated: 0, messagesStarted: 0, liveViews: 0 };
+      repo.findOne.mockResolvedValue({ id: 'uuid', adAccountId: 'act_1' });
 
       await service.saveSnapshot('act_1', 'client_1', weekStart, snapshot);
 
-      expect(repo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          adAccountId: 'act_1',
-          clientId: 'client_1',
-          weekStartDate: weekStart,
-          snapshotJson: snapshot,
-        }),
+      expect(repo.upsert).toHaveBeenCalledWith(
+        { adAccountId: 'act_1', clientId: 'client_1', weekStartDate: weekStart, snapshotJson: snapshot },
+        { conflictPaths: ['adAccountId', 'weekStartDate'], skipUpdateIfNoValuesChanged: true },
       );
     });
   });
