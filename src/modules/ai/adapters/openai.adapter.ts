@@ -16,7 +16,7 @@ export class OpenAiAdapter implements IAiProvider {
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [
-        { role: 'system', content: buildSystemPrompt(payload.clientContext) },
+        { role: 'system', content: buildSystemPrompt(payload.clientProfile, payload.clientContext) },
         { role: 'user', content: buildUserMessage(payload) },
       ],
     });

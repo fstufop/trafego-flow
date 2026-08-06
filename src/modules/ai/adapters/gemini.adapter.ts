@@ -15,7 +15,7 @@ export class GeminiAdapter implements IAiProvider {
   async generateReport(payload: AiReportPayload): Promise<string> {
     const model = this.genAI.getGenerativeModel({ model: this.model });
     const result = await model.generateContent([
-      buildSystemPrompt(payload.clientContext),
+      buildSystemPrompt(payload.clientProfile, payload.clientContext),
       buildUserMessage(payload),
     ]);
     return result.response.text();
