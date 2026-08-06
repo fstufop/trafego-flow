@@ -103,7 +103,7 @@ export class ReportDispatchesService implements IReportDispatchesService {
     try {
       const result = await this.campaignReportsService.getInsights(account.adAccountId, {
         adAccountId: account.adAccountId,
-        level: MetaInsightsLevel.ACCOUNT,
+        level: MetaInsightsLevel.CAMPAIGN,
         since,
         until,
       } as any);
@@ -316,32 +316,30 @@ export class ReportDispatchesService implements IReportDispatchesService {
     const clicks = insights.clicks.toLocaleString('pt-BR');
     const ctr = insights.ctr.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     const cpm = insights.cpm.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const [sinceDay, sinceMonth] = since.split('-').slice(1).reverse();
-    const [untilDay, untilMonth, untilYear] = until.split('-').reverse();
     return [
-      `📊 *Relatório Semanal*`,
-      `📅 Semana: ${sinceDay}/${sinceMonth} a ${untilDay}/${untilMonth}/${untilYear}`,
-      `💼 Conta: ${accountName}`,
+      `Relatório Semanal`,
+      `Período: ${since} a ${until}`,
+      `Conta: ${accountName}`,
       ``,
-      `💰 Investimento: R$ ${spend}`,
-      `👁 Impressões: ${impressions}`,
-      `🖱 Cliques: ${clicks}`,
-      `📈 CTR: ${ctr}%`,
-      `💵 CPM: R$ ${cpm}`,
+      `Investimento: R$ ${spend}`,
+      `Impressões: ${impressions}`,
+      `Cliques: ${clicks}`,
+      `CTR: ${ctr}%`,
+      `CPM: R$ ${cpm}`,
       ``,
-      `_Enviado automaticamente por TráfegoFlow_`,
+      `Enviado automaticamente por TráfegoFlow`,
     ].join('\n');
   }
 
   private formatErrorText(accountName: string, since: string, until: string): string {
     return [
-      `📊 *Relatório Semanal*`,
-      `💼 Conta: ${accountName}`,
-      `📅 Período: ${since} a ${until}`,
+      `Relatório Semanal`,
+      `Conta: ${accountName}`,
+      `Período: ${since} a ${until}`,
       ``,
-      `⚠️ Não foi possível carregar os dados desta semana. Por favor, verifique manualmente.`,
+      `Não foi possível carregar os dados desta semana. Por favor, verifique manualmente.`,
       ``,
-      `_Enviado automaticamente por TráfegoFlow_`,
+      `Enviado automaticamente por TráfegoFlow`,
     ].join('\n');
   }
 
