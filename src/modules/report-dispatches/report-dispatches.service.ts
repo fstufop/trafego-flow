@@ -124,7 +124,7 @@ export class ReportDispatchesService implements IReportDispatchesService {
           account.adAccountId,
           clientId,
           weekStart,
-          rawInsights as any,
+          rawInsights,
         );
       } catch (err) {
         this.logger.error(`Erro ao salvar snapshot para conta ${account.adAccountId}`, err);
@@ -139,7 +139,12 @@ export class ReportDispatchesService implements IReportDispatchesService {
       });
 
       const current = rawInsights;
-      const previous = previousSnapshot ? (previousSnapshot.snapshotJson as unknown as InsightsSummary) : null;
+      const snapshotData = previousSnapshot?.snapshotJson;
+      const previous = snapshotData
+        ? typeof (snapshotData as any).spend === 'number'
+          ? snapshotData as InsightsSummary
+          : this.toInsightsSummary(snapshotData as unknown as MetaInsights)
+        : null;
       const deltas = this.computeDeltas(current, previous);
 
       let clientContext: string | null = null;

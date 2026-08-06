@@ -1,6 +1,6 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/database/base.entity.js';
-import type { MetaInsights } from '../../campaign-reports/interfaces/meta-campaign.interface.js';
+import type { InsightsSummary } from '../../ai/interfaces/ai-provider.interface.js';
 
 @Entity('insight_snapshots')
 @Index(['adAccountId', 'weekStartDate'], { unique: true })
@@ -15,5 +15,5 @@ export class InsightSnapshotEntity extends BaseEntity {
   weekStartDate: Date;
 
   @Column({ name: 'snapshot_json', type: 'jsonb' })
-  snapshotJson: MetaInsights;
+  snapshotJson: InsightsSummary;
 }

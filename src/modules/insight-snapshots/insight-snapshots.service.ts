@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InsightSnapshotEntity } from './entities/insight-snapshot.entity.js';
-import { MetaInsights } from '../campaign-reports/interfaces/meta-campaign.interface.js';
+import { InsightsSummary } from '../ai/interfaces/ai-provider.interface.js';
 
 @Injectable()
 export class InsightSnapshotsService {
@@ -15,7 +15,7 @@ export class InsightSnapshotsService {
     adAccountId: string,
     clientId: string,
     weekStartDate: Date,
-    snapshotJson: MetaInsights,
+    snapshotJson: InsightsSummary,
   ): Promise<InsightSnapshotEntity> {
     await this.repo.upsert(
       { adAccountId, clientId, weekStartDate, snapshotJson },
