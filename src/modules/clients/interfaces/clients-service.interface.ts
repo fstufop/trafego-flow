@@ -8,4 +8,5 @@ export interface IClientsService {
   findOne(id: string): Promise<ClientEntity>;
   update(id: string, dto: UpdateClientDto): Promise<ClientEntity>;
   remove(id: string): Promise<void>;
+  clearCache(id: string): Promise<void>;
 }

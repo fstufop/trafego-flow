@@ -85,4 +85,8 @@ export class ClientsService implements IClientsService {
     await this.repo.softRemove(client);
     await this.cache.del(cacheKey(id));
   }
+
+  async clearCache(id: string): Promise<void> {
+    await this.cache.del(cacheKey(id));
+  }
 }

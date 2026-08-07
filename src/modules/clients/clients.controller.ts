@@ -61,4 +61,11 @@ export class ClientsController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.clientsService.remove(id);
   }
+
+  @Delete(':id/cache')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Invalidate cached data for a client' })
+  clearCache(@Param('id', ParseUUIDPipe) id: string) {
+    return this.clientsService.clearCache(id);
+  }
 }
