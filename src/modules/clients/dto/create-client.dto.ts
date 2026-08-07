@@ -1,8 +1,9 @@
 // src/modules/clients/dto/create-client.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { CreateClientBillingDto } from './create-client-billing.dto.js';
+import { ClientProfileType } from '../enums/client-profile-type.enum.js';
 
 export class CreateClientDto {
   @ApiProperty({ example: 'Agência XYZ', maxLength: 200 })
@@ -29,6 +30,11 @@ export class CreateClientDto {
   @IsOptional()
   @IsString()
   googleDriveFolderUrl?: string;
+
+  @ApiPropertyOptional({ enum: ClientProfileType, example: ClientProfileType.SITE_SALES })
+  @IsOptional()
+  @IsEnum(ClientProfileType)
+  profileType?: ClientProfileType;
 
   @ApiPropertyOptional({ type: () => CreateClientBillingDto })
   @IsOptional()
