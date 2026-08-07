@@ -11,7 +11,7 @@ export class WhatsAppGroupEntity extends BaseEntity {
   @JoinColumn({ name: 'client_id' })
   client: ClientEntity;
 
-  @Column({ name: 'group_jid', unique: true })
+  @Column({ name: 'group_jid' })
   groupJid: string;
 
   @Column({ type: 'varchar', length: 200, nullable: true })
