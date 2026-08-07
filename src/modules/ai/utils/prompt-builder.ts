@@ -100,35 +100,41 @@ function buildSiteSalesMessage(payload: AiReportPayload): string {
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
   if (acquisition) {
-    lines.push(
-      'Campanha de Captação:',
-      `Investimento: R$ ${fmtBRL(acquisition.spend)}`,
-      `Cliques: ${fmtInt(acquisition.clicks)}`,
-      '',
-    );
+    lines.push('Campanha de Captação:');
+    lines.push(`Investimento: R$ ${fmtBRL(acquisition.spend)}`);
+    if (acquisition.clicks > 0) lines.push(`Cliques: ${fmtInt(acquisition.clicks)}`);
+    lines.push('');
   }
 
   if (sales) {
-    lines.push(
-      'Campanhas de Venda:',
-      `Investimento: R$ ${fmtBRL(sales.spend)}`,
-      '',
-      'Funil de Vendas:',
-      `Cliques no anúncio: ${fmtInt(sales.clicks)}`,
-      `↓ ${fmtPct(sales.pageViews, sales.clicks)}`,
-      `Visitas à página: ${fmtInt(sales.pageViews)}`,
-      `↓ ${fmtPct(sales.contentViews, sales.pageViews)}`,
-      `Visualizações de conteúdo: ${fmtInt(sales.contentViews)}`,
-      `↓ ${fmtPct(sales.addToCart, sales.contentViews)}`,
-      `Carrinho: ${fmtInt(sales.addToCart)}`,
-      `↓ ${fmtPct(sales.checkoutInitiated, sales.addToCart)}`,
-      `Finalização de compra: ${fmtInt(sales.checkoutInitiated)}`,
-      `↓ ${fmtPct(sales.purchases, sales.checkoutInitiated)}`,
-      `Compras: ${fmtInt(sales.purchases)}`,
-      '',
-      `Conversão geral (clique → compra): ${fmtPct(sales.purchases, sales.clicks)}`,
-      '',
-    );
+    lines.push('Campanhas de Venda:');
+    lines.push(`Investimento: R$ ${fmtBRL(sales.spend)}`);
+    lines.push('');
+    lines.push('Funil de Vendas:');
+    lines.push(`Cliques no anúncio: ${fmtInt(sales.clicks)}`);
+    if (sales.pageViews > 0) {
+      lines.push(`↓ ${fmtPct(sales.pageViews, sales.clicks)}`);
+      lines.push(`Visitas à página: ${fmtInt(sales.pageViews)}`);
+    }
+    if (sales.contentViews > 0) {
+      lines.push(`↓ ${fmtPct(sales.contentViews, sales.pageViews)}`);
+      lines.push(`Visualizações de conteúdo: ${fmtInt(sales.contentViews)}`);
+    }
+    if (sales.addToCart > 0) {
+      lines.push(`↓ ${fmtPct(sales.addToCart, sales.contentViews)}`);
+      lines.push(`Carrinho: ${fmtInt(sales.addToCart)}`);
+    }
+    if (sales.checkoutInitiated > 0) {
+      lines.push(`↓ ${fmtPct(sales.checkoutInitiated, sales.addToCart)}`);
+      lines.push(`Finalização de compra: ${fmtInt(sales.checkoutInitiated)}`);
+    }
+    if (sales.purchases > 0) {
+      lines.push(`↓ ${fmtPct(sales.purchases, sales.checkoutInitiated)}`);
+      lines.push(`Compras: ${fmtInt(sales.purchases)}`);
+      lines.push('');
+      lines.push(`Conversão geral (clique → compra): ${fmtPct(sales.purchases, sales.clicks)}`);
+    }
+    lines.push('');
   }
 
   lines.push(...footer(deltas, clientContext, previous));
@@ -139,13 +145,11 @@ function buildMessageSalesMessage(payload: AiReportPayload): string {
   const { period, current, deltas, clientContext, previous } = payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
-  lines.push(
-    `Investimento: R$ ${fmtBRL(current.spend)}`,
-    `Alcance: ${fmtInt(current.reach)} pessoas impactadas`,
-    `Conversas iniciadas: ${fmtInt(current.messagesStarted)} novos contatos no direct`,
-    `Cliques nos anúncios: ${fmtInt(current.clicks)}`,
-    '',
-  );
+  lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
+  if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
+  if (current.messagesStarted > 0) lines.push(`Conversas iniciadas: ${fmtInt(current.messagesStarted)} novos contatos no direct`);
+  if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
+  lines.push('');
 
   lines.push(...footer(deltas, clientContext, previous));
   return lines.join('\n');
@@ -155,14 +159,12 @@ function buildLiveSalesMessage(payload: AiReportPayload): string {
   const { period, current, deltas, clientContext, previous } = payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
-  lines.push(
-    `Investimento: R$ ${fmtBRL(current.spend)}`,
-    `Alcance: ${fmtInt(current.reach)} pessoas impactadas`,
-    `Visualizações da live: ${fmtInt(current.liveViews)}`,
-    `Cliques nos anúncios: ${fmtInt(current.clicks)}`,
-    `Compras: ${fmtInt(current.purchases)}`,
-    '',
-  );
+  lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
+  if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
+  if (current.liveViews > 0) lines.push(`Visualizações da live: ${fmtInt(current.liveViews)}`);
+  if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
+  if (current.purchases > 0) lines.push(`Compras: ${fmtInt(current.purchases)}`);
+  lines.push('');
 
   lines.push(...footer(deltas, clientContext, previous));
   return lines.join('\n');
