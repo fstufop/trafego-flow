@@ -223,6 +223,50 @@ describe('AdsetAlertsService', () => {
       );
     });
 
+    it('updates sentAt for all snapshots after successful send', async () => {
+      const job = makeJob({ clientId: 'client-1' });
+      mockClientsService.findAll.mockResolvedValueOnce([
+        { id: 'client-1', name: 'Marca' },
+      ]);
+      mockAdAccountsService.findAll.mockResolvedValueOnce([
+        { adAccountId: 'act_123', isActive: true },
+      ]);
+      mockCampaignReportsService.listAdsets.mockResolvedValueOnce([
+        {
+          id: 'adset_1',
+          name: 'CJ',
+          updated_time: '2026-08-01T00:00:00+0000',
+          effective_status: 'ACTIVE',
+        },
+      ]);
+      mockCampaignReportsService.getAdsetInsights.mockResolvedValueOnce(null);
+      mockSnapshotRepo.save.mockResolvedValueOnce({
+        id: 'snapshot-uuid',
+        roas: null,
+      });
+      mockWhatsAppSessionService.sendMessage.mockResolvedValueOnce(undefined);
+
+      await service.runForJob(job);
+
+      expect(mockSnapshotRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: expect.anything() as unknown }),
+        expect.objectContaining({ sentAt: expect.any(Date) as unknown }),
+      );
+    });
+
+    it('does not send when MANAGERS_GROUP_JID is not configured', async () => {
+      const job = makeJob({ clientId: 'client-1' });
+      mockClientsService.findAll.mockResolvedValueOnce([
+        { id: 'client-1', name: 'Marca' },
+      ]);
+      mockAdAccountsService.findAll.mockResolvedValueOnce([]);
+      mockConfigService.get.mockReturnValueOnce(undefined);
+
+      await service.runForJob(job);
+
+      expect(mockWhatsAppSessionService.sendMessage).not.toHaveBeenCalled();
+    });
+
     it('stores roas as null when ROAS value is 0', async () => {
       const job = makeJob({ clientId: 'client-1' });
       mockClientsService.findAll.mockResolvedValueOnce([
