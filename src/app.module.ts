@@ -17,6 +17,7 @@ import { WhatsAppGroupsModule } from './modules/whatsapp-groups/whatsapp-groups.
 import { WhatsAppSessionModule } from './modules/whatsapp-session/whatsapp-session.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
 import { ReportDispatchesModule } from './modules/report-dispatches/report-dispatches.module.js';
+import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
 
 @Module({
   imports: [
@@ -40,7 +41,7 @@ import { ReportDispatchesModule } from './modules/report-dispatches/report-dispa
       isGlobal: true,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        stores: [createKeyv(config.get<string>('redis.url'))],
+        stores: [createKeyv({ url: config.get<string>('redis.url'), socket: { connectTimeout: 5000 } })],
         ttl: config.get<number>('redis.cacheTtlSeconds')! * 1000,
       }),
     }),
@@ -57,6 +58,7 @@ import { ReportDispatchesModule } from './modules/report-dispatches/report-dispa
     WhatsAppGroupsModule,
     AiModule.forRootAsync(),
     ReportDispatchesModule,
+    AlertJobsModule,
   ],
 })
 export class AppModule {}
