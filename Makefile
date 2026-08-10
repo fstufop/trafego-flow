@@ -31,6 +31,9 @@ docker-up: ## Inicia docker em background
 run: ## Inicia servidor local
 	npm run start:dev
 
+migration: ## Executa migrations
+	npm run migration
+
 # ── Default target ────────────────────────────────────────────────────────────
 
 help: ## Exibe esta ajuda
@@ -69,18 +72,18 @@ secret-create: ## Cria todos os secrets no Secret Manager — ex: make secret-cr
 	@test -n "$(META_APP_SECRET)"   || (echo "Erro: META_APP_SECRET não informado";   exit 1)
 	@test -n "$(META_VERIFY_TOKEN)" || (echo "Erro: META_VERIFY_TOKEN não informado"; exit 1)
 	@echo "Criando secrets no Secret Manager..."
-	@echo -n "$(DATABASE_URL)"      | gcloud secrets create DATABASE_URL      --data-file=- --replication-policy=automatic
-	@echo -n "$(REDIS_URL)"         | gcloud secrets create REDIS_URL         --data-file=- --replication-policy=automatic
-	@echo -n "$(MASTER_API_KEY)"    | gcloud secrets create MASTER_API_KEY    --data-file=- --replication-policy=automatic
-	@echo -n "$(ENCRYPTION_KEY)"    | gcloud secrets create ENCRYPTION_KEY    --data-file=- --replication-policy=automatic
-	@echo -n "$(META_APP_SECRET)"   | gcloud secrets create META_APP_SECRET   --data-file=- --replication-policy=automatic
-	@echo -n "$(META_VERIFY_TOKEN)" | gcloud secrets create META_VERIFY_TOKEN --data-file=- --replication-policy=automatic
+	@printf '%s' "$(DATABASE_URL)"      | gcloud secrets create DATABASE_URL      --data-file=- --replication-policy=automatic
+	@printf '%s' "$(REDIS_URL)"         | gcloud secrets create REDIS_URL         --data-file=- --replication-policy=automatic
+	@printf '%s' "$(MASTER_API_KEY)"    | gcloud secrets create MASTER_API_KEY    --data-file=- --replication-policy=automatic
+	@printf '%s' "$(ENCRYPTION_KEY)"    | gcloud secrets create ENCRYPTION_KEY    --data-file=- --replication-policy=automatic
+	@printf '%s' "$(META_APP_SECRET)"   | gcloud secrets create META_APP_SECRET   --data-file=- --replication-policy=automatic
+	@printf '%s' "$(META_VERIFY_TOKEN)" | gcloud secrets create META_VERIFY_TOKEN --data-file=- --replication-policy=automatic
 	@echo "Secrets criados com sucesso."
 
 secret-update: ## Atualiza um secret existente — ex: make secret-update NAME=DATABASE_URL VALUE="novo-valor"
 	@test -n "$(NAME)"  || (echo "Erro: NAME não informado";  exit 1)
 	@test -n "$(VALUE)" || (echo "Erro: VALUE não informado"; exit 1)
-	@echo -n "$(VALUE)" | gcloud secrets versions add $(NAME) --data-file=-
+	@printf '%s' "$(VALUE)" | gcloud secrets versions add $(NAME) --data-file=-
 
 # ── Build e Push Docker ───────────────────────────────────────────────────────
 
@@ -102,13 +105,16 @@ deploy: ## Deploy do serviço no Cloud Run com todas as env vars e secrets
 	  --memory 512Mi \
 	  --min-instances 0 \
 	  --max-instances 2 \
-	  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600 \
+	  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600,AI_PROVIDER=gemini,AI_MODEL=gemini-3.6-flash \
 	  --set-secrets DATABASE_URL=DATABASE_URL:latest \
 	  --set-secrets REDIS_URL=REDIS_URL:latest \
 	  --set-secrets MASTER_API_KEY=MASTER_API_KEY:latest \
 	  --set-secrets ENCRYPTION_KEY=ENCRYPTION_KEY:latest \
 	  --set-secrets META_APP_SECRET=META_APP_SECRET:latest \
-	  --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest
+	  --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest \
+	  --set-secrets META_APP_ID=META_APP_ID:latest \
+	  --set-secrets JWT_SECRET=JWT_SECRET:latest \
+	  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest
 
 # ── Migrations ────────────────────────────────────────────────────────────────
 
@@ -117,7 +123,7 @@ migrate-create: ## Cria o Cloud Run Job para migrations (idempotente)
 	  --image $(IMAGE):latest \
 	  --region $(REGION) \
 	  --command "npm" \
-	  --args "run,migration:run" \
+	  --args "run,migration:run:prod" \
 	  --set-secrets DATABASE_URL=DATABASE_URL:latest \
 	  || true
 

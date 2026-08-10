@@ -9,7 +9,7 @@ const TABLES = [
   'report_dispatch_logs',
   'whatsapp_auth_keys',
   'users',
-  'client_billings',
+  // client_billings already created with snake_case columns
 ];
 
 export class RenameTimestampColumnsToSnakeCase1780500000000 implements MigrationInterface {
