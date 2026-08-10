@@ -18,6 +18,7 @@ import { WhatsAppSessionModule } from './modules/whatsapp-session/whatsapp-sessi
 import { AiModule } from './modules/ai/ai.module.js';
 import { ReportDispatchesModule } from './modules/report-dispatches/report-dispatches.module.js';
 import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
+import { AdsetAlertsModule } from './modules/adset-alerts/adset-alerts.module.js';
 
 @Module({
   imports: [
@@ -41,7 +42,12 @@ import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
       isGlobal: true,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        stores: [createKeyv({ url: config.get<string>('redis.url'), socket: { connectTimeout: 5000 } })],
+        stores: [
+          createKeyv({
+            url: config.get<string>('redis.url'),
+            socket: { connectTimeout: 5000 },
+          }),
+        ],
         ttl: config.get<number>('redis.cacheTtlSeconds')! * 1000,
       }),
     }),
@@ -59,6 +65,7 @@ import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
     AiModule.forRootAsync(),
     ReportDispatchesModule,
     AlertJobsModule,
+    AdsetAlertsModule,
   ],
 })
 export class AppModule {}
