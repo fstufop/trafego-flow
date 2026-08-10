@@ -2,9 +2,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateAlertJobsTable1781000000000 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`CREATE TYPE alert_job_type AS ENUM ('ADSET_INSIGHTS')`);
+    await queryRunner.query(`CREATE TYPE alert_job_status AS ENUM ('ACTIVE', 'INACTIVE')`);
     await queryRunner.query(`
-      CREATE TYPE alert_job_type AS ENUM ('ADSET_INSIGHTS');
-      CREATE TYPE alert_job_status AS ENUM ('ACTIVE', 'INACTIVE');
       CREATE TABLE alert_jobs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         type alert_job_type NOT NULL,
@@ -14,15 +14,13 @@ export class CreateAlertJobsTable1781000000000 implements MigrationInterface {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         deleted_at TIMESTAMPTZ
-      );
+      )
     `);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      DROP TABLE IF EXISTS alert_jobs;
-      DROP TYPE IF EXISTS alert_job_status;
-      DROP TYPE IF EXISTS alert_job_type;
-    `);
+    await queryRunner.query(`DROP TABLE IF EXISTS alert_jobs`);
+    await queryRunner.query(`DROP TYPE IF EXISTS alert_job_status`);
+    await queryRunner.query(`DROP TYPE IF EXISTS alert_job_type`);
   }
 }
