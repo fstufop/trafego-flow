@@ -13,6 +13,7 @@ import { MetaPermissionException } from '../../common/exceptions/meta-permission
 import { IMetaAdsService } from './interfaces/meta-ads-service.interface.js';
 import {
   MetaAdCreative,
+  MetaAdset,
   MetaAdWithCreative,
   MetaApiPaginatedResponse,
   MetaCampaign,
@@ -164,6 +165,42 @@ export class MetaAdsService implements IMetaAdsService {
     }
 
     return creativesByAdId;
+  }
+
+  async fetchAdsets(
+    adAccountId: string,
+    accessToken: string,
+  ): Promise<MetaAdset[]> {
+    const url = `${this.baseUrl}/${adAccountId}/adsets`;
+    const response = await firstValueFrom(
+      this.httpService.get<MetaApiPaginatedResponse<MetaAdset>>(url, {
+        params: {
+          fields: 'id,name,updated_time,effective_status',
+          access_token: accessToken,
+        },
+      }),
+    ).catch((err: MetaErrorResponse) => this.handleError(err, adAccountId));
+    return response.data.data;
+  }
+
+  async fetchAdsetInsights(
+    adsetId: string,
+    accessToken: string,
+    since: string,
+    until: string,
+  ): Promise<MetaInsights | null> {
+    const url = `${this.baseUrl}/${adsetId}/insights`;
+    const response = await firstValueFrom(
+      this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
+        params: {
+          fields: 'purchase_roas',
+          time_range: JSON.stringify({ since, until }),
+          level: 'adset',
+          access_token: accessToken,
+        },
+      }),
+    ).catch((err: MetaErrorResponse) => this.handleError(err, adsetId));
+    return response.data.data[0] ?? null;
   }
 
   private buildInsightsFields(level?: MetaInsightsLevel): string {

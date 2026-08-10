@@ -1,5 +1,6 @@
 import {
   MetaAdCreative,
+  MetaAdset,
   MetaApiPaginatedResponse,
   MetaCampaign,
   MetaInsights,
@@ -11,4 +12,6 @@ export interface IMetaAdsService {
   fetchInsights(adAccountId: string, accessToken: string, params: MetaInsightsParams, cursor?: string): Promise<MetaApiPaginatedResponse<MetaInsights>>;
   fetchCampaignInsights(campaignId: string, accessToken: string, params: MetaInsightsParams): Promise<MetaInsights | MetaApiPaginatedResponse<MetaInsights>>;
   fetchAdCreatives(adIds: string[], accessToken: string): Promise<Record<string, MetaAdCreative>>;
+  fetchAdsets(adAccountId: string, accessToken: string): Promise<MetaAdset[]>;
+  fetchAdsetInsights(adsetId: string, accessToken: string, since: string, until: string): Promise<MetaInsights | null>;
 }

@@ -8,7 +8,7 @@ import { MetaAdsService } from './meta-ads.service.js';
 import { OAuthTokenExpiredException } from '../../common/exceptions/oauth-token-expired.exception.js';
 import { MetaPermissionException } from '../../common/exceptions/meta-permission.exception.js';
 import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from './dto/get-insights-query.dto.js';
-import { MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
+import { MetaAdset, MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
 
 const mockCampaigns: MetaCampaign[] = [
   { id: '111', name: 'Campanha A', status: 'ACTIVE', objective: 'OUTCOME_TRAFFIC', created_time: '2026-01-01T00:00:00Z' },
@@ -497,6 +497,76 @@ describe('MetaAdsService', () => {
       await expect(
         service.fetchCampaignInsights('111', 'token-abc', { datePreset: MetaDatePreset.LAST_7D }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('fetchAdsets', () => {
+    it('returns adset list for an ad account', async () => {
+      const mockAdsets: MetaAdset[] = [
+        {
+          id: 'adset_1',
+          name: 'CJ - Retargeting',
+          updated_time: '2026-08-01T00:00:00+0000',
+          effective_status: 'ACTIVE',
+        },
+      ];
+      mockHttpService.get.mockReturnValueOnce(
+        of(makeAxiosResponse<MetaApiPaginatedResponse<MetaAdset>>({ data: mockAdsets, paging: {} as any })),
+      );
+
+      const result = await service.fetchAdsets('act_123', 'token_abc');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.stringContaining('/act_123/adsets'),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            fields: 'id,name,updated_time,effective_status',
+            access_token: 'token_abc',
+          }),
+        }),
+      );
+      expect(result).toEqual(mockAdsets);
+    });
+
+    it('throws ServiceUnavailableException when API is unreachable', async () => {
+      mockHttpService.get.mockReturnValueOnce(throwError(() => ({ message: 'Network error' })));
+
+      await expect(service.fetchAdsets('act_123', 'token_abc')).rejects.toThrow(ServiceUnavailableException);
+    });
+  });
+
+  describe('fetchAdsetInsights', () => {
+    it('returns insights when data is available for the period', async () => {
+      const mockInsight: Partial<MetaInsights> = {
+        purchase_roas: [{ action_type: 'omni_purchase', value: '3.42' }],
+      };
+      mockHttpService.get.mockReturnValueOnce(
+        of(makeAxiosResponse<MetaApiPaginatedResponse<MetaInsights>>({ data: [mockInsight as MetaInsights], paging: {} as any })),
+      );
+
+      const result = await service.fetchAdsetInsights('adset_1', 'token_abc', '2026-08-01', '2026-08-09');
+
+      expect(mockHttpService.get).toHaveBeenCalledWith(
+        expect.stringContaining('/adset_1/insights'),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            fields: 'purchase_roas',
+            level: 'adset',
+            access_token: 'token_abc',
+          }),
+        }),
+      );
+      expect(result).toEqual(mockInsight);
+    });
+
+    it('returns null when no data exists for the period', async () => {
+      mockHttpService.get.mockReturnValueOnce(
+        of(makeAxiosResponse<MetaApiPaginatedResponse<MetaInsights>>({ data: [], paging: {} as any })),
+      );
+
+      const result = await service.fetchAdsetInsights('adset_1', 'token_abc', '2026-08-01', '2026-08-09');
+
+      expect(result).toBeNull();
     });
   });
 });
