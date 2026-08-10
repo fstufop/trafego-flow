@@ -9,7 +9,7 @@ import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { CsvFormatterService } from '../../common/csv/csv-formatter.service.js';
 import { AdAccountEntity } from '../ad-accounts/entities/ad-account.entity.js';
 import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from './dto/get-insights-query.dto.js';
-import { MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
+import { MetaAdset, MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
 import { MetaInsightsColumn } from './enums/insights-column.enum.js';
 import { ExportInsightsCsvDto } from './dto/export-insights-csv.dto.js';
 
@@ -62,6 +62,8 @@ const mockMetaAdsService = {
   fetchInsights: jest.fn(),
   fetchCampaignInsights: jest.fn(),
   fetchAdCreatives: jest.fn(),
+  fetchAdsets: jest.fn(),
+  fetchAdsetInsights: jest.fn(),
 };
 const mockCrypto = { decrypt: jest.fn().mockReturnValue('plaintext-token') };
 const mockCache = { get: jest.fn(), set: jest.fn() };
@@ -662,6 +664,62 @@ describe('CampaignReportsService', () => {
       expect(rows[0].thumbnail_url).toBe('https://cdn.fb/t1.jpg');
       expect(rows[0].instagram_permalink_url).toBe('https://www.instagram.com/p/ABC123/');
       expect(mockMetaAdsService.fetchAdCreatives).toHaveBeenCalledWith(['ad_1'], 'plaintext-token');
+    });
+  });
+
+  describe('listAdsets', () => {
+    it('decrypts the token and delegates to MetaAdsService.fetchAdsets', async () => {
+      const mockAdsets: MetaAdset[] = [
+        { id: 'adset_1', name: 'CJ - Retargeting', updated_time: '2026-08-01T00:00:00+0000', effective_status: 'ACTIVE' },
+      ];
+      mockAdAccountsService.findByAdAccountId.mockResolvedValueOnce({
+        adAccountId: 'act_123',
+        accessToken: 'encrypted_token',
+        isActive: true,
+      });
+      mockCrypto.decrypt.mockReturnValueOnce('plain_token');
+      mockMetaAdsService.fetchAdsets.mockResolvedValueOnce(mockAdsets);
+
+      const result = await service.listAdsets('act_123');
+
+      expect(mockCrypto.decrypt).toHaveBeenCalledWith('encrypted_token');
+      expect(mockMetaAdsService.fetchAdsets).toHaveBeenCalledWith('act_123', 'plain_token');
+      expect(result).toEqual(mockAdsets);
+    });
+
+    it('throws UnprocessableEntityException when ad account is inactive', async () => {
+      mockAdAccountsService.findByAdAccountId.mockResolvedValueOnce({
+        adAccountId: 'act_123',
+        accessToken: 'encrypted_token',
+        isActive: false,
+      });
+
+      await expect(service.listAdsets('act_123')).rejects.toThrow(UnprocessableEntityException);
+    });
+  });
+
+  describe('getAdsetInsights', () => {
+    it('decrypts token and delegates to MetaAdsService.fetchAdsetInsights', async () => {
+      const mockInsight: Partial<MetaInsights> = {
+        purchase_roas: [{ action_type: 'omni_purchase', value: '3.42' }],
+      };
+      mockAdAccountsService.findByAdAccountId.mockResolvedValueOnce({
+        adAccountId: 'act_123',
+        accessToken: 'encrypted_token',
+        isActive: true,
+      });
+      mockCrypto.decrypt.mockReturnValueOnce('plain_token');
+      mockMetaAdsService.fetchAdsetInsights.mockResolvedValueOnce(mockInsight as MetaInsights);
+
+      const result = await service.getAdsetInsights('adset_1', 'act_123', '2026-08-01', '2026-08-09');
+
+      expect(mockMetaAdsService.fetchAdsetInsights).toHaveBeenCalledWith(
+        'adset_1',
+        'plain_token',
+        '2026-08-01',
+        '2026-08-09',
+      );
+      expect(result).toEqual(mockInsight);
     });
   });
 });

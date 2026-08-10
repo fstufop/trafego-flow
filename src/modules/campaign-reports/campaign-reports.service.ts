@@ -13,6 +13,7 @@ import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { MetaAdsService } from './meta-ads.service.js';
 import { ICampaignReportsService } from './interfaces/campaign-reports-service.interface.js';
 import {
+  MetaAdset,
   MetaApiPaginatedResponse,
   MetaCampaign,
   MetaInsights,
@@ -323,5 +324,28 @@ export class CampaignReportsService implements ICampaignReportsService {
       timeIncrement,
       breakdowns,
     );
+  }
+
+  async listAdsets(adAccountId: string): Promise<MetaAdset[]> {
+    const account = await this.adAccountsService.findByAdAccountId(adAccountId);
+    if (!account.isActive) {
+      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+    }
+    const token = this.crypto.decrypt(account.accessToken);
+    return this.metaAdsService.fetchAdsets(adAccountId, token);
+  }
+
+  async getAdsetInsights(
+    adsetId: string,
+    adAccountId: string,
+    since: string,
+    until: string,
+  ): Promise<MetaInsights | null> {
+    const account = await this.adAccountsService.findByAdAccountId(adAccountId);
+    if (!account.isActive) {
+      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+    }
+    const token = this.crypto.decrypt(account.accessToken);
+    return this.metaAdsService.fetchAdsetInsights(adsetId, token, since, until);
   }
 }
