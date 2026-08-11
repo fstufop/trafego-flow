@@ -29,7 +29,7 @@ export const validationSchema = Joi.object({
   REDIS_URL: Joi.string().required(),
   CACHE_TTL_SECONDS: Joi.number().default(3600),
   ENCRYPTION_KEY: Joi.string().length(64).required(),
-  META_APP_ID: Joi.string().required(),
+  META_APP_ID: Joi.string().default('1001996369089789'),
   META_APP_SECRET: Joi.string().required(),
   META_SYSTEM_USER_TOKEN: Joi.string().optional(),
   META_VERIFY_TOKEN: Joi.string().required(),

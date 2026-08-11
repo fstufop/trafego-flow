@@ -112,7 +112,6 @@ deploy: ## Deploy do serviço no Cloud Run com todas as env vars e secrets
 	  --set-secrets ENCRYPTION_KEY=ENCRYPTION_KEY:latest \
 	  --set-secrets META_APP_SECRET=META_APP_SECRET:latest \
 	  --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest \
-	  --set-secrets META_APP_ID=META_APP_ID:latest \
 	  --set-secrets JWT_SECRET=JWT_SECRET:latest \
 	  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest
 

@@ -72,7 +72,7 @@ describe('AdsetAlertsService', () => {
   });
 
   describe('formatMessage', () => {
-    it('formats clients and adsets with bold WhatsApp syntax', () => {
+    it('formats clients and adsets with header and value-only rows', () => {
       const map = new Map([
         [
           'c1',
@@ -98,10 +98,13 @@ describe('AdsetAlertsService', () => {
 
       expect(result).toContain('*Nome do cliente*: Marca ABC');
       expect(result).toContain(
-        '*Conjunto de anúncios*: CJ - Retargeting | *ROAS*: 3.42 | *Última atualização*: 05/08/2026',
+        '📋 *Conjunto de anúncios* | 📈 *ROAS* | 🗓 *Última atualização*',
       );
-      expect(result).toContain(
-        '*Conjunto de anúncios*: CJ - Prospecting | *ROAS*: 1.87 | *Última atualização*: 01/08/2026',
+      expect(result).toContain('CJ - Retargeting | 3.42 | 05/08/2026');
+      expect(result).toContain('CJ - Prospecting | 1.87 | 01/08/2026');
+      // Prospecting (1.87) deve aparecer antes de Retargeting (3.42) após ordenação
+      expect(result.indexOf('CJ - Prospecting')).toBeLessThan(
+        result.indexOf('CJ - Retargeting'),
       );
     });
 
@@ -120,7 +123,7 @@ describe('AdsetAlertsService', () => {
 
       const result = service.formatMessage(map, []);
 
-      expect(result).toContain('*ROAS*: –');
+      expect(result).toContain('CJ - Top | – |');
     });
 
     it('appends error footer when there are errors', () => {
@@ -183,6 +186,30 @@ describe('AdsetAlertsService', () => {
 
       expect(result).not.toContain('Vazio');
       expect(result).toContain('Com dados');
+    });
+
+    it('sorts adsets by ROAS ascending, nulls last', () => {
+      const map = new Map([
+        [
+          'c1',
+          {
+            clientName: 'Marca',
+            adsets: [
+              { adsetName: 'Alto', roas: 5.0, updatedTime: '2026-08-01' },
+              { adsetName: 'Nulo', roas: null, updatedTime: '2026-08-01' },
+              { adsetName: 'Baixo', roas: 1.5, updatedTime: '2026-08-01' },
+            ],
+          },
+        ],
+      ]);
+
+      const result = service.formatMessage(map, []);
+
+      const idxBaixo = result.indexOf('Baixo');
+      const idxAlto = result.indexOf('Alto');
+      const idxNulo = result.indexOf('Nulo');
+      expect(idxBaixo).toBeLessThan(idxAlto);
+      expect(idxAlto).toBeLessThan(idxNulo);
     });
   });
 

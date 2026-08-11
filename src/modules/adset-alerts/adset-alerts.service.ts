@@ -171,12 +171,17 @@ export class AdsetAlertsService {
       if (!adsets.length) continue;
       lines.push(`*Nome do cliente*: ${clientName}`);
       lines.push('');
-      for (const adset of adsets) {
+      lines.push('📋 *Conjunto de anúncios* | 📈 *ROAS* | 🗓 *Última atualização*');
+      const sorted = [...adsets].sort((a, b) => {
+        if (a.roas === null && b.roas === null) return 0;
+        if (a.roas === null) return 1;
+        if (b.roas === null) return -1;
+        return a.roas - b.roas;
+      });
+      for (const adset of sorted) {
         const roas = adset.roas !== null ? adset.roas.toFixed(2) : '–';
         const date = this.formatDate(adset.updatedTime);
-        lines.push(
-          `*Conjunto de anúncios*: ${adset.adsetName} | *ROAS*: ${roas} | *Última atualização*: ${date}`,
-        );
+        lines.push(`${adset.adsetName} | ${roas} | ${date}`);
       }
       lines.push('');
     }
