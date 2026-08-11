@@ -75,6 +75,12 @@ export class WhatsAppSessionService
         printQRInTerminal: false,
       });
 
+      // Pairing code deve ser solicitado antes do primeiro connection.update,
+      // enquanto o socket ainda não comprometeu o fluxo de QR.
+      if (!state.creds.registered && this.phoneNumber) {
+        await this.requestPairingCode();
+      }
+
       this.sock.ev.on('connection.update', async (update: any) => {
         const { connection, lastDisconnect, qr } = update;
 
@@ -83,10 +89,6 @@ export class WhatsAppSessionService
           this.logger.log(
             'QR disponível — escaneie em GET /whatsapp-session/status ou use GET /whatsapp-session/pairing-code para emparelhar pelo número',
           );
-
-          if (!this.pairingRequested && this.phoneNumber) {
-            await this.requestPairingCode();
-          }
         }
 
         if (connection === 'open') {
@@ -207,8 +209,10 @@ export class WhatsAppSessionService
     if (this.isConnected) {
       throw new ServiceUnavailableException('Sessão já está conectada');
     }
+    if (this.pairingCode) {
+      return { pairingCode: this.pairingCode };
+    }
     this.pairingRequested = false;
-    this.pairingCode = undefined;
     await this.requestPairingCode();
     if (!this.pairingCode) {
       throw new ServiceUnavailableException(
