@@ -1,10 +1,18 @@
 // src/modules/clients/billing/client-billing.service.spec.ts
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ClientBillingService } from './client-billing.service.js';
-import { ClientBillingEntity, ContractStatus, PaymentMethod } from '../entities/client-billing.entity.js';
+import {
+  ClientBillingEntity,
+  ContractStatus,
+  PaymentMethod,
+} from '../entities/client-billing.entity.js';
 import { ClientBillingInstallmentEntity } from '../entities/client-billing-installment.entity.js';
 import { CreateClientBillingDto } from '../dto/create-client-billing.dto.js';
 
@@ -13,25 +21,38 @@ const makeBillingRepo = () => ({
   find: jest.fn(),
   update: jest.fn(),
   create: jest.fn((data: unknown) => data),
-  save: jest.fn(async (e: unknown) => e),
+  save: jest.fn((e: unknown) => Promise.resolve(e)),
 });
 
 const makeInstallmentRepo = () => ({
   findOne: jest.fn(),
-  save: jest.fn(async (e: unknown) => e),
+  save: jest.fn((e: unknown) => Promise.resolve(e)),
   create: jest.fn((data: unknown) => data),
 });
 
 const makeManager = () => ({
-  create: jest.fn((_, data: unknown) => ({ id: 'new-id', ...data as object })),
-  save: jest.fn(async (e: unknown) => Array.isArray(e)
-    ? (e as unknown[]).map((x, i) => ({ id: `inst-${i}`, ...x as object }))
-    : { id: 'saved-id', ...e as object }),
+  create: jest.fn((_, data: unknown) => ({
+    id: 'new-id',
+    ...(data as object),
+  })),
+  save: jest.fn((e: unknown) =>
+    Promise.resolve(
+      Array.isArray(e)
+        ? (e as unknown[]).map((x, i) => ({
+            id: `inst-${i}`,
+            ...(x as object),
+          }))
+        : { id: 'saved-id', ...(e as object) },
+    ),
+  ),
   update: jest.fn(),
 });
 
 const makeDataSource = (manager = makeManager()) => ({
-  transaction: jest.fn((cb: (m: ReturnType<typeof makeManager>) => Promise<unknown>) => cb(manager)),
+  transaction: jest.fn(
+    (cb: (m: ReturnType<typeof makeManager>) => Promise<unknown>) =>
+      cb(manager),
+  ),
 });
 
 describe('ClientBillingService', () => {
@@ -46,8 +67,14 @@ describe('ClientBillingService', () => {
     const module = await Test.createTestingModule({
       providers: [
         ClientBillingService,
-        { provide: getRepositoryToken(ClientBillingEntity), useValue: billingRepo },
-        { provide: getRepositoryToken(ClientBillingInstallmentEntity), useValue: installmentRepo },
+        {
+          provide: getRepositoryToken(ClientBillingEntity),
+          useValue: billingRepo,
+        },
+        {
+          provide: getRepositoryToken(ClientBillingInstallmentEntity),
+          useValue: installmentRepo,
+        },
         { provide: DataSource, useValue: makeDataSource() },
       ],
     }).compile();
@@ -65,8 +92,13 @@ describe('ClientBillingService', () => {
     };
 
     it('throws ConflictException when an active contract already exists', async () => {
-      billingRepo.findOne.mockResolvedValue({ id: 'existing', contractStatus: ContractStatus.ACTIVE });
-      await expect(service.createBilling('client-1', dto)).rejects.toThrow(ConflictException);
+      billingRepo.findOne.mockResolvedValue({
+        id: 'existing',
+        contractStatus: ContractStatus.ACTIVE,
+      });
+      await expect(service.createBilling('client-1', dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('creates contract and generates durationMonths installments', async () => {
@@ -80,7 +112,9 @@ describe('ClientBillingService', () => {
   describe('getActiveBilling', () => {
     it('throws NotFoundException when no active contract exists', async () => {
       billingRepo.findOne.mockResolvedValue(null);
-      await expect(service.getActiveBilling('client-1')).rejects.toThrow(NotFoundException);
+      await expect(service.getActiveBilling('client-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns the active billing with enriched installment statuses', async () => {
@@ -96,7 +130,14 @@ describe('ClientBillingService', () => {
         paymentMethod: PaymentMethod.PIX,
         dueDay: 10,
         contractStatus: ContractStatus.ACTIVE,
-        installments: [{ id: 'inst-1', installmentNumber: 1, dueDate: futureDate, paidAt: null }],
+        installments: [
+          {
+            id: 'inst-1',
+            installmentNumber: 1,
+            dueDate: futureDate,
+            paidAt: null,
+          },
+        ],
       });
       const result = await service.getActiveBilling('client-1');
       expect(result.installments[0].status).toBe('pending');
@@ -107,14 +148,24 @@ describe('ClientBillingService', () => {
     it('throws NotFoundException when contract not found', async () => {
       billingRepo.findOne.mockResolvedValue(null);
       await expect(
-        service.renewBilling('client-1', 'billing-1', { startDate: new Date(), durationMonths: 6 }),
+        service.renewBilling('client-1', 'billing-1', {
+          startDate: new Date(),
+          durationMonths: 6,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when contract is not active', async () => {
-      billingRepo.findOne.mockResolvedValue({ id: 'billing-1', clientId: 'client-1', contractStatus: ContractStatus.EXPIRED });
+      billingRepo.findOne.mockResolvedValue({
+        id: 'billing-1',
+        clientId: 'client-1',
+        contractStatus: ContractStatus.EXPIRED,
+      });
       await expect(
-        service.renewBilling('client-1', 'billing-1', { startDate: new Date(), durationMonths: 6 }),
+        service.renewBilling('client-1', 'billing-1', {
+          startDate: new Date(),
+          durationMonths: 6,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -122,7 +173,9 @@ describe('ClientBillingService', () => {
   describe('cancelBilling', () => {
     it('throws NotFoundException when contract not found', async () => {
       billingRepo.findOne.mockResolvedValue(null);
-      await expect(service.cancelBilling('client-1', 'billing-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.cancelBilling('client-1', 'billing-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when already cancelled', async () => {
@@ -131,34 +184,57 @@ describe('ClientBillingService', () => {
         contractStatus: ContractStatus.CANCELLED,
         installments: [],
       });
-      await expect(service.cancelBilling('client-1', 'billing-1')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.cancelBilling('client-1', 'billing-1'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('payInstallment', () => {
     it('throws NotFoundException when contract not found', async () => {
       billingRepo.findOne.mockResolvedValue(null);
-      await expect(service.payInstallment('client-1', 'billing-1', 'inst-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.payInstallment('client-1', 'billing-1', 'inst-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException when installment not found', async () => {
       billingRepo.findOne.mockResolvedValue({ id: 'billing-1' });
       installmentRepo.findOne.mockResolvedValue(null);
-      await expect(service.payInstallment('client-1', 'billing-1', 'inst-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.payInstallment('client-1', 'billing-1', 'inst-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when installment is already paid', async () => {
       billingRepo.findOne.mockResolvedValue({ id: 'billing-1' });
-      installmentRepo.findOne.mockResolvedValue({ id: 'inst-1', paidAt: new Date() });
-      await expect(service.payInstallment('client-1', 'billing-1', 'inst-1')).rejects.toThrow(BadRequestException);
+      installmentRepo.findOne.mockResolvedValue({
+        id: 'inst-1',
+        paidAt: new Date(),
+      });
+      await expect(
+        service.payInstallment('client-1', 'billing-1', 'inst-1'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('sets paidAt and returns paid status', async () => {
       billingRepo.findOne.mockResolvedValue({ id: 'billing-1' });
-      const installment = { id: 'inst-1', installmentNumber: 1, dueDate: new Date(2026, 0, 10), paidAt: null };
+      const installment = {
+        id: 'inst-1',
+        installmentNumber: 1,
+        dueDate: new Date(2026, 0, 10),
+        paidAt: null,
+      };
       installmentRepo.findOne.mockResolvedValue(installment);
-      installmentRepo.save.mockResolvedValue({ ...installment, paidAt: new Date() });
-      const result = await service.payInstallment('client-1', 'billing-1', 'inst-1');
+      installmentRepo.save.mockResolvedValue({
+        ...installment,
+        paidAt: new Date(),
+      });
+      const result = await service.payInstallment(
+        'client-1',
+        'billing-1',
+        'inst-1',
+      );
       expect(result.status).toBe('paid');
     });
   });

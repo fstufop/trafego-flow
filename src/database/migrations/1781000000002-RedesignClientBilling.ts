@@ -8,11 +8,21 @@ export class RedesignClientBilling1781000000000 implements MigrationInterface {
     await queryRunner.query(`TRUNCATE TABLE "client_billings" CASCADE`);
 
     // Drop old constraint and columns
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "UQ_client_billings_client_id"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "client_billings_due_day_check"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "type"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "status"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "last_paid_at"`);
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "UQ_client_billings_client_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "client_billings_due_day_check"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "type"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "status"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "last_paid_at"`,
+    );
 
     // Drop old enums no longer needed
     await queryRunner.query(`DROP TYPE IF EXISTS "billing_type"`);
@@ -64,13 +74,25 @@ export class RedesignClientBilling1781000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS "client_billing_installments"`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "client_billing_installments"`,
+    );
 
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "client_billings_duration_check"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "client_billings_due_day_check"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "start_date"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "duration_months"`);
-    await queryRunner.query(`ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "contract_status"`);
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "client_billings_duration_check"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP CONSTRAINT IF EXISTS "client_billings_due_day_check"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "start_date"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "duration_months"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_billings" DROP COLUMN IF EXISTS "contract_status"`,
+    );
     await queryRunner.query(`DROP TYPE IF EXISTS "contract_status"`);
 
     await queryRunner.query(`
