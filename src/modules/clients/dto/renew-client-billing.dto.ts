@@ -1,11 +1,11 @@
-// src/modules/clients/dto/create-client-billing.dto.ts
+// src/modules/clients/dto/renew-client-billing.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDate, IsEnum, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
 import { DiscountType, PaymentMethod } from '../entities/client-billing.entity.js';
 
-export class CreateClientBillingDto {
-  @ApiProperty({ example: '2026-01-15', description: 'Contract start date' })
+export class RenewClientBillingDto {
+  @ApiProperty({ example: '2026-07-01', description: 'New contract start date' })
   @Type(() => Date)
   @IsDate()
   startDate: Date;
@@ -16,19 +16,22 @@ export class CreateClientBillingDto {
   @Max(12)
   durationMonths: number;
 
-  @ApiProperty({ example: 1500.0 })
+  @ApiPropertyOptional({ example: 1500.0, description: 'Inherits from previous contract if omitted' })
+  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
-  amount: number;
+  amount?: number;
 
-  @ApiProperty({ example: 10, description: 'Due day of month (1–30)' })
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(30)
-  dueDay: number;
+  dueDay?: number;
 
-  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.PIX })
+  @ApiPropertyOptional({ enum: PaymentMethod })
+  @IsOptional()
   @IsEnum(PaymentMethod)
-  paymentMethod: PaymentMethod;
+  paymentMethod?: PaymentMethod;
 
   @ApiPropertyOptional({ enum: DiscountType })
   @IsOptional()

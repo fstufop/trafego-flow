@@ -1,8 +1,6 @@
 // src/modules/clients/dto/create-client.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
-import { CreateClientBillingDto } from './create-client-billing.dto.js';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ClientProfileType } from '../enums/client-profile-type.enum.js';
 
 export class CreateClientDto {
@@ -21,7 +19,7 @@ export class CreateClientDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ example: '120363000000000000@g.us', description: 'JID do grupo WhatsApp' })
+  @ApiPropertyOptional({ example: '120363000000000000@g.us' })
   @IsOptional()
   @IsString()
   whatsappGroupCode?: string;
@@ -35,10 +33,4 @@ export class CreateClientDto {
   @IsOptional()
   @IsEnum(ClientProfileType)
   profileType?: ClientProfileType;
-
-  @ApiPropertyOptional({ type: () => CreateClientBillingDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => CreateClientBillingDto)
-  billing?: CreateClientBillingDto;
 }
