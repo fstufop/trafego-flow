@@ -1,17 +1,21 @@
 // src/modules/clients/dto/create-client-billing.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
 import {
-  BillingStatus,
-  BillingType,
+  ContractStatus,
   DiscountType,
   PaymentMethod,
 } from '../entities/client-billing.entity.js';
 
 export class CreateClientBillingDto {
-  @ApiProperty({ enum: BillingType, example: BillingType.MONTHLY })
-  @IsEnum(BillingType)
-  type: BillingType;
+  @ApiProperty({ example: '2026-01-01', description: 'Data de início do contrato' })
+  @IsDateString()
+  startDate: string;
+
+  @ApiProperty({ example: 12, description: 'Duração do contrato em meses' })
+  @IsInt()
+  @Min(1)
+  durationMonths: number;
 
   @ApiProperty({ example: 1500.00 })
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -37,7 +41,7 @@ export class CreateClientBillingDto {
   @Max(31)
   dueDay: number;
 
-  @ApiProperty({ enum: BillingStatus, example: BillingStatus.PENDING })
-  @IsEnum(BillingStatus)
-  status: BillingStatus;
+  @ApiProperty({ enum: ContractStatus, example: ContractStatus.ACTIVE })
+  @IsEnum(ContractStatus)
+  contractStatus: ContractStatus;
 }

@@ -6,19 +6,20 @@ import { QueryFailedError } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ClientsService } from './clients.service.js';
 import { ClientEntity } from './entities/client.entity.js';
-import { ClientBillingEntity, BillingType, BillingStatus, PaymentMethod } from './entities/client-billing.entity.js';
+import { ClientBillingEntity, ContractStatus, PaymentMethod } from './entities/client-billing.entity.js';
 
 const mockBilling: ClientBillingEntity = {
   id: 'billing-1',
   clientId: 'uuid-1',
-  type: BillingType.MONTHLY,
+  startDate: new Date('2026-01-01'),
+  durationMonths: 12,
   amount: 1500,
   discountType: null,
   discountValue: null,
   paymentMethod: PaymentMethod.PIX,
   dueDay: 10,
-  status: BillingStatus.PAID,
-  lastPaidAt: null,
+  contractStatus: ContractStatus.ACTIVE,
+  installments: [],
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
@@ -33,7 +34,7 @@ const mockClient: ClientEntity = {
   whatsappGroupCode: null,
   googleDriveFolderUrl: null,
   aiStrategyContext: null,
-  billing: mockBilling,
+  billings: [mockBilling],
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
@@ -79,7 +80,7 @@ describe('ClientsService', () => {
 
   describe('create', () => {
     it('should create client without billing', async () => {
-      const clientOnly = { ...mockClient, billing: undefined as any };
+      const clientOnly = { ...mockClient, billings: [] };
       mockRepo.create.mockReturnValue(clientOnly);
       mockRepo.save.mockResolvedValueOnce(clientOnly);
       mockRepo.findOne.mockResolvedValue(clientOnly);
@@ -91,7 +92,7 @@ describe('ClientsService', () => {
     });
 
     it('should create client with billing when billing is provided', async () => {
-      const clientOnly = { ...mockClient, billing: undefined as any };
+      const clientOnly = { ...mockClient, billings: [] };
       mockRepo.create.mockReturnValue(clientOnly);
       mockRepo.save.mockResolvedValueOnce(clientOnly);
       mockBillingRepo.create.mockReturnValue({ ...mockBilling });
@@ -102,16 +103,17 @@ describe('ClientsService', () => {
         name: 'Agência XYZ',
         email: 'contato@xyz.com',
         billing: {
-          type: BillingType.MONTHLY,
+          startDate: '2026-01-01',
+          durationMonths: 12,
           amount: 1500,
           paymentMethod: PaymentMethod.PIX,
           dueDay: 10,
-          status: BillingStatus.PAID,
+          contractStatus: ContractStatus.ACTIVE,
         },
       });
 
       expect(mockBillingRepo.save).toHaveBeenCalledTimes(1);
-      expect(result.billing).toEqual(mockBilling);
+      expect(result.billings).toEqual([mockBilling]);
     });
 
     it('should throw ConflictException on duplicate email', async () => {
@@ -125,7 +127,7 @@ describe('ClientsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return active clients with billing relation', async () => {
+    it('should return active clients with billings relation', async () => {
       mockRepo.find.mockResolvedValue([mockClient]);
 
       const result = await service.findAll();
@@ -133,7 +135,7 @@ describe('ClientsService', () => {
       expect(result).toEqual([mockClient]);
       expect(mockRepo.find).toHaveBeenCalledWith({
         where: { isActive: true },
-        relations: { billing: true },
+        relations: { billings: true },
       });
     });
   });
@@ -148,7 +150,7 @@ describe('ClientsService', () => {
       expect(mockRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it('should query repository with billing relation on cache miss', async () => {
+    it('should query repository with billings relation on cache miss', async () => {
       mockCache.get.mockResolvedValue(null);
       mockRepo.findOne.mockResolvedValue(mockClient);
 
@@ -157,7 +159,7 @@ describe('ClientsService', () => {
       expect(result).toEqual(mockClient);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'uuid-1' },
-        relations: { billing: true },
+        relations: { billings: true },
       });
     });
 
@@ -186,7 +188,7 @@ describe('ClientsService', () => {
       mockRepo.save.mockResolvedValue(mockClient);
       mockBillingRepo.findOne.mockResolvedValue(mockBilling);
       mockBillingRepo.save.mockResolvedValue({ ...mockBilling, amount: 2000 });
-      mockRepo.findOne.mockResolvedValue({ ...mockClient, billing: { ...mockBilling, amount: 2000 } });
+      mockRepo.findOne.mockResolvedValue({ ...mockClient, billings: [{ ...mockBilling, amount: 2000 }] });
 
       await service.update('uuid-1', { billing: { amount: 2000 } });
 
