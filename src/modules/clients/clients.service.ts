@@ -23,18 +23,14 @@ export class ClientsService implements IClientsService {
   ) {}
 
   async create(dto: CreateClientDto): Promise<ClientEntity> {
-    const { billing, ...clientData } = dto;
     let client: ClientEntity;
     try {
-      client = await this.repo.save(this.repo.create(clientData));
+      client = await this.repo.save(this.repo.create(dto));
     } catch (err) {
       if (err instanceof QueryFailedError && (err as QueryFailedError & { code: string }).code === '23505') {
         throw new ConflictException('A client with this email already exists');
       }
       throw err;
-    }
-    if (billing) {
-      await this.billingRepo.save(this.billingRepo.create({ ...billing, clientId: client.id }));
     }
     return this.repo.findOne({ where: { id: client.id }, relations: { billings: true } }) as Promise<ClientEntity>;
   }
@@ -55,26 +51,8 @@ export class ClientsService implements IClientsService {
   }
 
   async update(id: string, dto: UpdateClientDto): Promise<ClientEntity> {
-    const { billing, ...clientData } = dto;
     const client = await this.findOne(id);
-    await this.repo.save({ ...client, ...clientData });
-
-    if (billing) {
-      const existing = await this.billingRepo.findOne({ where: { clientId: id } });
-      if (existing) {
-        await this.billingRepo.save({ ...existing, ...billing });
-      } else {
-        const { startDate, durationMonths, paymentMethod, dueDay, contractStatus } = billing;
-        if (!startDate || !durationMonths || !paymentMethod || dueDay == null || !contractStatus) {
-          throw new BadRequestException(
-            'Cannot create billing with partial data — provide startDate, durationMonths, paymentMethod, dueDay and contractStatus',
-          );
-        }
-        await this.billingRepo.save(
-          this.billingRepo.create({ ...billing, clientId: id } as any),
-        );
-      }
-    }
+    await this.repo.save({ ...client, ...dto });
 
     await this.cache.del(cacheKey(id));
     return this.repo.findOne({ where: { id }, relations: { billings: true } }) as Promise<ClientEntity>;
