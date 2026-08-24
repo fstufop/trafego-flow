@@ -19,6 +19,7 @@ import { AiModule } from './modules/ai/ai.module.js';
 import { ReportDispatchesModule } from './modules/report-dispatches/report-dispatches.module.js';
 import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
 import { AdsetAlertsModule } from './modules/adset-alerts/adset-alerts.module.js';
+import { MediaLibraryModule } from './modules/media-library/media-library.module.js';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { AdsetAlertsModule } from './modules/adset-alerts/adset-alerts.module.js
     ReportDispatchesModule,
     AlertJobsModule,
     AdsetAlertsModule,
+    MediaLibraryModule,
   ],
 })
 export class AppModule {}

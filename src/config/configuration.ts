@@ -6,6 +6,7 @@ import metaConfig from './meta.config';
 import metaAdsConfig from './meta-ads.config';
 import whatsappConfig from './whatsapp.config';
 import authConfig from './auth.config';
+import googleConfig from './google.config';
 
 export const configLoads = [
   appConfig,
@@ -15,6 +16,7 @@ export const configLoads = [
   metaAdsConfig,
   whatsappConfig,
   authConfig,
+  googleConfig,
 ];
 
 export const validationSchema = Joi.object({
@@ -43,4 +45,9 @@ export const validationSchema = Joi.object({
   OPENAI_API_KEY: Joi.string().optional(),
   GEMINI_API_KEY: Joi.string().optional(),
   MANAGERS_GROUP_JID: Joi.string().optional(),
+  GOOGLE_CLIENT_ID: Joi.string().optional(),
+  GOOGLE_CLIENT_SECRET: Joi.string().optional(),
+  GOOGLE_REFRESH_TOKEN: Joi.string().optional(),
+  GOOGLE_DRIVE_ROOT_FOLDER_ID: Joi.string().optional(),
+  MAX_FILE_SIZE_MB: Joi.number().default(500),
 });
