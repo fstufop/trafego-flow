@@ -36,7 +36,7 @@ export class WhatsAppSessionService
     private readonly config: ConfigService,
     private readonly crypto: AesCryptoService,
   ) {
-    this.phoneNumber = this.config.get<string>('whatsapp.dedicatedPhone') ?? '+5531994979486';
+    this.phoneNumber = this.config.get<string>('whatsapp.dedicatedPhone') ?? '';
   }
 
   async onApplicationBootstrap(): Promise<void> {

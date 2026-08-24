@@ -19,6 +19,7 @@ JOB_NAME     = $(PROJECT_ID)-migrate
         build push \
         deploy migrate-create migrate \
         update full-deploy \
+        pause resume \
         logs open
 
 # ── App build and config ──────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ deploy: ## Deploy do serviço no Cloud Run com todas as env vars e secrets
 	  --memory 512Mi \
 	  --min-instances 0 \
 	  --max-instances 2 \
-	  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600,AI_PROVIDER=gemini,AI_MODEL=gemini-3.6-flash \
+	  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600,AI_PROVIDER=gemini,AI_MODEL=gemini-3.6-flash,WHATSAPP_DEDICATED_PHONE=$(WHATSAPP_PHONE) \
 	  --set-secrets DATABASE_URL=DATABASE_URL:latest \
 	  --set-secrets REDIS_URL=REDIS_URL:latest \
 	  --set-secrets MASTER_API_KEY=MASTER_API_KEY:latest \
@@ -136,6 +137,16 @@ update: build push deploy ## Rebuild e redeploy sem migrations
 full-deploy: build push deploy migrate-create migrate ## Deploy completo com migrations
 
 # ── Observabilidade ───────────────────────────────────────────────────────────
+
+pause: ## Tira a API do ar (bloqueia tráfego externo)
+	gcloud run services update $(SERVICE_NAME) \
+	  --region $(REGION) \
+	  --ingress internal
+
+resume: ## Coloca a API de volta no ar
+	gcloud run services update $(SERVICE_NAME) \
+	  --region $(REGION) \
+	  --ingress all
 
 logs: ## Exibe os últimos 50 logs do serviço no Cloud Run
 	gcloud run services logs read $(SERVICE_NAME) --region $(REGION) --limit 50
