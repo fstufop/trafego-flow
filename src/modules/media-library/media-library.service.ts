@@ -1,4 +1,15 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import axios from 'axios';
+
+function formatError(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response) {
+    const metaMsg = err.response.data?.error?.message;
+    const metaCode = err.response.data?.error?.code;
+    if (metaMsg) return `Meta API ${err.response.status}: ${metaMsg}${metaCode ? ` (code ${metaCode})` : ''}`;
+    return `HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`;
+  }
+  return String(err);
+}
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { ClientsService } from '../clients/clients.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
@@ -48,13 +59,13 @@ export class MediaLibraryService {
           result.driveFileId = driveSettled.value.fileId;
           result.driveUrl = driveSettled.value.webViewLink;
         } else {
-          result.errors.push({ destination: 'drive', message: String(driveSettled.reason) });
+          result.errors.push({ destination: 'drive', message: formatError(driveSettled.reason) });
         }
 
         if (metaSettled.status === 'fulfilled') {
           result.metaAssetId = metaSettled.value;
         } else {
-          result.errors.push({ destination: 'meta', message: String(metaSettled.reason) });
+          result.errors.push({ destination: 'meta', message: formatError(metaSettled.reason) });
         }
 
         return result;
