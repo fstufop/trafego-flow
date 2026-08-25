@@ -1,4 +1,5 @@
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export enum MediaIntention {
   PRD = 'PRD',
@@ -21,4 +22,10 @@ export class UploadMediaDto {
   @IsNotEmpty()
   @MaxLength(100)
   productName: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  startVersion?: number;
 }

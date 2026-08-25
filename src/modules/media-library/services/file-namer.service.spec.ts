@@ -51,4 +51,40 @@ describe('FileNamerService', () => {
     const [name] = svc.generateNames([{ originalname: 'f.jpg' }], MediaIntention.PRD, 'Ação & Reação!', date);
     expect(name).toBe('PRD - IMG - Acao  Reacao - Ago 26.jpg');
   });
+
+  describe('startVersion', () => {
+    it('applies version suffix to a single file when startVersion is provided', () => {
+      const [name] = svc.generateNames([{ originalname: 'photo.jpg' }], MediaIntention.PRD, 'Fatima', date, 5);
+      expect(name).toBe('PRD - IMG - Fatima - Ago 26 - V5.jpg');
+    });
+
+    it('starts versioning at startVersion when multiple files share the same base', () => {
+      const names = svc.generateNames(
+        [{ originalname: 'a.jpg' }, { originalname: 'b.jpg' }],
+        MediaIntention.PRD,
+        'Fatima',
+        date,
+        5,
+      );
+      expect(names[0]).toBe('PRD - IMG - Fatima - Ago 26 - V5.jpg');
+      expect(names[1]).toBe('PRD - IMG - Fatima - Ago 26 - V6.jpg');
+    });
+
+    it('applies startVersion independently per base name when files have different types', () => {
+      const names = svc.generateNames(
+        [{ originalname: 'a.jpg' }, { originalname: 'b.mp4' }],
+        MediaIntention.PRD,
+        'Fatima',
+        date,
+        3,
+      );
+      expect(names[0]).toBe('PRD - IMG - Fatima - Ago 26 - V3.jpg');
+      expect(names[1]).toBe('PRD - VID - Fatima - Ago 26 - V3.mp4');
+    });
+
+    it('does not apply version suffix to single file when startVersion is absent', () => {
+      const [name] = svc.generateNames([{ originalname: 'photo.jpg' }], MediaIntention.PRD, 'Fatima', date);
+      expect(name).toBe('PRD - IMG - Fatima - Ago 26.jpg');
+    });
+  });
 });

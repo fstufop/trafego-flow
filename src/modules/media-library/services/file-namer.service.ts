@@ -28,11 +28,11 @@ export class FileNamerService {
     intention: MediaIntention,
     productName: string,
     date = new Date(),
+    startVersion?: number,
   ): string[] {
     const product = sanitize(productName);
     const dateStr = dateSuffix(date);
 
-    // First pass: compute base name and count duplicates
     const entries = files.map((file) => {
       const dotIdx = file.originalname.lastIndexOf('.');
       const ext = dotIdx >= 0 ? file.originalname.slice(dotIdx) : '';
@@ -40,12 +40,20 @@ export class FileNamerService {
       return { base, ext };
     });
 
+    if (startVersion !== undefined) {
+      const baseVersions = new Map<string, number>();
+      return entries.map(({ base, ext }) => {
+        const v = (baseVersions.get(base) ?? startVersion - 1) + 1;
+        baseVersions.set(base, v);
+        return `${base} - V${v}${ext}`;
+      });
+    }
+
     const baseCounts = new Map<string, number>();
     for (const { base } of entries) {
       baseCounts.set(base, (baseCounts.get(base) ?? 0) + 1);
     }
 
-    // Second pass: assign versions only when base appears more than once
     const baseVersions = new Map<string, number>();
     return entries.map(({ base, ext }) => {
       if (baseCounts.get(base)! > 1) {

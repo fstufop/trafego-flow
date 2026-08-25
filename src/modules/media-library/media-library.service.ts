@@ -43,7 +43,7 @@ export class MediaLibraryService {
     }
 
     const accessToken = this.crypto.decrypt(adAccount.accessToken);
-    const fileNames = this.fileNamer.generateNames(files, dto.intention, dto.productName);
+    const fileNames = this.fileNamer.generateNames(files, dto.intention, dto.productName, new Date(), dto.startVersion);
 
     return Promise.all(
       files.map(async (file, i) => {
