@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
 import { createKeyv } from '@keyv/redis';
 import { configLoads, validationSchema } from './config/configuration.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -54,6 +55,20 @@ import { MediaLibraryModule } from './modules/media-library/media-library.module
       }),
     }),
     ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redisUrl = new URL(config.get<string>('redis.url')!);
+        return {
+          connection: {
+            host: redisUrl.hostname,
+            port: Number(redisUrl.port) || 6379,
+            password: redisUrl.password || undefined,
+            maxRetriesPerRequest: null,
+          },
+        };
+      },
+    }),
     AuthModule,
     HealthModule,
     ClientsModule,
