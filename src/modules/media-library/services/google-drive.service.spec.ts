@@ -107,9 +107,28 @@ describe('GoogleDriveService', () => {
       (fs.createWriteStream as jest.Mock).mockReturnValue(writable);
 
       const downloadPromise = svc.download('file-abc', '/tmp/output.mp4');
+      // Emit after microtasks so the Promise callback has wired up the error listener
+      await Promise.resolve();
       writable.emit('error', new Error('disk full'));
 
       await expect(downloadPromise).rejects.toThrow('disk full');
+    });
+
+    it('rejects when source stream emits an error', async () => {
+      const svc = makeSvc();
+      const driveInstance = google.drive({} as any) as any;
+
+      const mockSource = new PassThrough();
+      const mockDest = new PassThrough();
+
+      (driveInstance.files.get as jest.Mock).mockResolvedValue({ data: mockSource });
+      (fs.createWriteStream as jest.Mock).mockReturnValue(mockDest);
+
+      const promise = svc.download('file-id', '/tmp/test-output');
+      // Emit after microtasks so the Promise callback has wired up the error listener
+      await Promise.resolve();
+      mockSource.emit('error', new Error('network failure'));
+      await expect(promise).rejects.toThrow('network failure');
     });
   });
 });

@@ -170,5 +170,25 @@ describe('MediaLibraryService', () => {
       expect(result).toEqual({ retried: 2 });
       expect(queue.add).toHaveBeenCalledTimes(2);
     });
+
+    it('returns partial count when some logs were already retried concurrently', async () => {
+      const failedLogs = [
+        { id: 'log-1', status: MediaUploadStatus.FAILED, attemptCount: 0, adAccountId: 'act_123', driveFileId: 'drv-1', mimeType: 'video/mp4', mediaName: 'PRD - VID - Nike.mp4' },
+        { id: 'log-2', status: MediaUploadStatus.FAILED, attemptCount: 0, adAccountId: 'act_123', driveFileId: 'drv-2', mimeType: 'image/jpeg', mediaName: 'PRD - IMG - Nike.jpg' },
+      ];
+      logsRepo.find.mockResolvedValue(failedLogs);
+      // log-1 was already retried concurrently — now PROCESSING
+      logsRepo.findOneOrFail.mockImplementationOnce(() =>
+        Promise.resolve({ ...failedLogs[0], status: MediaUploadStatus.PROCESSING }),
+      );
+      logsRepo.findOneOrFail.mockImplementationOnce(() =>
+        Promise.resolve(failedLogs[1] as any),
+      );
+      adAccounts.findByAdAccountId.mockResolvedValue(MOCK_AD_ACCOUNT as any);
+      logsRepo.update.mockResolvedValue(undefined);
+
+      const result = await svc.retryFailed('client-1');
+      expect(result).toEqual({ retried: 1 });
+    });
   });
 });

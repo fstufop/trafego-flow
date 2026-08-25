@@ -133,7 +133,8 @@ export class MediaLibraryService {
 
     if (failedLogs.length === 0) return { retried: 0 };
 
-    await Promise.all(failedLogs.map(log => this.retryOne(log.id)));
-    return { retried: failedLogs.length };
+    const results = await Promise.allSettled(failedLogs.map(log => this.retryOne(log.id)));
+    const retried = results.filter(r => r.status === 'fulfilled').length;
+    return { retried };
   }
 }

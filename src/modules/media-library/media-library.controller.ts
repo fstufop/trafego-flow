@@ -13,6 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as os from 'os';
+import * as fs from 'fs';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { MediaLibraryService } from './media-library.service.js';
@@ -69,7 +70,11 @@ export class MediaLibraryController {
     if (adAccount.clientId !== dto.clientId) {
       throw new ForbiddenException('Ad account does not belong to the specified client');
     }
-    return this.service.upload(dto, file);
+    try {
+      return await this.service.upload(dto, file);
+    } finally {
+      fs.unlink(file.path, () => {});
+    }
   }
 
   @Get('logs')
