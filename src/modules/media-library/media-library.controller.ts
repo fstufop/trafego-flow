@@ -2,12 +2,15 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
+  Param,
   Post,
-  UploadedFiles,
+  Query,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -15,6 +18,8 @@ import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiSecurity, ApiTags } from '
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { MediaLibraryService } from './media-library.service.js';
 import { UploadMediaDto } from './dto/upload-media.dto.js';
+import { GetLogsQueryDto } from './dto/get-logs-query.dto.js';
+import { RetryFailedDto } from './dto/retry-failed.dto.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 
 const ACCEPTED_MIMES = new Set([
@@ -25,7 +30,6 @@ const ACCEPTED_MIMES = new Set([
   'video/quicktime',
 ]);
 
-// Evaluated at class definition time — read env directly
 const MAX_FILE_SIZE_BYTES = (parseInt(process.env.MAX_FILE_SIZE_MB ?? '500', 10)) * 1024 * 1024;
 
 @ApiTags('media-library')
@@ -40,10 +44,10 @@ export class MediaLibraryController {
   ) {}
 
   @Post('upload')
-  @ApiOperation({ summary: 'Upload media files to Google Drive and Meta Ads Manager' })
+  @ApiOperation({ summary: 'Upload one media file to Google Drive and queue Meta Ads upload' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FilesInterceptor('files', 20, {
+    FileInterceptor('file', {
       storage: diskStorage({
         destination: os.tmpdir(),
         filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
@@ -60,19 +64,36 @@ export class MediaLibraryController {
   )
   async upload(
     @Body() dto: UploadMediaDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFile() file: Express.Multer.File,
   ) {
     const adAccount = await this.adAccounts.findByAdAccountId(dto.adAccountId);
     if (adAccount.clientId !== dto.clientId) {
       throw new ForbiddenException('Ad account does not belong to the specified client');
     }
-
     try {
-      return await this.service.upload(dto, files);
+      return await this.service.upload(dto, file);
     } finally {
-      for (const file of files) {
-        fs.unlink(file.path, () => {});
-      }
+      fs.unlink(file.path, () => {});
     }
+  }
+
+  @Get('logs')
+  @ApiOperation({ summary: 'List upload history for a client' })
+  async getLogs(@Query() query: GetLogsQueryDto) {
+    return this.service.getLogs(query.clientId, query.page, query.limit);
+  }
+
+  // NOTE: this route must be declared BEFORE logs/:id/retry to avoid
+  // 'retry-failed' being matched as the :id param
+  @Post('logs/retry-failed')
+  @ApiOperation({ summary: 'Re-enqueue all failed uploads for a client' })
+  async retryFailed(@Body() dto: RetryFailedDto) {
+    return this.service.retryFailed(dto.clientId);
+  }
+
+  @Post('logs/:id/retry')
+  @ApiOperation({ summary: 'Re-enqueue a single failed upload' })
+  async retryOne(@Param('id') id: string) {
+    return this.service.retryOne(id);
   }
 }

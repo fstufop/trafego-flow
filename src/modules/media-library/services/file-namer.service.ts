@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Like, MoreThanOrEqual } from 'typeorm';
 import { MediaIntention } from '../dto/upload-media.dto.js';
+import { MediaUploadLog } from '../entities/media-upload-log.entity.js';
 
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm']);
-
 const PT_MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 function mediaType(ext: string): 'VID' | 'IMG' {
@@ -23,45 +25,40 @@ function dateSuffix(date: Date): string {
 
 @Injectable()
 export class FileNamerService {
-  generateNames(
-    files: { originalname: string }[],
+  constructor(
+    @InjectRepository(MediaUploadLog)
+    private readonly logsRepo: Repository<MediaUploadLog>,
+  ) {}
+
+  async generateName(
+    file: { originalname: string },
     intention: MediaIntention,
     productName: string,
+    clientId: string,
     date = new Date(),
     startVersion?: number,
-  ): string[] {
+  ): Promise<string> {
+    const dotIdx = file.originalname.lastIndexOf('.');
+    const ext = dotIdx >= 0 ? file.originalname.slice(dotIdx) : '';
     const product = sanitize(productName);
     const dateStr = dateSuffix(date);
-
-    const entries = files.map((file) => {
-      const dotIdx = file.originalname.lastIndexOf('.');
-      const ext = dotIdx >= 0 ? file.originalname.slice(dotIdx) : '';
-      const base = `${intention} - ${mediaType(ext)} - ${product} - ${dateStr}`;
-      return { base, ext };
-    });
+    const base = `${intention} - ${mediaType(ext)} - ${product} - ${dateStr}`;
 
     if (startVersion !== undefined) {
-      const baseVersions = new Map<string, number>();
-      return entries.map(({ base, ext }) => {
-        const v = (baseVersions.get(base) ?? startVersion - 1) + 1;
-        baseVersions.set(base, v);
-        return `${base} - V${v}${ext}`;
-      });
+      return `${base} - V${startVersion}${ext}`;
     }
 
-    const baseCounts = new Map<string, number>();
-    for (const { base } of entries) {
-      baseCounts.set(base, (baseCounts.get(base) ?? 0) + 1);
-    }
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
 
-    const baseVersions = new Map<string, number>();
-    return entries.map(({ base, ext }) => {
-      if (baseCounts.get(base)! > 1) {
-        const v = (baseVersions.get(base) ?? 0) + 1;
-        baseVersions.set(base, v);
-        return `${base} - V${v}${ext}`;
-      }
-      return `${base}${ext}`;
+    const count = await this.logsRepo.count({
+      where: {
+        clientId,
+        mediaName: Like(`${base}%`),
+        createdAt: MoreThanOrEqual(startOfDay),
+      },
     });
+
+    return count === 0 ? `${base}${ext}` : `${base} - V${count + 1}${ext}`;
   }
 }

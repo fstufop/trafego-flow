@@ -54,4 +54,17 @@ export class GoogleDriveService {
       webViewLink: response.data.webViewLink!,
     };
   }
+
+  async download(fileId: string, destPath: string): Promise<void> {
+    const response = await this.drive.files.get(
+      { fileId, alt: 'media', supportsAllDrives: true },
+      { responseType: 'stream' },
+    );
+    return new Promise<void>((resolve, reject) => {
+      const dest = fs.createWriteStream(destPath);
+      dest.on('error', reject);
+      (response.data as NodeJS.ReadableStream).on('error', reject);
+      (response.data as NodeJS.ReadableStream).pipe(dest).on('finish', resolve);
+    });
+  }
 }
