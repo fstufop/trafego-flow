@@ -29,7 +29,7 @@ export class MediaUploadLog extends BaseEntity {
   @Column({ name: 'drive_url' })
   driveUrl: string;
 
-  @Column({ name: 'meta_asset_id', nullable: true, default: null })
+  @Column({ name: 'meta_asset_id', type: 'varchar', nullable: true, default: null })
   metaAssetId: string | null;
 
   @Column({ name: 'error_message', type: 'text', nullable: true, default: null })
