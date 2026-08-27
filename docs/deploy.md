@@ -69,7 +69,14 @@ echo -n "seu-valor"        | gcloud secrets create MASTER_API_KEY --data-file=-
 echo -n "64-chars-hex"     | gcloud secrets create ENCRYPTION_KEY --data-file=-
 echo -n "seu-valor"        | gcloud secrets create META_APP_SECRET --data-file=-
 echo -n "seu-valor"        | gcloud secrets create META_VERIFY_TOKEN --data-file=-
+echo -n "GOCSPX-..."       | gcloud secrets create GOOGLE_CLIENT_SECRET --data-file=-
+echo -n "1//04..."         | gcloud secrets create GOOGLE_REFRESH_TOKEN --data-file=-
+echo -n "64-chars-hex"     | gcloud secrets create JWT_SECRET --data-file=-
+echo -n "EAAOPT3..."       | gcloud secrets create META_SYSTEM_USER_TOKEN --data-file=-
+echo -n "AQ.Ab8..."        | gcloud secrets create GEMINI_API_KEY --data-file=-
 ```
+
+> Valores não sensíveis (`GOOGLE_CLIENT_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, `AI_PROVIDER`, `AI_MODEL`, `META_APP_ID`, `WHATSAPP_DEDICATED_PHONE`, `MANAGERS_GROUP_JID`, `MAX_FILE_SIZE_MB`) vão em `--set-env-vars` no deploy — sem custo de Secret Manager.
 
 ### Atualizar um secret existente
 
@@ -118,13 +125,17 @@ gcloud run deploy trafegoflow \
   --memory 512Mi \
   --min-instances 0 \
   --max-instances 2 \
-  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600 \
+  --set-env-vars "^|^NODE_ENV=production|META_GRAPH_API_URL=https://graph.facebook.com|META_GRAPH_API_VERSION=v21.0|META_ADS_API_VERSION=v21.0|META_APP_ID=1001996369089789|INSIGHTS_CACHE_TTL_SECONDS=300|CACHE_TTL_SECONDS=3600|AI_PROVIDER=gemini|AI_MODEL=gemini-3.6-flash|MANAGERS_GROUP_JID=120363428387791834@g.us|MAX_FILE_SIZE_MB=500|GOOGLE_CLIENT_ID=347462891215-57odjsuomss675lprumaolf7npbqrie5.apps.googleusercontent.com|GOOGLE_DRIVE_ROOT_FOLDER_ID=1OL-Y2uLn6jGdedsYRp7mMqu8N1dcAcY6" \
   --set-secrets DATABASE_URL=DATABASE_URL:latest \
   --set-secrets REDIS_URL=REDIS_URL:latest \
   --set-secrets MASTER_API_KEY=MASTER_API_KEY:latest \
   --set-secrets ENCRYPTION_KEY=ENCRYPTION_KEY:latest \
+  --set-secrets JWT_SECRET=JWT_SECRET:latest \
   --set-secrets META_APP_SECRET=META_APP_SECRET:latest \
-  --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest
+  --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest \
+  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
+  --set-secrets GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest \
+  --set-secrets GOOGLE_REFRESH_TOKEN=GOOGLE_REFRESH_TOKEN:latest
 ```
 
 Ao final, o GCP exibirá a URL pública da aplicação, ex: `https://trafegoflow-xxx-rj.a.run.app`
