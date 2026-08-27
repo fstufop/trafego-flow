@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, FindOptionsWhere, ILike, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as fs from 'fs';
@@ -87,9 +87,29 @@ export class MediaLibraryService {
     return { logId: log.id, mediaName, driveUrl, status: MediaUploadStatus.PROCESSING };
   }
 
-  async getLogs(clientId: string, page: number, limit: number): Promise<PaginatedLogs> {
+  async getLogs(
+    clientId: string,
+    page: number,
+    limit: number,
+    status?: MediaUploadStatus,
+    startDate?: string,
+    endDate?: string,
+    mediaName?: string,
+  ): Promise<PaginatedLogs> {
+    const where: FindOptionsWhere<MediaUploadLog> = { clientId };
+
+    if (status) where.status = status;
+    if (mediaName) where.mediaName = ILike(`%${mediaName}%`);
+    if (startDate && endDate) {
+      where.createdAt = Between(new Date(startDate), new Date(endDate + 'T23:59:59.999Z'));
+    } else if (startDate) {
+      where.createdAt = MoreThanOrEqual(new Date(startDate));
+    } else if (endDate) {
+      where.createdAt = LessThanOrEqual(new Date(endDate + 'T23:59:59.999Z'));
+    }
+
     const [data, total] = await this.logsRepo.findAndCount({
-      where: { clientId },
+      where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

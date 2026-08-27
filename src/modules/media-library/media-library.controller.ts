@@ -80,7 +80,15 @@ export class MediaLibraryController {
   @Get('logs')
   @ApiOperation({ summary: 'List upload history for a client' })
   async getLogs(@Query() query: GetLogsQueryDto) {
-    return this.service.getLogs(query.clientId, query.page, query.limit);
+    return this.service.getLogs(
+      query.clientId,
+      query.page,
+      query.limit,
+      query.status,
+      query.startDate,
+      query.endDate,
+      query.mediaName,
+    );
   }
 
   // NOTE: this route must be declared BEFORE logs/:id/retry to avoid

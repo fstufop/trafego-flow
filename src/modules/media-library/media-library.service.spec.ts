@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
+import { Between, ILike, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { MediaLibraryService } from './media-library.service.js';
 import { MediaUploadLog } from './entities/media-upload-log.entity.js';
 import { MediaUploadStatus } from './enums/media-upload-status.enum.js';
@@ -108,6 +109,65 @@ describe('MediaLibraryService', () => {
       logsRepo.findAndCount.mockResolvedValue([[mockLog], 1]);
       const result = await svc.getLogs('client-1', 1, 20);
       expect(result).toEqual({ data: [mockLog], total: 1, page: 1, limit: 20 });
+    });
+
+    it('passes status filter in WHERE clause', async () => {
+      logsRepo.findAndCount.mockResolvedValue([[], 0]);
+      await svc.getLogs('client-1', 1, 20, MediaUploadStatus.FAILED);
+      expect(logsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: MediaUploadStatus.FAILED }),
+        }),
+      );
+    });
+
+    it('passes mediaName as ILike substring match', async () => {
+      logsRepo.findAndCount.mockResolvedValue([[], 0]);
+      await svc.getLogs('client-1', 1, 20, undefined, undefined, undefined, 'banner');
+      expect(logsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ mediaName: ILike('%banner%') }),
+        }),
+      );
+    });
+
+    it('uses Between when both startDate and endDate are provided', async () => {
+      logsRepo.findAndCount.mockResolvedValue([[], 0]);
+      await svc.getLogs('client-1', 1, 20, undefined, '2026-08-01', '2026-08-25');
+      expect(logsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: Between(
+              new Date('2026-08-01'),
+              new Date('2026-08-25T23:59:59.999Z'),
+            ),
+          }),
+        }),
+      );
+    });
+
+    it('uses MoreThanOrEqual when only startDate is provided', async () => {
+      logsRepo.findAndCount.mockResolvedValue([[], 0]);
+      await svc.getLogs('client-1', 1, 20, undefined, '2026-08-01');
+      expect(logsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: MoreThanOrEqual(new Date('2026-08-01')),
+          }),
+        }),
+      );
+    });
+
+    it('uses LessThanOrEqual when only endDate is provided', async () => {
+      logsRepo.findAndCount.mockResolvedValue([[], 0]);
+      await svc.getLogs('client-1', 1, 20, undefined, undefined, '2026-08-25');
+      expect(logsRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: LessThanOrEqual(new Date('2026-08-25T23:59:59.999Z')),
+          }),
+        }),
+      );
     });
   });
 
