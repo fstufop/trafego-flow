@@ -7,6 +7,7 @@ export interface InstagramEntry {
   id: string;
   time: number;
   messaging?: InstagramMessagingEvent[];
+  changes?: InstagramCommentChangeEvent[];
 }
 
 export interface InstagramMessagingEvent {
@@ -21,4 +22,16 @@ export interface InstagramMessagingEvent {
 export interface InstagramAttachment {
   type: string;
   payload: { url?: string };
+}
+
+export interface InstagramCommentChangeEvent {
+  field: 'comments';
+  value: {
+    from: { id: string; name: string };
+    post_id: string;
+    comment_id: string;
+    message: string;
+    item: 'comment';
+    verb: 'add' | 'edited' | 'remove';
+  };
 }

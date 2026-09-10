@@ -1,9 +1,9 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { IntegrationsService } from '../../integrations/integrations.service.js';
+import { ConversationBotService } from './conversation-bot.service.js';
 import {
-  InstagramMessagingEvent,
+  InstagramEntry,
   InstagramWebhookPayload,
 } from './interfaces/instagram-webhook-event.interface.js';
 
@@ -13,7 +13,7 @@ export class InstagramWebhookService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly integrationsService: IntegrationsService,
+    private readonly botService: ConversationBotService,
   ) {}
 
   verifyWebhook(mode: string, token: string, challenge: string): string {
@@ -23,22 +23,33 @@ export class InstagramWebhookService {
     return challenge;
   }
 
-  async handleEvent(
+  handleEvent(
     payload: InstagramWebhookPayload,
     rawBody: Buffer,
     signature: string,
-  ): Promise<void> {
+  ): void {
     this.validateSignature(rawBody, signature);
+    setImmediate(() => this.dispatchEvents(payload));
+  }
 
+  private dispatchEvents(payload: InstagramWebhookPayload): void {
     for (const entry of payload.entry) {
-      for (const event of entry.messaging ?? []) {
-        await this.processEvent(entry.id, event).catch((err: Error) => {
-          // pageId desconhecido ou inativo — descarta silenciosamente para não gerar erro ao Meta
-          this.logger.warn(
-            `Skipping event for pageId ${entry.id}: ${err.message}`,
-          );
-        });
-      }
+      this.dispatchEntry(entry);
+    }
+  }
+
+  private dispatchEntry(entry: InstagramEntry): void {
+    for (const event of entry.messaging ?? []) {
+      this.botService
+        .handleDm(entry.id, event.sender.id, event.message?.text)
+        .catch((err: Error) => this.logger.warn(`handleDm error pageId=${entry.id}: ${err.message}`));
+    }
+
+    for (const change of entry.changes ?? []) {
+      if (change.field !== 'comments' || change.value.verb !== 'add') continue;
+      this.botService
+        .handleComment(entry.id, change.value.post_id, change.value.from.id)
+        .catch((err: Error) => this.logger.warn(`handleComment error pageId=${entry.id}: ${err.message}`));
     }
   }
 
@@ -48,7 +59,6 @@ export class InstagramWebhookService {
     const expectedHeader = `sha256=${expected}`;
     const receivedHeader = signature ?? '';
 
-    // timingSafeEqual exige buffers do mesmo tamanho
     if (expectedHeader.length !== receivedHeader.length) {
       throw new ForbiddenException('Invalid webhook signature');
     }
@@ -58,17 +68,5 @@ export class InstagramWebhookService {
       Buffer.from(receivedHeader),
     );
     if (!safe) throw new ForbiddenException('Invalid webhook signature');
-  }
-
-  private async processEvent(pageId: string, event: InstagramMessagingEvent): Promise<void> {
-    const integration = await this.integrationsService.findByPageId(pageId);
-    if (!integration.isActive) return;
-
-    // Fase 1: identificar client e logar evento estruturado
-    // Módulo conversations/bot vai processar a lógica de triagem
-    this.logger.log(
-      `[client:${integration.clientId}] event from igsid:${event.sender.id} — ` +
-        `text="${event.message?.text ?? '[no-text]'}"`,
-    );
   }
 }
