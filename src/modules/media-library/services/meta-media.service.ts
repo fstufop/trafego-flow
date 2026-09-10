@@ -81,6 +81,7 @@ export class MetaMediaService {
 
     const form = new FormData();
     form.append('access_token', accessToken);
+    form.append('name', fileName);
     form.append('source', blob, fileName);
 
     const response = await axios.post(url, form);

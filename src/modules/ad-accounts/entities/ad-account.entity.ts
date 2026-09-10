@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
-import { Exclude } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import { BaseEntity } from '../../../common/database/base.entity.js';
 import { ClientEntity } from '../../clients/entities/client.entity.js';
 
@@ -21,6 +21,11 @@ export class AdAccountEntity extends BaseEntity {
   @Exclude()
   @Column({ name: 'access_token', type: 'text' })
   accessToken: string;
+
+  @Expose()
+  get hasToken(): boolean {
+    return !!this.accessToken;
+  }
 
   @Column({ name: 'token_expires_at', type: 'timestamptz', nullable: true })
   tokenExpiresAt: Date | null;

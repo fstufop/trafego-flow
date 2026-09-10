@@ -36,18 +36,18 @@ export class ClientsService implements IClientsService {
     if (billing) {
       await this.billingRepo.save(this.billingRepo.create({ ...billing, clientId: client.id }));
     }
-    return this.repo.findOne({ where: { id: client.id }, relations: { billing: true } }) as Promise<ClientEntity>;
+    return this.repo.findOne({ where: { id: client.id }, relations: { billings: true } }) as Promise<ClientEntity>;
   }
 
   findAll(): Promise<ClientEntity[]> {
-    return this.repo.find({ where: { isActive: true }, relations: { billing: true } });
+    return this.repo.find({ where: { isActive: true }, relations: { billings: true } });
   }
 
   async findOne(id: string): Promise<ClientEntity> {
     const cached = await this.cache.get<ClientEntity>(cacheKey(id));
     if (cached) return cached;
 
-    const client = await this.repo.findOne({ where: { id }, relations: { billing: true } });
+    const client = await this.repo.findOne({ where: { id }, relations: { billings: true } });
     if (!client) throw new NotFoundException(`Client ${id} not found`);
 
     await this.cache.set(cacheKey(id), client);
@@ -64,10 +64,10 @@ export class ClientsService implements IClientsService {
       if (existing) {
         await this.billingRepo.save({ ...existing, ...billing });
       } else {
-        const { type, paymentMethod, dueDay, status } = billing;
-        if (!type || !paymentMethod || dueDay == null || !status) {
+        const { startDate, durationMonths, paymentMethod, dueDay, contractStatus } = billing;
+        if (!startDate || !durationMonths || !paymentMethod || dueDay == null || !contractStatus) {
           throw new BadRequestException(
-            'Cannot create billing with partial data — provide type, paymentMethod, dueDay and status',
+            'Cannot create billing with partial data — provide startDate, durationMonths, paymentMethod, dueDay and contractStatus',
           );
         }
         await this.billingRepo.save(
@@ -77,7 +77,7 @@ export class ClientsService implements IClientsService {
     }
 
     await this.cache.del(cacheKey(id));
-    return this.repo.findOne({ where: { id }, relations: { billing: true } }) as Promise<ClientEntity>;
+    return this.repo.findOne({ where: { id }, relations: { billings: true } }) as Promise<ClientEntity>;
   }
 
   async remove(id: string): Promise<void> {
