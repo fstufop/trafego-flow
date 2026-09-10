@@ -2,12 +2,9 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/database/base.entity.js';
 import { ClientEntity } from '../../clients/entities/client.entity.js';
 import { RuleType } from '../enums/rule-type.enum.js';
+import type { ConversationReply } from '../interfaces/conversation-reply.interface.js';
 
-export interface ConversationReply {
-  text?: string;
-  quickReplies?: string[];
-  waLink?: string;
-}
+export type { ConversationReply };
 
 @Entity('conversation_rules')
 export class ConversationRuleEntity extends BaseEntity {

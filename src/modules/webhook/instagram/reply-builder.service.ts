@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConversationReply } from '../../conversation-rules/entities/conversation-rule.entity.js';
+import { ConversationReply } from '../../conversation-rules/interfaces/conversation-reply.interface.js';
 import { InstagramGraphService } from './instagram-graph.service.js';
 
 @Injectable()

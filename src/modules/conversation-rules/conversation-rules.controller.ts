@@ -49,14 +49,23 @@ export class ConversationRulesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar regra (reply, isActive, triggerValue)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateConversationRuleDto) {
-    return this.rulesService.update(id, dto);
+  @ApiQuery({ name: 'clientId', required: true, type: String })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('clientId', ParseUUIDPipe) clientId: string,
+    @Body() dto: UpdateConversationRuleDto,
+  ) {
+    return this.rulesService.update(id, clientId, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remover regra (soft delete)' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.rulesService.remove(id);
+  @ApiQuery({ name: 'clientId', required: true, type: String })
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('clientId', ParseUUIDPipe) clientId: string,
+  ) {
+    return this.rulesService.remove(id, clientId);
   }
 }

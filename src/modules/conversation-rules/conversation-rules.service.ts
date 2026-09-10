@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
@@ -8,6 +8,7 @@ import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
 import { RuleType } from './enums/rule-type.enum.js';
 import { CreateConversationRuleDto } from './dto/create-conversation-rule.dto.js';
 import { UpdateConversationRuleDto } from './dto/update-conversation-rule.dto.js';
+import { ConversationReply } from './interfaces/conversation-reply.interface.js';
 import { IntegrationsService } from '../integrations/integrations.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 
@@ -23,6 +24,8 @@ export class ConversationRulesService {
   ) {}
 
   async create(dto: CreateConversationRuleDto): Promise<ConversationRuleEntity> {
+    this.assertReplyNotEmpty(dto.reply);
+
     const triggerValue = dto.type === RuleType.DEFAULT ? null : (dto.triggerValue ?? null);
 
     const existing = await this.repo.findOne({
@@ -50,12 +53,16 @@ export class ConversationRulesService {
     });
   }
 
-  async update(id: string, dto: UpdateConversationRuleDto): Promise<ConversationRuleEntity> {
-    const rule = await this.repo.findOneByOrFail({ id });
+  async update(id: string, clientId: string, dto: UpdateConversationRuleDto): Promise<ConversationRuleEntity> {
+    if (dto.reply) this.assertReplyNotEmpty(dto.reply);
+    const rule = await this.repo.findOne({ where: { id, clientId } });
+    if (!rule) throw new NotFoundException(`Rule ${id} not found for this client`);
     return this.repo.save({ ...rule, ...dto });
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, clientId: string): Promise<void> {
+    const rule = await this.repo.findOne({ where: { id, clientId } });
+    if (!rule) throw new NotFoundException(`Rule ${id} not found for this client`);
     await this.repo.softDelete(id);
   }
 
@@ -91,5 +98,11 @@ export class ConversationRulesService {
       }),
     );
     return (resp.data as { data?: Array<{ id: string; caption: string | null; timestamp: string; permalink: string }> }).data ?? [];
+  }
+
+  private assertReplyNotEmpty(reply: ConversationReply): void {
+    if (!reply.text && !reply.quickReplies?.length && !reply.waLink) {
+      throw new BadRequestException('reply must have at least one of: text, quickReplies, waLink');
+    }
   }
 }

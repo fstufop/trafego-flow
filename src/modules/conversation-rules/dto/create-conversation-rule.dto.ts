@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   IsUrl,
+  Matches,
   MaxLength,
   ValidateIf,
   ValidateNested,
@@ -27,7 +28,8 @@ export class ConversationReplyDto {
   quickReplies?: string[];
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['https'] })
+  @Matches(/^https:\/\/wa\.me\//, { message: 'waLink must be a valid wa.me URL (https://wa.me/...)' })
   waLink?: string;
 }
 

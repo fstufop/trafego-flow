@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { of } from 'rxjs';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
@@ -16,7 +16,6 @@ const mockRepo = {
   create: jest.fn(),
   save: jest.fn(),
   softDelete: jest.fn(),
-  findOneByOrFail: jest.fn(),
 };
 
 const mockIntegrationsService = {
@@ -82,6 +81,47 @@ describe('ConversationRulesService', () => {
       expect(mockRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ triggerValue: null }),
       );
+    });
+
+    it('should throw BadRequestException when reply has no fields', async () => {
+      await expect(
+        service.create({ clientId: 'c1', type: RuleType.DEFAULT, reply: {} } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('update', () => {
+    it('should throw NotFoundException when rule does not belong to client', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(service.update('rule-id', 'wrong-client', { isActive: false })).rejects.toThrow(NotFoundException);
+    });
+
+    it('should update rule when rule belongs to client', async () => {
+      const rule = { id: 'rule-id', clientId: 'c1', isActive: true };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.save.mockResolvedValue({ ...rule, isActive: false });
+      const result = await service.update('rule-id', 'c1', { isActive: false });
+      expect(result.isActive).toBe(false);
+    });
+
+    it('should throw BadRequestException when updating with empty reply', async () => {
+      const rule = { id: 'rule-id', clientId: 'c1' };
+      mockRepo.findOne.mockResolvedValue(rule);
+      await expect(service.update('rule-id', 'c1', { reply: {} } as any)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('remove', () => {
+    it('should throw NotFoundException when rule does not belong to client', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(service.remove('rule-id', 'wrong-client')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should soft-delete rule when it belongs to client', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'rule-id', clientId: 'c1' });
+      mockRepo.softDelete.mockResolvedValue(undefined);
+      await expect(service.remove('rule-id', 'c1')).resolves.toBeUndefined();
+      expect(mockRepo.softDelete).toHaveBeenCalledWith('rule-id');
     });
   });
 
