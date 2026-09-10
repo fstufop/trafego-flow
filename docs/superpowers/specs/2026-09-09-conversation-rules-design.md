@@ -237,11 +237,50 @@ Processar apenas quando `verb === 'add'` (ignora edições e remoções).
 
 ---
 
+## Endpoint auxiliar — listar posts do Instagram
+
+Para facilitar a criação de regras `post_comment`, o módulo expõe um endpoint que lista as mídias recentes da página via Graph API:
+
+```
+GET /conversation-rules/posts?clientId=uuid&pageId=123456789
+```
+
+Internamente chama `GET /{ig-user-id}/media?fields=id,caption,timestamp,permalink` usando o token da integração do client. Retorna:
+
+```json
+[
+  {
+    "id": "17841400000000000",
+    "caption": "Novo produto disponível! 🔥",
+    "timestamp": "2026-09-01T12:00:00Z",
+    "permalink": "https://www.instagram.com/p/ABC123/"
+  }
+]
+```
+
+O campo `id` é o valor a usar como `triggerValue` ao criar uma regra `post_comment`.
+
+---
+
+## Configuração de webhook no Meta (passo de deploy)
+
+Esta etapa é feita **uma única vez** no painel de desenvolvedores, não pelo código:
+
+1. Acesse [developers.facebook.com](https://developers.facebook.com) → seu App → **API do Instagram → Webhooks**
+2. Em **"URL de callback"**, insira: `https://seu-dominio.com/webhook/instagram`
+3. Em **"Verificar token"**, insira o valor de `META_VERIFY_TOKEN` do `.env`
+4. Clique em **"Verificar e salvar"** — o Meta chama `GET /webhook/instagram` para confirmar
+5. Após salvar, na linha **`comments`**, ative o toggle da coluna **"Assinar"**
+
+> Em desenvolvimento, use ngrok para expor o servidor: `ngrok http 3002`
+
+O campo `messages` (DMs) deve já estar assinado para o webhook existente funcionar. O campo `comments` é o que habilita o recebimento de eventos de comentários em posts.
+
+---
+
 ## Variáveis de ambiente
 
 Nenhuma nova — usa as existentes (`META_GRAPH_API_URL`, `META_GRAPH_API_VERSION`, `ENCRYPTION_KEY`).
-
-A subscription de `comments` no webhook Meta deve ser habilitada manualmente no painel de desenvolvedores do Facebook (campo `comments` na aba Webhooks do App).
 
 ---
 
