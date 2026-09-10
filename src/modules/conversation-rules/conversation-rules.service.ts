@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -26,7 +26,11 @@ export class ConversationRulesService {
     const triggerValue = dto.type === RuleType.DEFAULT ? null : (dto.triggerValue ?? null);
 
     const existing = await this.repo.findOne({
-      where: { clientId: dto.clientId, type: dto.type, triggerValue },
+      where: {
+        clientId: dto.clientId,
+        type: dto.type,
+        triggerValue: triggerValue === null ? IsNull() : triggerValue,
+      },
     });
     if (existing) {
       throw new ConflictException(
