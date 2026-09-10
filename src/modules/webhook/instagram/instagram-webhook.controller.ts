@@ -25,9 +25,9 @@ export class InstagramWebhookController {
     @Body() payload: object,
     @Req() req: object,
     @Headers('x-hub-signature-256') signature: string,
-  ): Promise<void> {
+  ): void {
     const webhookPayload = payload as InstagramWebhookPayload;
     const rawBody = (req as { rawBody: Buffer }).rawBody;
-    return this.webhookService.handleEvent(webhookPayload, rawBody, signature);
+    this.webhookService.handleEvent(webhookPayload, rawBody, signature);
   }
 }

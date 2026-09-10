@@ -22,6 +22,7 @@ import { ReportDispatchesModule } from './modules/report-dispatches/report-dispa
 import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
 import { AdsetAlertsModule } from './modules/adset-alerts/adset-alerts.module.js';
 import { MediaLibraryModule } from './modules/media-library/media-library.module.js';
+import { ConversationRulesModule } from './modules/conversation-rules/conversation-rules.module.js';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { MediaLibraryModule } from './modules/media-library/media-library.module
     AlertJobsModule,
     AdsetAlertsModule,
     MediaLibraryModule,
+    ConversationRulesModule,
   ],
 })
 export class AppModule implements NestModule {
