@@ -55,6 +55,20 @@ export class GoogleDriveService {
     };
   }
 
+  async createFolder(name: string): Promise<string> {
+    const rootFolderId = this.config.get<string>('google.driveRootFolderId');
+    const response = await this.drive.files.create({
+      requestBody: {
+        name,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: rootFolderId ? [rootFolderId] : [],
+      },
+      fields: 'webViewLink',
+      supportsAllDrives: true,
+    });
+    return response.data.webViewLink!;
+  }
+
   async download(fileId: string, destPath: string): Promise<void> {
     const response = await this.drive.files.get(
       { fileId, alt: 'media', supportsAllDrives: true },

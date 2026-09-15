@@ -74,6 +74,29 @@ describe('GoogleDriveService', () => {
     });
   });
 
+  describe('createFolder', () => {
+    it('creates a folder under driveRootFolderId and returns its webViewLink', async () => {
+      const svc = makeSvc();
+      const driveInstance = google.drive({} as any) as any;
+      (driveInstance.files.create as jest.Mock).mockResolvedValue({
+        data: { webViewLink: 'https://drive.google.com/drive/folders/newFolder123' },
+      });
+
+      const url = await svc.createFolder('Cliente ABC');
+
+      expect(driveInstance.files.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestBody: expect.objectContaining({
+            name: 'Cliente ABC',
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: ['val'],
+          }),
+        }),
+      );
+      expect(url).toBe('https://drive.google.com/drive/folders/newFolder123');
+    });
+  });
+
   describe('download', () => {
     it('fetches file from Drive via alt=media and pipes to destPath', async () => {
       const svc = makeSvc();

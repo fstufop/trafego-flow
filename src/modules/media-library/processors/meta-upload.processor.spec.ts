@@ -16,7 +16,7 @@ import { MetaUploadProcessor } from './meta-upload.processor.js';
 import { MediaUploadLog } from '../entities/media-upload-log.entity.js';
 import { MediaUploadStatus } from '../enums/media-upload-status.enum.js';
 import { MetaMediaService } from '../services/meta-media.service.js';
-import { GoogleDriveService } from '../services/google-drive.service.js';
+import { GoogleDriveService } from '../../google-drive/google-drive.service.js';
 import { AesCryptoService } from '../../../common/crypto/aes.service.js';
 import { MetaUploadJobPayload } from '../types/meta-upload-job.type.js';
 

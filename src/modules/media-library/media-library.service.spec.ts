@@ -10,7 +10,7 @@ import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { ClientsService } from '../clients/clients.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { FileNamerService } from './services/file-namer.service.js';
-import { GoogleDriveService } from './services/google-drive.service.js';
+import { GoogleDriveService } from '../google-drive/google-drive.service.js';
 import { MediaIntention } from './dto/upload-media.dto.js';
 
 const MOCK_AD_ACCOUNT = { id: 'aa-1', clientId: 'client-1', adAccountId: 'act_123', accessToken: 'enc_tok' };

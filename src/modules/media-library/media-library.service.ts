@@ -8,7 +8,7 @@ import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { ClientsService } from '../clients/clients.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { FileNamerService } from './services/file-namer.service.js';
-import { GoogleDriveService } from './services/google-drive.service.js';
+import { GoogleDriveService } from '../google-drive/google-drive.service.js';
 import { UploadMediaDto } from './dto/upload-media.dto.js';
 import { MediaUploadLog } from './entities/media-upload-log.entity.js';
 import { MediaUploadStatus } from './enums/media-upload-status.enum.js';

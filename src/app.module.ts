@@ -21,6 +21,7 @@ import { AiModule } from './modules/ai/ai.module.js';
 import { ReportDispatchesModule } from './modules/report-dispatches/report-dispatches.module.js';
 import { AlertJobsModule } from './modules/alert-jobs/alert-jobs.module.js';
 import { AdsetAlertsModule } from './modules/adset-alerts/adset-alerts.module.js';
+import { GoogleDriveModule } from './modules/google-drive/google-drive.module.js';
 import { MediaLibraryModule } from './modules/media-library/media-library.module.js';
 import { ConversationRulesModule } from './modules/conversation-rules/conversation-rules.module.js';
 
@@ -84,6 +85,7 @@ import { ConversationRulesModule } from './modules/conversation-rules/conversati
     ReportDispatchesModule,
     AlertJobsModule,
     AdsetAlertsModule,
+    GoogleDriveModule,
     MediaLibraryModule,
     ConversationRulesModule,
   ],
