@@ -153,3 +153,110 @@ describe('buildUserMessage — LIVE_SALES', () => {
     expect(msg).not.toContain('Funil de Vendas');
   });
 });
+
+describe('buildUserMessage — MESSAGE_SALES', () => {
+  const messageSalesPayload: AiReportPayload = {
+    ...basePayload,
+    clientProfile: ClientProfileType.MESSAGE_SALES,
+    current: { ...baseInsights, messagesStarted: 150, spend: 750 },
+  };
+
+  it('exibe tabela por adset quando adsetRows está presente', () => {
+    const payload: AiReportPayload = {
+      ...messageSalesPayload,
+      adsetRows: [
+        { adsetName: 'Conjunto A', messagesStarted: 100, costPerMessage: 5, startDate: '01/08/26' },
+        { adsetName: 'Conjunto B', messagesStarted: 50, costPerMessage: 10, startDate: '15/08/26' },
+      ],
+    };
+    const text = buildUserMessage(payload);
+    expect(text).toContain('Conjunto A');
+    expect(text).toContain('100');
+    expect(text).toContain('R$ 5,00');
+    expect(text).toContain('01/08/26');
+    expect(text).toContain('Conjunto B');
+  });
+
+  it('usa fallback de métricas agregadas quando adsetRows está ausente', () => {
+    const text = buildUserMessage(messageSalesPayload);
+    expect(text).toContain('Investimento');
+    expect(text).toContain('750');
+  });
+
+  it('exibe "–" para costPerMessage null', () => {
+    const payload: AiReportPayload = {
+      ...messageSalesPayload,
+      adsetRows: [
+        { adsetName: 'Conjunto A', messagesStarted: 0, costPerMessage: null, startDate: '01/08/26' },
+      ],
+    };
+    const text = buildUserMessage(payload);
+    expect(text).toContain('–');
+  });
+});
+
+describe('buildUserMessage — LIVE_SALES com liveData', () => {
+  const liveSalesPayload: AiReportPayload = {
+    ...basePayload,
+    clientProfile: ClientProfileType.LIVE_SALES,
+    current: { ...baseInsights, liveViews: 500 },
+  };
+
+  it('exibe as 2 lives quando liveData está presente', () => {
+    const payload: AiReportPayload = {
+      ...liveSalesPayload,
+      liveData: [
+        {
+          liveDate: '01/09/2026',
+          captationSpend: 500,
+          captationReach: 10000,
+          captationClicks: 200,
+          adReaches: [
+            { adName: 'Anuncio A', reach: 3000 },
+            { adName: 'Anuncio B', reach: 2000 },
+          ],
+        },
+        {
+          liveDate: '15/08/2026',
+          captationSpend: 400,
+          captationReach: 8000,
+          captationClicks: 150,
+          adReaches: [],
+        },
+      ],
+    };
+    const text = buildUserMessage(payload);
+    expect(text).toContain('01/09/2026');
+    expect(text).toContain('15/08/2026');
+    expect(text).toContain('500');
+    expect(text).toContain('Anuncio A');
+    expect(text).toContain('3.000');
+  });
+
+  it('renderiza 1 live normalmente quando liveData tem 1 entrada', () => {
+    const payload: AiReportPayload = {
+      ...liveSalesPayload,
+      liveData: [
+        { liveDate: '01/09/2026', captationSpend: 500, captationReach: 10000, captationClicks: 200, adReaches: [] },
+      ],
+    };
+    const text = buildUserMessage(payload);
+    expect(text).toContain('01/09/2026');
+  });
+
+  it('usa fallback quando liveData está ausente', () => {
+    const text = buildUserMessage(liveSalesPayload);
+    expect(text).toContain('Investimento');
+  });
+
+  it('omite seção de alcance por anúncio quando adReaches está vazio', () => {
+    const payload: AiReportPayload = {
+      ...liveSalesPayload,
+      liveData: [
+        { liveDate: '01/09/2026', captationSpend: 500, captationReach: 10000, captationClicks: 200, adReaches: [] },
+      ],
+    };
+    const text = buildUserMessage(payload);
+    expect(text).not.toContain('Alcance por anuncio');
+  });
+});

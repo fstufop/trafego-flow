@@ -142,29 +142,54 @@ function buildSiteSalesMessage(payload: AiReportPayload): string {
 }
 
 function buildMessageSalesMessage(payload: AiReportPayload): string {
-  const { period, current, deltas, clientContext, previous } = payload;
+  const { period, current, deltas, clientContext, previous, adsetRows } = payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
-  lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
-  if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
-  if (current.messagesStarted > 0) lines.push(`Conversas iniciadas: ${fmtInt(current.messagesStarted)} novos contatos no direct`);
-  if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
-  lines.push('');
+  if (adsetRows && adsetRows.length > 0) {
+    lines.push('Resultados por conjunto de anúncios:');
+    for (const row of adsetRows) {
+      const cpm = row.costPerMessage !== null ? `R$ ${fmtBRL(row.costPerMessage)}` : '–';
+      lines.push(`${row.adsetName} | Desde: ${row.startDate} | Conversas: ${fmtInt(row.messagesStarted)} | Custo por conversa: ${cpm}`);
+    }
+    lines.push('');
+  } else {
+    lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
+    if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
+    if (current.messagesStarted > 0) lines.push(`Conversas iniciadas: ${fmtInt(current.messagesStarted)} novos contatos no direct`);
+    if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
+    lines.push('');
+  }
 
   lines.push(...footer(deltas, clientContext, previous));
   return lines.join('\n');
 }
 
 function buildLiveSalesMessage(payload: AiReportPayload): string {
-  const { period, current, deltas, clientContext, previous } = payload;
+  const { period, current, deltas, clientContext, previous, liveData } = payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
-  lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
-  if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
-  if (current.liveViews > 0) lines.push(`Visualizações da live: ${fmtInt(current.liveViews)}`);
-  if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
-  if (current.purchases > 0) lines.push(`Compras: ${fmtInt(current.purchases)}`);
-  lines.push('');
+  if (liveData && liveData.length > 0) {
+    for (const live of liveData) {
+      lines.push(`Live: ${live.liveDate}`);
+      lines.push(`Investimento captação: R$ ${fmtBRL(live.captationSpend)}`);
+      lines.push(`Alcance captação: ${fmtInt(live.captationReach)} pessoas`);
+      if (live.captationClicks > 0) lines.push(`Cliques captação: ${fmtInt(live.captationClicks)}`);
+      if (live.adReaches.length > 0) {
+        lines.push('Alcance por anuncio:');
+        for (const ad of live.adReaches) {
+          lines.push(`  ${ad.adName}: ${fmtInt(ad.reach)}`);
+        }
+      }
+      lines.push('');
+    }
+  } else {
+    lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
+    if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
+    if (current.liveViews > 0) lines.push(`Visualizações da live: ${fmtInt(current.liveViews)}`);
+    if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
+    if (current.purchases > 0) lines.push(`Compras: ${fmtInt(current.purchases)}`);
+    lines.push('');
+  }
 
   lines.push(...footer(deltas, clientContext, previous));
   return lines.join('\n');
