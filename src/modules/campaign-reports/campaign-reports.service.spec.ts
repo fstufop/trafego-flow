@@ -795,4 +795,74 @@ describe('CampaignReportsService', () => {
         .rejects.toThrow(UnprocessableEntityException);
     });
   });
+
+  describe('getLiveReportData', () => {
+    const adAccountId = 'act_123456789';
+
+    beforeEach(() => {
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
+      mockCrypto.decrypt.mockReturnValue('plaintext-token');
+    });
+
+    it('retorna LiveReportData para as 2 lives mais recentes', async () => {
+      mockMetaAdsService.fetchInsights.mockResolvedValue({
+        data: [
+          { campaign_id: '1', campaign_name: 'LIVE_01_09_25_CAP', spend: '500', reach: '10000', clicks: '200', actions: [] },
+          { campaign_id: '2', campaign_name: 'LIVE_01_09_25_VENDAS', spend: '300', reach: '5000', clicks: '100', actions: [] },
+          { campaign_id: '3', campaign_name: 'LIVE_15_08_25_CAP', spend: '400', reach: '8000', clicks: '150', actions: [] },
+          { campaign_id: '4', campaign_name: 'LIVE_01_07_25_CAP', spend: '200', reach: '4000', clicks: '80', actions: [] },
+        ],
+        paging: {},
+      });
+      mockMetaAdsService.fetchAdInsightsByPeriod
+        .mockResolvedValueOnce([
+          { ad_id: 'ad_1', ad_name: 'Anuncio A', campaign_name: 'LIVE_01_09_25_CAP', reach: '3000' },
+          { ad_id: 'ad_2', ad_name: 'Anuncio B', campaign_name: 'LIVE_01_09_25_CAP', reach: '2000' },
+        ])
+        .mockResolvedValueOnce([
+          { ad_id: 'ad_3', ad_name: 'Anuncio C', campaign_name: 'LIVE_15_08_25_CAP', reach: '4000' },
+        ]);
+
+      const result = await service.getLiveReportData(adAccountId);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        captationSpend: 500,
+        captationReach: 10000,
+        captationClicks: 200,
+      });
+      expect(result[0].adReaches).toEqual([
+        { adName: 'Anuncio A', reach: 3000 },
+        { adName: 'Anuncio B', reach: 2000 },
+      ]);
+      expect(result[1].captationSpend).toBe(400);
+    });
+
+    it('retorna [] quando não há campanhas com data no nome', async () => {
+      mockMetaAdsService.fetchInsights.mockResolvedValue({
+        data: [{ campaign_id: '1', campaign_name: 'CAMPANHA_SEM_DATA', spend: '100', reach: '1000', clicks: '10', actions: [] }],
+        paging: {},
+      });
+
+      const result = await service.getLiveReportData(adAccountId);
+      expect(result).toEqual([]);
+      expect(mockMetaAdsService.fetchAdInsightsByPeriod).not.toHaveBeenCalled();
+    });
+
+    it('retorna 1 live quando só há 1 data identificada', async () => {
+      mockMetaAdsService.fetchInsights.mockResolvedValue({
+        data: [{ campaign_id: '1', campaign_name: 'LIVE_01_09_25_CAP', spend: '500', reach: '10000', clicks: '200', actions: [] }],
+        paging: {},
+      });
+      mockMetaAdsService.fetchAdInsightsByPeriod.mockResolvedValue([]);
+
+      const result = await service.getLiveReportData(adAccountId);
+      expect(result).toHaveLength(1);
+    });
+
+    it('lança UnprocessableEntityException para conta inativa', async () => {
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue({ ...mockAccount, isActive: false });
+      await expect(service.getLiveReportData(adAccountId)).rejects.toThrow(UnprocessableEntityException);
+    });
+  });
 });
