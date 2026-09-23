@@ -14,4 +14,6 @@ export interface IMetaAdsService {
   fetchAdCreatives(adIds: string[], accessToken: string): Promise<Record<string, MetaAdCreative>>;
   fetchAdsets(adAccountId: string, accessToken: string): Promise<MetaAdset[]>;
   fetchAdsetInsights(adsetId: string, accessToken: string, since: string, until: string): Promise<MetaInsights | null>;
+  fetchAdsetMessageInsights(adAccountId: string, accessToken: string, since: string, until: string): Promise<MetaInsights[]>;
+  fetchAdInsightsByPeriod(adAccountId: string, accessToken: string, since: string, until: string): Promise<MetaInsights[]>;
 }

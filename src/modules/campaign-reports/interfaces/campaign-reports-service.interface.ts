@@ -1,6 +1,7 @@
 import { MetaAdset, MetaCampaign, MetaInsights, PaginatedResult } from './meta-campaign.interface.js';
 import { GetInsightsQueryDto, MetaDatePreset, MetaTimeIncrement } from '../dto/get-insights-query.dto.js';
 import { ExportInsightsCsvDto } from '../dto/export-insights-csv.dto.js';
+import { AdsetMessageRow, LiveReportData } from '../../ai/interfaces/ai-provider.interface.js';
 
 export interface ICampaignReportsService {
   listCampaigns(adAccountId: string, cursor?: string): Promise<PaginatedResult<MetaCampaign>>;
@@ -15,4 +16,6 @@ export interface ICampaignReportsService {
   exportInsightsCsv(dto: ExportInsightsCsvDto): Promise<string>;
   listAdsets(adAccountId: string): Promise<MetaAdset[]>;
   getAdsetInsights(adsetId: string, adAccountId: string, since: string, until: string): Promise<MetaInsights | null>;
+  getAdsetMessageRows(adAccountId: string, since: string, until: string): Promise<AdsetMessageRow[]>;
+  getLiveReportData(adAccountId: string): Promise<LiveReportData[]>;
 }
