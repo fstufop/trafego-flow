@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import * as fs from 'fs';
@@ -11,6 +11,7 @@ const CHUNK_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per chunk
 
 @Injectable()
 export class MetaMediaService {
+  private readonly logger = new Logger(MetaMediaService.name);
   private readonly graphUrl: string;
 
   constructor(config: ConfigService) {
@@ -47,9 +48,15 @@ export class MetaMediaService {
     form.append('access_token', accessToken);
     form.append('filename', blob, fileName);
 
-    const response = await axios.post(url, form);
-    const images = response.data.images as Record<string, { hash: string }>;
-    return Object.values(images)[0].hash;
+    try {
+      this.logger.log(`Uploading image [${fileName}] for ad account [${adAccountId}]`);
+      const response = await axios.post(url, form);
+      const images = response.data.images as Record<string, { hash: string }>;
+      return Object.values(images)[0].hash;
+    } catch (err) {
+      this.logger.error(`Image upload failed [${adAccountId}]: ${formatMetaError(err)}`);
+      throw err;
+    }
   }
 
   private async uploadVideo(
@@ -84,8 +91,13 @@ export class MetaMediaService {
     form.append('name', fileName);
     form.append('source', blob, fileName);
 
-    const response = await axios.post(url, form);
-    return response.data.id as string;
+    try {
+      const response = await axios.post(url, form);
+      return response.data.id as string;
+    } catch (err) {
+      this.logger.error(`Video single-part upload failed [${adAccountId}]: ${formatMetaError(err)}`);
+      throw err;
+    }
   }
 
   private async uploadVideoChunked(
@@ -97,6 +109,7 @@ export class MetaMediaService {
   ): Promise<string> {
     const baseUrl = `${this.graphUrl}/${adAccountId}/advideos`;
 
+    try {
     // Phase 1: start upload session
     const startForm = new FormData();
     startForm.append('access_token', accessToken);
@@ -138,5 +151,22 @@ export class MetaMediaService {
     await axios.post(baseUrl, finishForm);
 
     return videoId as string;
+    } catch (err) {
+      this.logger.error(`Video chunked upload failed [${adAccountId}]: ${formatMetaError(err)}`);
+      throw err;
+    }
   }
+}
+
+function formatMetaError(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response) {
+    const data = err.response.data as { error?: { message?: string; code?: number } };
+    const msg = data?.error?.message;
+    if (msg) {
+      const code = data.error!.code != null ? ` (code: ${data.error!.code})` : '';
+      return `Meta API: ${msg}${code}`;
+    }
+    return `HTTP ${err.response.status}: ${JSON.stringify(data)}`;
+  }
+  return String(err);
 }

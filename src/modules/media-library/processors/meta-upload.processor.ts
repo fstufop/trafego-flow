@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from 'bullmq';
+import axios from 'axios';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -40,10 +41,23 @@ export class MetaUploadProcessor extends WorkerHost {
     } catch (err) {
       await this.logsRepo.update(logId, {
         status: MediaUploadStatus.FAILED,
-        errorMessage: String(err),
+        errorMessage: extractMetaErrorMessage(err),
       });
     } finally {
       fs.unlink(tempPath, () => {});
     }
   }
+}
+
+function extractMetaErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response) {
+    const data = err.response.data as { error?: { message?: string; type?: string; code?: number } };
+    const metaMessage = data?.error?.message;
+    if (metaMessage) {
+      const code = data.error!.code != null ? ` (code: ${data.error!.code})` : '';
+      return `Meta API: ${metaMessage}${code}`;
+    }
+    return `HTTP ${err.response.status}: ${JSON.stringify(data)}`;
+  }
+  return String(err);
 }
