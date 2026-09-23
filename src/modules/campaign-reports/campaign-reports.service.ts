@@ -415,13 +415,14 @@ export class CampaignReportsService implements ICampaignReportsService {
     const since60 = formatIsoDate(sixtyDaysAgo);
     const todayStr = formatIsoDate(today);
 
-    const insightResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
+    // Discovery fetch: 60-day window — only used to identify which live dates exist
+    const discoveryResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
       since: since60,
       until: todayStr,
       level: MetaInsightsLevel.CAMPAIGN,
     });
 
-    const campaigns = insightResult.data
+    const campaigns = discoveryResult.data
       .map((r) => ({ id: r.campaign_id ?? '', name: r.campaign_name ?? '' }))
       .filter((c) => c.id && c.name);
 
@@ -440,7 +441,14 @@ export class CampaignReportsService implements ICampaignReportsService {
       const yy = String(liveDate.getFullYear()).slice(2);
       const liveDateStr = `${dd}_${mm}_${yy}`;
 
-      const captationRows = insightResult.data.filter((r) => {
+      // Per-live metrics fetch: live-date→today window, same as the ad-level fetch below
+      const liveInsightResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
+        since: liveDateIso,
+        until: todayStr,
+        level: MetaInsightsLevel.CAMPAIGN,
+      });
+
+      const captationRows = liveInsightResult.data.filter((r) => {
         const name = r.campaign_name ?? '';
         return name.includes(liveDateStr) && ACQUISITION_PATTERN.test(name);
       });
