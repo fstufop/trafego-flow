@@ -13,7 +13,7 @@ import { AiService } from '../ai/ai.service.js';
 import { InsightSnapshotsService } from '../insight-snapshots/insight-snapshots.service.js';
 import { MetaInsightsLevel } from '../campaign-reports/dto/get-insights-query.dto.js';
 import { PaginatedResult, MetaInsights } from '../campaign-reports/interfaces/meta-campaign.interface.js';
-import { InsightsSummary, AiReportPayload } from '../ai/interfaces/ai-provider.interface.js';
+import { InsightsSummary, AiReportPayload, AdsetMessageRow, LiveReportData } from '../ai/interfaces/ai-provider.interface.js';
 import { ReportDispatchLogEntity, DispatchStatus } from './entities/report-dispatch-log.entity.js';
 import { IReportDispatchesService } from './interfaces/report-dispatches-service.interface.js';
 import { TriggerDispatchDto } from './dto/trigger-dispatch.dto.js';
@@ -48,13 +48,25 @@ export class ReportDispatchesService implements IReportDispatchesService {
       const groups = groupsByClient.get(clientId);
       if (!groups?.length) continue;
 
-      const adAccounts = await this.adAccountsService.findAll(clientId);
-      const activeAccounts = adAccounts.filter(a => a.isActive);
+      let activeAccounts: { adAccountId: string; accountName: string | null; isActive: boolean }[] = [];
+      try {
+        const adAccounts = await this.adAccountsService.findAll(clientId);
+        activeAccounts = adAccounts.filter(a => a.isActive);
+      } catch (err) {
+        this.logger.error(`Erro ao buscar contas de anúncio para cliente ${clientId}`, err);
+        failed++;
+        continue;
+      }
 
       for (const account of activeAccounts) {
-        const result = await this.buildAndSend(clientId, account, groups, weekStart);
-        dispatched += result.dispatched;
-        failed += result.failed;
+        try {
+          const result = await this.buildAndSend(clientId, account, groups, weekStart);
+          dispatched += result.dispatched;
+          failed += result.failed;
+        } catch (err) {
+          this.logger.error(`Erro inesperado ao processar conta ${account.adAccountId} (cliente ${clientId})`, err);
+          failed++;
+        }
       }
     }
 
@@ -69,11 +81,21 @@ export class ReportDispatchesService implements IReportDispatchesService {
     for (const [clientId, groups] of groupsByClient.entries()) {
       if (!groups.length) continue;
 
-      const adAccounts = await this.adAccountsService.findAll(clientId);
-      const activeAccounts = adAccounts.filter(a => a.isActive);
+      let activeAccounts: Awaited<ReturnType<typeof this.adAccountsService.findAll>>;
+      try {
+        const adAccounts = await this.adAccountsService.findAll(clientId);
+        activeAccounts = adAccounts.filter(a => a.isActive);
+      } catch (err) {
+        this.logger.error(`Erro ao buscar contas de anúncio para cliente ${clientId}`, err);
+        continue;
+      }
 
       for (const account of activeAccounts) {
-        await this.buildAndSend(clientId, account, groups, weekStart);
+        try {
+          await this.buildAndSend(clientId, account, groups, weekStart);
+        } catch (err) {
+          this.logger.error(`Erro inesperado ao processar conta ${account.adAccountId} (cliente ${clientId})`, err);
+        }
       }
     }
 
@@ -157,6 +179,27 @@ export class ReportDispatchesService implements IReportDispatchesService {
         // cliente não encontrado; continua sem contexto
       }
 
+      let adsetRows: AdsetMessageRow[] | undefined;
+      let liveData: LiveReportData[] | undefined;
+
+      if (clientProfile === ClientProfileType.MESSAGE_SALES) {
+        adsetRows = await this.campaignReportsService
+          .getAdsetMessageRows(account.adAccountId, since, until)
+          .catch((err) => {
+            this.logger.error(`Erro ao buscar adset message rows para ${account.adAccountId}`, err);
+            return undefined;
+          });
+      }
+
+      if (clientProfile === ClientProfileType.LIVE_SALES) {
+        liveData = await this.campaignReportsService
+          .getLiveReportData(account.adAccountId)
+          .catch((err) => {
+            this.logger.error(`Erro ao buscar live report data para ${account.adAccountId}`, err);
+            return undefined;
+          });
+      }
+
       const payload: AiReportPayload = {
         period: { since, until, weekNumber: this.getISOWeekNumber(weekStart) },
         current,
@@ -166,6 +209,8 @@ export class ReportDispatchesService implements IReportDispatchesService {
         sales,
         clientProfile,
         clientContext,
+        adsetRows,
+        liveData,
       };
 
       try {

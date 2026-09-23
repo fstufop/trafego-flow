@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { ReportDispatchesService } from './report-dispatches.service.js';
+import { AdsetMessageRow, LiveReportData } from '../ai/interfaces/ai-provider.interface.js';
 import { ReportDispatchLogEntity, DispatchStatus } from './entities/report-dispatch-log.entity.js';
 import { CampaignReportsService } from '../campaign-reports/campaign-reports.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
@@ -28,7 +29,12 @@ async function buildService(overrides: Record<string, any> = {}) {
       { provide: InsightSnapshotsService, useValue: { saveSnapshot: jest.fn(), findPreviousSnapshot: jest.fn().mockResolvedValue(null), ...overrides.snapshotsService } },
       { provide: ClientsService, useValue: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: null }), ...overrides.clientsService } },
       { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(null) } },
-      { provide: CampaignReportsService, useValue: { getInsights: jest.fn().mockResolvedValue({ data: [] }) } },
+      { provide: CampaignReportsService, useValue: {
+        getInsights: jest.fn().mockResolvedValue({ data: [] }),
+        getAdsetMessageRows: jest.fn().mockResolvedValue([]),
+        getLiveReportData: jest.fn().mockResolvedValue([]),
+        ...overrides.campaignReportsService,
+      }},
       { provide: AdAccountsService, useValue: { findAll: jest.fn().mockResolvedValue([]) } },
       { provide: WhatsAppGroupsService, useValue: { findAllActiveGroupedByClientId: jest.fn().mockResolvedValue(new Map()) } },
       { provide: WhatsAppSessionService, useValue: { sendMessage: jest.fn().mockResolvedValue(undefined) } },
@@ -157,6 +163,122 @@ describe('ReportDispatchesService', () => {
         where: { clientId: 'client-1' },
         order: { createdAt: 'DESC' },
       });
+    });
+  });
+
+  describe('buildAndSend — branch por clientProfile', () => {
+    it('chama getAdsetMessageRows e inclui adsetRows no payload para MESSAGE_SALES', async () => {
+      const adsetRows: AdsetMessageRow[] = [
+        { adsetName: 'Conjunto A', messagesStarted: 10, costPerMessage: 5, startDate: '01/08/26' },
+      ];
+      const mockGetAdsetRows = jest.fn().mockResolvedValue(adsetRows);
+      const mockGetLiveData = jest.fn().mockResolvedValue([]);
+      const generateReport = jest.fn().mockResolvedValue('texto');
+
+      const { service } = await buildService({
+        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'message_sales' }) },
+        campaignReportsService: {
+          getInsights: jest.fn().mockResolvedValue({ data: [] }),
+          getAdsetMessageRows: mockGetAdsetRows,
+          getLiveReportData: mockGetLiveData,
+        },
+        aiService: { generateReport },
+      });
+      jest.spyOn(service as any, 'randomDelay').mockResolvedValue(undefined);
+
+      await (service as any).buildAndSend(
+        'client-1',
+        { adAccountId: 'act_123', accountName: 'Conta' },
+        [{ groupJid: 'jid@g.us' }],
+        new Date('2026-09-14'),
+      );
+
+      const payload = generateReport.mock.calls[0]?.[0];
+      expect(payload?.adsetRows).toEqual(adsetRows);
+      expect(payload?.liveData).toBeUndefined();
+    });
+
+    it('chama getLiveReportData e inclui liveData no payload para LIVE_SALES', async () => {
+      const liveData: LiveReportData[] = [
+        { liveDate: '01/09/2026', captationSpend: 500, captationReach: 10000, captationClicks: 200, adReaches: [] },
+      ];
+      const mockGetAdsetRows = jest.fn().mockResolvedValue([]);
+      const mockGetLiveData = jest.fn().mockResolvedValue(liveData);
+      const generateReport = jest.fn().mockResolvedValue('texto');
+
+      const { service } = await buildService({
+        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'live_sales' }) },
+        campaignReportsService: {
+          getInsights: jest.fn().mockResolvedValue({ data: [] }),
+          getAdsetMessageRows: mockGetAdsetRows,
+          getLiveReportData: mockGetLiveData,
+        },
+        aiService: { generateReport },
+      });
+      jest.spyOn(service as any, 'randomDelay').mockResolvedValue(undefined);
+
+      await (service as any).buildAndSend(
+        'client-1',
+        { adAccountId: 'act_123', accountName: 'Conta' },
+        [{ groupJid: 'jid@g.us' }],
+        new Date('2026-09-14'),
+      );
+
+      const payload = generateReport.mock.calls[0]?.[0];
+      expect(payload?.liveData).toEqual(liveData);
+      expect(payload?.adsetRows).toBeUndefined();
+    });
+
+    it('não chama getAdsetMessageRows nem getLiveReportData para SITE_SALES', async () => {
+      const mockGetAdsetRows = jest.fn().mockResolvedValue([]);
+      const mockGetLiveData = jest.fn().mockResolvedValue([]);
+
+      const { service } = await buildService({
+        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'site_sales' }) },
+        campaignReportsService: {
+          getInsights: jest.fn().mockResolvedValue({ data: [] }),
+          getAdsetMessageRows: mockGetAdsetRows,
+          getLiveReportData: mockGetLiveData,
+        },
+      });
+      jest.spyOn(service as any, 'randomDelay').mockResolvedValue(undefined);
+
+      await (service as any).buildAndSend(
+        'client-1',
+        { adAccountId: 'act_123', accountName: 'Conta' },
+        [{ groupJid: 'jid@g.us' }],
+        new Date('2026-09-14'),
+      );
+
+      expect(mockGetAdsetRows).not.toHaveBeenCalled();
+      expect(mockGetLiveData).not.toHaveBeenCalled();
+    });
+
+    it('continua sem adsetRows quando getAdsetMessageRows lança erro', async () => {
+      const generateReport = jest.fn().mockResolvedValue('texto');
+
+      const { service } = await buildService({
+        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'message_sales' }) },
+        campaignReportsService: {
+          getInsights: jest.fn().mockResolvedValue({ data: [] }),
+          getAdsetMessageRows: jest.fn().mockRejectedValue(new Error('API timeout')),
+          getLiveReportData: jest.fn().mockResolvedValue([]),
+        },
+        aiService: { generateReport },
+      });
+      jest.spyOn(service as any, 'randomDelay').mockResolvedValue(undefined);
+
+      await expect(
+        (service as any).buildAndSend(
+          'client-1',
+          { adAccountId: 'act_123', accountName: 'Conta' },
+          [{ groupJid: 'jid@g.us' }],
+          new Date('2026-09-14'),
+        ),
+      ).resolves.not.toThrow();
+
+      const payload = generateReport.mock.calls[0]?.[0];
+      expect(payload?.adsetRows).toBeUndefined();
     });
   });
 });
