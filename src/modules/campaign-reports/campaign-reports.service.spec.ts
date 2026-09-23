@@ -64,6 +64,8 @@ const mockMetaAdsService = {
   fetchAdCreatives: jest.fn(),
   fetchAdsets: jest.fn(),
   fetchAdsetInsights: jest.fn(),
+  fetchAdsetMessageInsights: jest.fn(),
+  fetchAdInsightsByPeriod: jest.fn(),
 };
 const mockCrypto = { decrypt: jest.fn().mockReturnValue('plaintext-token') };
 const mockCache = { get: jest.fn(), set: jest.fn() };
@@ -720,6 +722,77 @@ describe('CampaignReportsService', () => {
         '2026-08-09',
       );
       expect(result).toEqual(mockInsight);
+    });
+  });
+
+  describe('getAdsetMessageRows', () => {
+    const adAccountId = 'act_123456789';
+    const since = '2026-09-15';
+    const until = '2026-09-21';
+
+    beforeEach(() => {
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
+      mockCrypto.decrypt.mockReturnValue('plaintext-token');
+    });
+
+    it('retorna rows ordenados por messagesStarted desc', async () => {
+      mockMetaAdsService.fetchAdsetMessageInsights.mockResolvedValue([
+        {
+          adset_id: 'adset_1',
+          adset_name: 'Adset A',
+          spend: '100.00',
+          actions: [{ action_type: 'messaging_conversation_started_7d', value: '10' }],
+        },
+        {
+          adset_id: 'adset_2',
+          adset_name: 'Adset B',
+          spend: '200.00',
+          actions: [{ action_type: 'messaging_conversation_started_7d', value: '5' }],
+        },
+      ]);
+      mockMetaAdsService.fetchAdsets.mockResolvedValue([
+        { id: 'adset_1', name: 'Adset A', start_time: '2026-08-01T10:00:00+0000', updated_time: '2026-08-01', effective_status: 'ACTIVE' },
+        { id: 'adset_2', name: 'Adset B', start_time: '2026-08-15T10:00:00+0000', updated_time: '2026-08-15', effective_status: 'ACTIVE' },
+      ]);
+
+      const result = await service.getAdsetMessageRows(adAccountId, since, until);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ adsetName: 'Adset A', messagesStarted: 10, costPerMessage: 10, startDate: '01/08/26' });
+      expect(result[1]).toEqual({ adsetName: 'Adset B', messagesStarted: 5, costPerMessage: 40, startDate: '15/08/26' });
+    });
+
+    it('define costPerMessage como null quando messagesStarted é 0', async () => {
+      mockMetaAdsService.fetchAdsetMessageInsights.mockResolvedValue([
+        { adset_id: 'adset_1', adset_name: 'Adset A', spend: '50.00', actions: [] },
+      ]);
+      mockMetaAdsService.fetchAdsets.mockResolvedValue([
+        { id: 'adset_1', name: 'Adset A', start_time: '2026-08-01T00:00:00+0000', updated_time: '2026-08-01', effective_status: 'ACTIVE' },
+      ]);
+
+      const result = await service.getAdsetMessageRows(adAccountId, since, until);
+
+      expect(result[0].costPerMessage).toBeNull();
+    });
+
+    it('define startDate como "–" quando start_time está ausente', async () => {
+      mockMetaAdsService.fetchAdsetMessageInsights.mockResolvedValue([
+        { adset_id: 'adset_1', adset_name: 'Adset A', spend: '50.00', actions: [] },
+      ]);
+      mockMetaAdsService.fetchAdsets.mockResolvedValue([
+        { id: 'adset_1', name: 'Adset A', updated_time: '2026-08-01', effective_status: 'ACTIVE' },
+      ]);
+
+      const result = await service.getAdsetMessageRows(adAccountId, since, until);
+
+      expect(result[0].startDate).toBe('–');
+    });
+
+    it('lança UnprocessableEntityException para conta inativa', async () => {
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue({ ...mockAccount, isActive: false });
+
+      await expect(service.getAdsetMessageRows(adAccountId, since, until))
+        .rejects.toThrow(UnprocessableEntityException);
     });
   });
 });
