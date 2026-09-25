@@ -7,6 +7,7 @@ import { AdAccountEntity } from './entities/ad-account.entity.js';
 import { IAdAccountsService } from './interfaces/ad-accounts-service.interface.js';
 import { CreateAdAccountDto } from './dto/create-ad-account.dto.js';
 import { UpdateAdAccountDto } from './dto/update-ad-account.dto.js';
+import { MetaTokenService, TokenValidationResult } from './meta-token.service.js';
 
 const cacheById = (id: string) => `ad-account:id:${id}`;
 const cacheByAct = (adAccountId: string) => `ad-account:act:${adAccountId}`;
@@ -19,6 +20,7 @@ export class AdAccountsService implements IAdAccountsService {
     @Inject(CACHE_MANAGER)
     private readonly cache: Cache,
     private readonly crypto: AesCryptoService,
+    private readonly metaToken: MetaTokenService,
   ) {}
 
   async create(dto: CreateAdAccountDto): Promise<AdAccountEntity> {
@@ -106,5 +108,14 @@ export class AdAccountsService implements IAdAccountsService {
     return this.repo.find({
       where: { isActive: true, tokenExpiresAt: LessThanOrEqual(deadline) },
     });
+  }
+
+  async validateToken(id: string): Promise<TokenValidationResult> {
+    const account = await this.findOne(id);
+    if (!account.accessToken) {
+      return { valid: false, appId: null, type: null, expiresAt: null, scopes: [], userId: null };
+    }
+    const rawToken = this.crypto.decrypt(account.accessToken);
+    return this.metaToken.validate(rawToken);
   }
 }
