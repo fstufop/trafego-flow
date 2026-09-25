@@ -12,6 +12,14 @@ import { CsvFormatterService } from '../../common/csv/csv-formatter.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { MetaAdsService } from './meta-ads.service.js';
 import { ICampaignReportsService } from './interfaces/campaign-reports-service.interface.js';
+import { AdsetMessageRow, LiveReportData, AdReachRow } from '../ai/interfaces/ai-provider.interface.js';
+import {
+  parseLiveCampaigns,
+  getLatestLiveDates,
+  formatDisplayDate,
+  formatIsoDate,
+  ACQUISITION_PATTERN,
+} from './utils/live-date.util.js';
 import {
   MetaAdset,
   MetaApiPaginatedResponse,
@@ -347,5 +355,135 @@ export class CampaignReportsService implements ICampaignReportsService {
     }
     const token = this.crypto.decrypt(account.accessToken);
     return this.metaAdsService.fetchAdsetInsights(adsetId, token, since, until);
+  }
+
+  async getAdsetMessageRows(
+    adAccountId: string,
+    since: string,
+    until: string,
+  ): Promise<AdsetMessageRow[]> {
+    const account = await this.adAccountsService.findByAdAccountId(adAccountId);
+    if (!account.isActive) {
+      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+    }
+    const token = this.crypto.decrypt(account.accessToken);
+
+    const [insightRows, adsets] = await Promise.all([
+      this.metaAdsService.fetchAdsetMessageInsights(adAccountId, token, since, until),
+      this.metaAdsService.fetchAdsets(adAccountId, token),
+    ]);
+
+    const startTimeById = new Map(adsets.map((a) => [a.id, a.start_time]));
+
+    const rows: AdsetMessageRow[] = insightRows.map((row) => {
+      const messagesStarted = parseInt(
+        row.actions?.find((a) => a.action_type === 'messaging_conversation_started_7d')?.value ?? '0',
+        10,
+      );
+      const spend = parseFloat(row.spend ?? '0');
+      const costPerMessage = messagesStarted > 0 ? spend / messagesStarted : null;
+      const rawStart = startTimeById.get(row.adset_id ?? '') ?? null;
+      const startDate = rawStart ? this.formatAdsetDate(rawStart) : '–';
+      return {
+        adsetName: row.adset_name ?? row.adset_id ?? '',
+        messagesStarted,
+        costPerMessage,
+        startDate,
+      };
+    });
+
+    return rows.sort((a, b) => b.messagesStarted - a.messagesStarted);
+  }
+
+  private formatAdsetDate(isoString: string): string {
+    const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return '–';
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year.slice(2)}`;
+  }
+
+  async getLiveReportData(adAccountId: string): Promise<LiveReportData[]> {
+    const account = await this.adAccountsService.findByAdAccountId(adAccountId);
+    if (!account.isActive) {
+      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+    }
+    const token = this.crypto.decrypt(account.accessToken);
+
+    const today = new Date();
+    const sixtyDaysAgo = new Date(today);
+    sixtyDaysAgo.setDate(today.getDate() - 60);
+    const since60 = formatIsoDate(sixtyDaysAgo);
+    const todayStr = formatIsoDate(today);
+
+    // Discovery fetch: 60-day window — only used to identify which live dates exist
+    const discoveryResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
+      since: since60,
+      until: todayStr,
+      level: MetaInsightsLevel.CAMPAIGN,
+    });
+
+    const campaigns = discoveryResult.data
+      .map((r) => ({ id: r.campaign_id ?? '', name: r.campaign_name ?? '' }))
+      .filter((c) => c.id && c.name);
+
+    const parsed = parseLiveCampaigns(campaigns);
+    const latestDates = getLatestLiveDates(parsed, 2);
+
+    if (latestDates.length === 0) return [];
+
+    const results: LiveReportData[] = [];
+
+    for (const liveDate of latestDates) {
+      const liveDateIso = formatIsoDate(liveDate);
+      const liveDateDisplay = formatDisplayDate(liveDate);
+      const dd = String(liveDate.getDate()).padStart(2, '0');
+      const mm = String(liveDate.getMonth() + 1).padStart(2, '0');
+      const yy = String(liveDate.getFullYear()).slice(2);
+      const liveDateStr = `${dd}_${mm}_${yy}`;
+
+      // Per-live metrics fetch: live-date→today window, same as the ad-level fetch below
+      const liveInsightResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
+        since: liveDateIso,
+        until: todayStr,
+        level: MetaInsightsLevel.CAMPAIGN,
+      });
+
+      const captationRows = liveInsightResult.data.filter((r) => {
+        const name = r.campaign_name ?? '';
+        return name.includes(liveDateStr) && ACQUISITION_PATTERN.test(name);
+      });
+
+      let captationSpend = 0;
+      let captationReach = 0;
+      let captationClicks = 0;
+      for (const row of captationRows) {
+        captationSpend += parseFloat(row.spend ?? '0');
+        captationReach += parseInt(row.reach ?? '0', 10);
+        captationClicks += parseInt(row.clicks ?? '0', 10);
+      }
+
+      const adRows = await this.metaAdsService.fetchAdInsightsByPeriod(
+        adAccountId,
+        token,
+        liveDateIso,
+        todayStr,
+      );
+
+      const adReaches: AdReachRow[] = adRows
+        .filter((r) => {
+          const name = r.campaign_name ?? '';
+          return name.includes(liveDateStr) && ACQUISITION_PATTERN.test(name);
+        })
+        .map((r) => ({
+          adName: r.ad_name ?? r.ad_id ?? '',
+          reach: parseInt(r.reach ?? '0', 10),
+        }))
+        .filter((r) => r.adName && r.reach > 0)
+        .sort((a, b) => b.reach - a.reach);
+
+      results.push({ liveDate: liveDateDisplay, captationSpend, captationReach, captationClicks, adReaches });
+    }
+
+    return results;
   }
 }

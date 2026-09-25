@@ -35,50 +35,66 @@ export class GoogleDriveService {
   ): Promise<{ fileId: string; webViewLink: string }> {
     const folderId = this.extractFolderId(folderUrl);
 
-    const response = await this.drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [folderId],
-        mimeType,
-      },
-      media: {
-        mimeType,
-        body: fs.createReadStream(filePath),
-      },
-      fields: 'id,webViewLink',
-      supportsAllDrives: true,
-    });
+    try {
+      this.logger.log(`Uploading file [${fileName}] to folder [${folderId}]`);
+      const response = await this.drive.files.create({
+        requestBody: {
+          name: fileName,
+          parents: [folderId],
+          mimeType,
+        },
+        media: {
+          mimeType,
+          body: fs.createReadStream(filePath),
+        },
+        fields: 'id,webViewLink',
+        supportsAllDrives: true,
+      });
 
-    return {
-      fileId: response.data.id!,
-      webViewLink: response.data.webViewLink!,
-    };
+      return {
+        fileId: response.data.id!,
+        webViewLink: response.data.webViewLink!,
+      };
+    } catch (err) {
+      this.logger.error(`Drive upload failed [${fileName}]: ${err}`);
+      throw err;
+    }
   }
 
   async createFolder(name: string): Promise<string> {
     const rootFolderId = this.config.get<string>('google.driveRootFolderId');
-    const response = await this.drive.files.create({
-      requestBody: {
-        name,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: rootFolderId ? [rootFolderId] : [],
-      },
-      fields: 'webViewLink',
-      supportsAllDrives: true,
-    });
-    return response.data.webViewLink!;
+    try {
+      const response = await this.drive.files.create({
+        requestBody: {
+          name,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: rootFolderId ? [rootFolderId] : [],
+        },
+        fields: 'webViewLink',
+        supportsAllDrives: true,
+      });
+      return response.data.webViewLink!;
+    } catch (err) {
+      this.logger.error(`Drive createFolder failed [${name}]: ${err}`);
+      throw err;
+    }
   }
 
   async download(fileId: string, destPath: string): Promise<void> {
-    const response = await this.drive.files.get(
-      { fileId, alt: 'media', supportsAllDrives: true },
-      { responseType: 'stream' },
-    );
-    return new Promise<void>((resolve, reject) => {
-      const dest = fs.createWriteStream(destPath);
-      dest.on('error', reject);
-      (response.data as NodeJS.ReadableStream).on('error', reject);
-      (response.data as NodeJS.ReadableStream).pipe(dest).on('finish', resolve);
-    });
+    try {
+      const response = await this.drive.files.get(
+        { fileId, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' },
+      );
+      return new Promise<void>((resolve, reject) => {
+        const dest = fs.createWriteStream(destPath);
+        dest.on('error', reject);
+        (response.data as NodeJS.ReadableStream).on('error', reject);
+        (response.data as NodeJS.ReadableStream).pipe(dest).on('finish', resolve);
+      });
+    } catch (err) {
+      this.logger.error(`Drive download failed [${fileId}]: ${err}`);
+      throw err;
+    }
   }
 }

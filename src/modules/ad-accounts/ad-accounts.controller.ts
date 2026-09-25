@@ -62,6 +62,12 @@ export class AdAccountsController {
     return this.adAccountsService.findOne(id);
   }
 
+  @Get(':id/validate-token')
+  @ApiOperation({ summary: 'Validate the stored Meta token and return its permissions' })
+  validateToken(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adAccountsService.validateToken(id);
+  }
+
   @Patch(':id')
   @ApiOperation({
     summary: 'Update an ad account (rotate token or toggle active)',

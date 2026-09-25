@@ -107,6 +107,31 @@ describe('MetaUploadProcessor', () => {
     });
   });
 
+  it('saves Meta API error body when Axios returns a non-2xx response', async () => {
+    drive.download.mockResolvedValue(undefined);
+    const axiosError = Object.assign(new Error('Request failed with status code 403'), {
+      isAxiosError: true,
+      response: {
+        status: 403,
+        data: {
+          error: {
+            message: 'Invalid OAuth access token',
+            type: 'OAuthException',
+            code: 190,
+          },
+        },
+      },
+    });
+    meta.upload.mockRejectedValue(axiosError);
+
+    await processor.process(makeJob(PAYLOAD));
+
+    expect(logsRepo.update).toHaveBeenCalledWith('log-uuid', {
+      status: MediaUploadStatus.FAILED,
+      errorMessage: expect.stringContaining('Invalid OAuth access token'),
+    });
+  });
+
   it('always unlinks the temp file even on failure', async () => {
     drive.download.mockResolvedValue(undefined);
     meta.upload.mockRejectedValue(new Error('error'));

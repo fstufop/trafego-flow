@@ -75,20 +75,23 @@ export class WhatsAppSessionService
         printQRInTerminal: false,
       });
 
-      // Pairing code deve ser solicitado antes do primeiro connection.update,
-      // enquanto o socket ainda não comprometeu o fluxo de QR.
-      if (!state.creds.registered && this.phoneNumber) {
-        await this.requestPairingCode();
-      }
+      // requestPairingCode() não pode ser chamado aqui — o WebSocket ainda não
+      // conectou nos servidores do WA. O momento correto é quando o evento 'qr'
+      // dispara no connection.update (WS estabelecido, aguardando autenticação).
 
       this.sock.ev.on('connection.update', async (update: any) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
           this.currentQr = qr;
-          this.logger.log(
-            'QR disponível — escaneie em GET /whatsapp-session/status ou use GET /whatsapp-session/pairing-code para emparelhar pelo número',
-          );
+          if (!state.creds.registered && this.phoneNumber && !this.pairingRequested) {
+            // WS conectado aos servidores do WA — agora é seguro solicitar o código
+            await this.requestPairingCode();
+          } else {
+            this.logger.log(
+              'QR disponível — escaneie em GET /whatsapp-session/status ou use GET /whatsapp-session/pairing-code para emparelhar pelo número',
+            );
+          }
         }
 
         if (connection === 'open') {
@@ -201,25 +204,23 @@ export class WhatsAppSessionService
   }
 
   async getPairingCode(): Promise<{ pairingCode: string }> {
-    if (!this.sock) {
-      throw new ServiceUnavailableException(
-        'Socket não inicializado — aguarde o servidor iniciar',
-      );
-    }
     if (this.isConnected) {
       throw new ServiceUnavailableException('Sessão já está conectada');
     }
-    if (this.pairingCode) {
-      return { pairingCode: this.pairingCode };
-    }
+    // Reinicia o socket para obter um código fresco; o requestPairingCode() é chamado
+    // de forma assíncrona dentro do connection.update quando o evento 'qr' dispara.
+    this.pairingCode = undefined;
     this.pairingRequested = false;
-    await this.requestPairingCode();
-    if (!this.pairingCode) {
-      throw new ServiceUnavailableException(
-        'Não foi possível gerar o código — tente novamente',
-      );
+    this.reconnectAttempts = 0;
+    await this.startSocket();
+    // Aguarda o código ser definido pelo handler do evento 'qr' (até 15s)
+    for (let i = 0; i < 30; i++) {
+      if (this.pairingCode) return { pairingCode: this.pairingCode };
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
-    return { pairingCode: this.pairingCode };
+    throw new ServiceUnavailableException(
+      'Não foi possível gerar o código — tente novamente',
+    );
   }
 
   async sendMessage(groupJid: string, text: string): Promise<void> {

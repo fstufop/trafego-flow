@@ -55,6 +55,7 @@ export class AdsetAlertsService {
     const today = new Date().toISOString().slice(0, 10);
 
     const allClients = await this.clientsService.findAll();
+    // Adset alerts run for all client profiles (SITE_SALES, MESSAGE_SALES, LIVE_SALES) — no profile filter.
     const clients = job.clientId
       ? allClients.filter((c) => c.id === job.clientId)
       : allClients;

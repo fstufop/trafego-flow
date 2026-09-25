@@ -16,6 +16,26 @@ export interface InsightsSummary {
   liveViews: number;         // action_type: video_play
 }
 
+export interface AdsetMessageRow {
+  adsetName: string;
+  messagesStarted: number;
+  costPerMessage: number | null;
+  startDate: string; // 'DD/MM/AA'
+}
+
+export interface AdReachRow {
+  adName: string;
+  reach: number;
+}
+
+export interface LiveReportData {
+  liveDate: string;        // 'DD/MM/AAAA' para exibição
+  captationSpend: number;
+  captationReach: number;
+  captationClicks: number;
+  adReaches: AdReachRow[]; // ordenado por reach desc
+}
+
 export interface AiReportPayload {
   period: {
     since: string;       // 'YYYY-MM-DD'
@@ -29,6 +49,8 @@ export interface AiReportPayload {
   sales: InsightsSummary | null;       // remaining campaigns
   clientProfile: ClientProfileType;
   clientContext: string | null;
+  adsetRows?: AdsetMessageRow[];  // MESSAGE_SALES
+  liveData?: LiveReportData[];    // LIVE_SALES, até 2 entradas
 }
 
 export interface IAiProvider {

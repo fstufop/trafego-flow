@@ -175,7 +175,7 @@ export class MetaAdsService implements IMetaAdsService {
     const response = await firstValueFrom(
       this.httpService.get<MetaApiPaginatedResponse<MetaAdset>>(url, {
         params: {
-          fields: 'id,name,updated_time,effective_status',
+          fields: 'id,name,updated_time,effective_status,start_time',
           access_token: accessToken,
         },
       }),
@@ -201,6 +201,46 @@ export class MetaAdsService implements IMetaAdsService {
       }),
     ).catch((err: MetaErrorResponse) => this.handleError(err, adsetId));
     return response.data.data[0] ?? null;
+  }
+
+  async fetchAdsetMessageInsights(
+    adAccountId: string,
+    accessToken: string,
+    since: string,
+    until: string,
+  ): Promise<MetaInsights[]> {
+    const url = `${this.baseUrl}/${adAccountId}/insights`;
+    const response = await firstValueFrom(
+      this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
+        params: {
+          fields: 'adset_id,adset_name,spend,actions',
+          level: 'adset',
+          time_range: JSON.stringify({ since, until }),
+          access_token: accessToken,
+        },
+      }),
+    ).catch((err: MetaErrorResponse) => this.handleError(err, adAccountId));
+    return response.data.data;
+  }
+
+  async fetchAdInsightsByPeriod(
+    adAccountId: string,
+    accessToken: string,
+    since: string,
+    until: string,
+  ): Promise<MetaInsights[]> {
+    const url = `${this.baseUrl}/${adAccountId}/insights`;
+    const response = await firstValueFrom(
+      this.httpService.get<MetaApiPaginatedResponse<MetaInsights>>(url, {
+        params: {
+          fields: 'ad_id,ad_name,campaign_name,reach',
+          level: 'ad',
+          time_range: JSON.stringify({ since, until }),
+          access_token: accessToken,
+        },
+      }),
+    ).catch((err: MetaErrorResponse) => this.handleError(err, adAccountId));
+    return response.data.data;
   }
 
   private buildInsightsFields(level?: MetaInsightsLevel): string {

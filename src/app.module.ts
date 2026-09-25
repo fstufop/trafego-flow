@@ -40,7 +40,7 @@ import { ConversationRulesModule } from './modules/conversation-rules/conversati
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         synchronize: false,
-        logging: config.get<string>('app.nodeEnv') === 'development',
+        logging: ['error'],
       }),
     }),
     CacheModule.registerAsync({
