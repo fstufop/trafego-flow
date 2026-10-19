@@ -118,14 +118,19 @@ deploy: ## Deploy do serviço no Cloud Run com todas as env vars e secrets
 
 # ── Migrations ────────────────────────────────────────────────────────────────
 
-migrate-create: ## Cria o Cloud Run Job para migrations (idempotente)
+migrate-create: ## Cria (ou atualiza, se já existir) o Cloud Run Job para migrations com a imagem atual
 	gcloud run jobs create $(JOB_NAME) \
 	  --image $(IMAGE):latest \
 	  --region $(REGION) \
 	  --command "npm" \
 	  --args "run,migration:run:prod" \
 	  --set-secrets DATABASE_URL=DATABASE_URL:latest \
-	  || true
+	  || gcloud run jobs update $(JOB_NAME) \
+	  --image $(IMAGE):latest \
+	  --region $(REGION) \
+	  --command "npm" \
+	  --args "run,migration:run:prod" \
+	  --set-secrets DATABASE_URL=DATABASE_URL:latest
 
 migrate: ## Executa as migrations no Cloud Run (aguarda conclusão)
 	gcloud run jobs execute $(JOB_NAME) --region $(REGION) --wait
