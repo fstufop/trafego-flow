@@ -93,7 +93,7 @@ export class ConversationRulesService {
     const token = this.crypto.decrypt(integration.accessToken);
     const base = `${this.config.get<string>('meta.graphApiUrl')}/${this.config.get<string>('meta.graphApiVersion')}`;
     const resp = await firstValueFrom(
-      this.httpService.get(`${base}/me/media`, {
+      this.httpService.get(`${base}/${pageId}/media`, {
         params: { fields: 'id,caption,timestamp,permalink', access_token: token },
       }),
     );

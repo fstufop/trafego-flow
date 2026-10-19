@@ -198,7 +198,7 @@ describe('ConversationRulesService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('123');
       expect(mockHttp.get).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v21.0/me/media',
+        'https://graph.facebook.com/v21.0/PAGE123/media',
         expect.objectContaining({ params: expect.objectContaining({ access_token: 'plain-token' }) }),
       );
     });
