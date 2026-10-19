@@ -99,11 +99,21 @@ rodar com clientes de verdade).
 **Resultado:** `npm run build` ok; testes do módulo `webhook/instagram` (4 suítes, 30 testes) passando; nenhum arquivo fora do escopo foi alterado.
 **Observação:** 4 erros de lint pré-existentes (`no-unsafe-assignment`/`no-unsafe-member-access` em `instagram-graph.service.spec.ts`, no padrão `mock.calls[0][1]`) continuam lá — não foram introduzidos por esta mudança e não bloqueiam o build.
 
-### Tarefa 2 — Mover processamento do webhook para fila (BullMQ)
-**Arquivo:** novo processor em `src/modules/webhook/instagram/` usando `@nestjs/bullmq` (já é dependência do projeto)
-**O que fazer:** `handleEvent` enfileira o payload validado; um `Processor` consome e chama `ConversationBotService`, com retry/backoff configurado
-**Depende de:** nada, pode ser paralelo à Tarefa 1
-**Testável:** teste unitário do processor + teste de que `handleEvent` apenas enfileira
+### Tarefa 2 — Mover processamento do webhook para fila (BullMQ) ✅ CONCLUÍDA (2026-10-18)
+**Arquivos criados:**
+- `types/instagram-webhook-job.type.ts` — `InstagramDmJobPayload` e `InstagramCommentJobPayload`
+- `processors/instagram-webhook.processor.ts` — `InstagramWebhookProcessor` (`@Processor('instagram-webhook')`, extends `WorkerHost`), despacha por `job.name` (`dm` | `comment`) para `ConversationBotService`
+- `processors/instagram-webhook.processor.spec.ts` — 3 testes novos
+
+**Arquivos alterados:**
+- `instagram-webhook.service.ts` — `handleEvent` agora é `async` e **enfileira** (`queue.add('dm'|'comment', payload, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } })`) em vez de chamar `ConversationBotService` direto via `setImmediate`. A dependência de `ConversationBotService` foi removida daqui (passou a viver só no processor).
+- `instagram-webhook.controller.ts` — `handleEvent` agora é `async` e aguarda o enqueue antes de responder 200 (operação rápida contra o Redis — garante que o job não se perde se o processo cair logo após o ACK ao Meta, ao custo de poucos ms de latência)
+- `webhook.module.ts` — `BullModule.registerQueue({ name: 'instagram-webhook' })` + `InstagramWebhookProcessor` nos providers
+- `instagram-webhook.service.spec.ts` — reescrito para validar o enqueue (payload e opções de retry) em vez da chamada direta ao bot
+
+**Resultado:** `npm run build` ok; módulo `webhook/instagram` com 5 suítes / 33 testes passando (eram 4/30); nenhum arquivo fora do escopo alterado.
+**Depende de:** nada — foi feito em paralelo/depois da Tarefa 1
+**Nota de design:** retry de 3 tentativas com backoff exponencial (2s, 4s, 8s) é o padrão adotado; falha de enqueue (ex: Redis fora do ar) é logada como warning e não derruba o 200 ao Meta, evitando que o Meta fique reenviando o mesmo evento indefinidamente — trade-off aceitável pois a própria fila já é a camada de confiabilidade.
 
 ### Tarefa 3 — Tratar rate limit (429) e janela de mensagens expirada
 **Arquivo:** `instagram-graph.service.ts`

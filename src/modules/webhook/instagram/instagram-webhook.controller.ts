@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, HttpCode, Post, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InstagramWebhookService } from './instagram-webhook.service.js';
 import { InstagramWebhookPayload } from './interfaces/instagram-webhook-event.interface.js';
@@ -9,7 +18,9 @@ export class InstagramWebhookController {
   constructor(private readonly webhookService: InstagramWebhookService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Instagram webhook verification endpoint (Meta hub challenge)' })
+  @ApiOperation({
+    summary: 'Instagram webhook verification endpoint (Meta hub challenge)',
+  })
   verify(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
@@ -21,13 +32,13 @@ export class InstagramWebhookController {
   @Post()
   @HttpCode(200)
   @ApiOperation({ summary: 'Receive Instagram webhook events' })
-  handleEvent(
+  async handleEvent(
     @Body() payload: object,
     @Req() req: object,
     @Headers('x-hub-signature-256') signature: string,
-  ): void {
+  ): Promise<void> {
     const webhookPayload = payload as InstagramWebhookPayload;
     const rawBody = (req as { rawBody: Buffer }).rawBody;
-    this.webhookService.handleEvent(webhookPayload, rawBody, signature);
+    await this.webhookService.handleEvent(webhookPayload, rawBody, signature);
   }
 }

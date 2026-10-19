@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getQueueToken } from '@nestjs/bullmq';
 import { createHmac } from 'crypto';
 import { InstagramWebhookService } from './instagram-webhook.service.js';
-import { ConversationBotService } from './conversation-bot.service.js';
 import { InstagramWebhookPayload } from './interfaces/instagram-webhook-event.interface.js';
 
 const APP_SECRET = 'test-app-secret';
@@ -17,9 +17,8 @@ const mockConfig = {
   }),
 };
 
-const mockBotService = {
-  handleDm: jest.fn().mockResolvedValue(undefined),
-  handleComment: jest.fn().mockResolvedValue(undefined),
+const mockQueue = {
+  add: jest.fn().mockResolvedValue(undefined),
 };
 
 function makeSignature(rawBody: Buffer): string {
@@ -36,7 +35,7 @@ describe('InstagramWebhookService', () => {
       providers: [
         InstagramWebhookService,
         { provide: ConfigService, useValue: mockConfig },
-        { provide: ConversationBotService, useValue: mockBotService },
+        { provide: getQueueToken('instagram-webhook'), useValue: mockQueue },
       ],
     }).compile();
 
@@ -82,37 +81,26 @@ describe('InstagramWebhookService', () => {
       ],
     };
 
-    it('should throw ForbiddenException with invalid signature', () => {
+    it('should throw ForbiddenException with invalid signature', async () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
-      expect(() =>
+      await expect(
         service.handleEvent(dmPayload, rawBody, 'sha256=invalidsig'),
-      ).toThrow(ForbiddenException);
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockQueue.add).not.toHaveBeenCalled();
     });
 
-    it('should return void immediately (fire-and-forget) when signature is valid', () => {
+    it('should enqueue a dm job with the correct payload and retry options', async () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
-      const result = service.handleEvent(
-        dmPayload,
-        rawBody,
-        makeSignature(rawBody),
+      await service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'dm',
+        { pageId: 'PAGE123', senderId: 'IGSID_USER', text: 'Olá' },
+        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
       );
-      expect(result).toBeUndefined();
     });
 
-    it('should dispatch messaging events to handleDm (fire-and-forget)', (done) => {
-      const rawBody = Buffer.from(JSON.stringify(dmPayload));
-      service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
-      setImmediate(() => {
-        expect(mockBotService.handleDm).toHaveBeenCalledWith(
-          'PAGE123',
-          'IGSID_USER',
-          'Olá',
-        );
-        done();
-      });
-    });
-
-    it('should dispatch comment changes with verb=add to handleComment', (done) => {
+    it('should enqueue a comment job for comment changes with verb=add', async () => {
       const commentPayload: InstagramWebhookPayload = {
         object: 'instagram',
         entry: [
@@ -136,18 +124,20 @@ describe('InstagramWebhookService', () => {
         ],
       };
       const rawBody = Buffer.from(JSON.stringify(commentPayload));
-      service.handleEvent(commentPayload, rawBody, makeSignature(rawBody));
-      setImmediate(() => {
-        expect(mockBotService.handleComment).toHaveBeenCalledWith(
-          'PAGE1',
-          'POST123',
-          'C1',
-        );
-        done();
-      });
+      await service.handleEvent(
+        commentPayload,
+        rawBody,
+        makeSignature(rawBody),
+      );
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'comment',
+        { pageId: 'PAGE1', postId: 'POST123', commentId: 'C1' },
+        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+      );
     });
 
-    it('should ignore comment changes with verb !== add', (done) => {
+    it('should ignore comment changes with verb !== add', async () => {
       const editedPayload: InstagramWebhookPayload = {
         object: 'instagram',
         entry: [
@@ -171,11 +161,18 @@ describe('InstagramWebhookService', () => {
         ],
       };
       const rawBody = Buffer.from(JSON.stringify(editedPayload));
-      service.handleEvent(editedPayload, rawBody, makeSignature(rawBody));
-      setImmediate(() => {
-        expect(mockBotService.handleComment).not.toHaveBeenCalled();
-        done();
-      });
+      await service.handleEvent(editedPayload, rawBody, makeSignature(rawBody));
+
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should log a warning and not throw when enqueueing fails', async () => {
+      mockQueue.add.mockRejectedValueOnce(new Error('redis down'));
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+
+      await expect(
+        service.handleEvent(dmPayload, rawBody, makeSignature(rawBody)),
+      ).resolves.toBeUndefined();
     });
   });
 });

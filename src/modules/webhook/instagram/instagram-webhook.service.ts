@@ -1,7 +1,8 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { ConversationBotService } from './conversation-bot.service.js';
 import {
   InstagramEntry,
   InstagramWebhookPayload,
@@ -13,7 +14,8 @@ export class InstagramWebhookService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly botService: ConversationBotService,
+    @InjectQueue('instagram-webhook')
+    private readonly queue: Queue,
   ) {}
 
   verifyWebhook(mode: string, token: string, challenge: string): string {
@@ -26,37 +28,55 @@ export class InstagramWebhookService {
     return challenge;
   }
 
-  handleEvent(
+  async handleEvent(
     payload: InstagramWebhookPayload,
     rawBody: Buffer,
     signature: string,
-  ): void {
+  ): Promise<void> {
     this.validateSignature(rawBody, signature);
-    setImmediate(() => this.dispatchEvents(payload));
+    await this.enqueueEvents(payload);
   }
 
-  private dispatchEvents(payload: InstagramWebhookPayload): void {
+  private async enqueueEvents(payload: InstagramWebhookPayload): Promise<void> {
     for (const entry of payload.entry) {
-      this.dispatchEntry(entry);
+      await this.enqueueEntry(entry);
     }
   }
 
-  private dispatchEntry(entry: InstagramEntry): void {
+  private async enqueueEntry(entry: InstagramEntry): Promise<void> {
     for (const event of entry.messaging ?? []) {
-      this.botService
-        .handleDm(entry.id, event.sender.id, event.message?.text)
+      await this.queue
+        .add(
+          'dm',
+          {
+            pageId: entry.id,
+            senderId: event.sender.id,
+            text: event.message?.text,
+          },
+          { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+        )
         .catch((err: Error) =>
-          this.logger.warn(`handleDm error pageId=${entry.id}: ${err.message}`),
+          this.logger.warn(
+            `enqueue dm failed pageId=${entry.id}: ${err.message}`,
+          ),
         );
     }
 
     for (const change of entry.changes ?? []) {
       if (change.field !== 'comments' || change.value.verb !== 'add') continue;
-      this.botService
-        .handleComment(entry.id, change.value.post_id, change.value.comment_id)
+      await this.queue
+        .add(
+          'comment',
+          {
+            pageId: entry.id,
+            postId: change.value.post_id,
+            commentId: change.value.comment_id,
+          },
+          { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+        )
         .catch((err: Error) =>
           this.logger.warn(
-            `handleComment error pageId=${entry.id}: ${err.message}`,
+            `enqueue comment failed pageId=${entry.id}: ${err.message}`,
           ),
         );
     }
