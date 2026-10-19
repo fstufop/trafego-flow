@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { of } from 'rxjs';
+import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import { of, throwError } from 'rxjs';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
 import { RuleType } from './enums/rule-type.enum.js';
@@ -201,6 +201,24 @@ describe('ConversationRulesService', () => {
         'https://graph.facebook.com/v21.0/PAGE123/media',
         expect.objectContaining({ params: expect.objectContaining({ access_token: 'plain-token' }) }),
       );
+    });
+
+    it('should log the Graph API error response and rethrow on failure', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue({ accessToken: 'enc' });
+      const graphError = {
+        response: {
+          status: 400,
+          data: { error: { message: 'Unsupported get request.', type: 'GraphMethodException', code: 100, fbtrace_id: 'ABC123' } },
+        },
+      };
+      mockHttp.get.mockReturnValue(throwError(() => graphError));
+      const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+      await expect(service.getRecentPosts('PAGE123')).rejects.toBe(graphError);
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('PAGE123'));
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Unsupported get request.'));
+      errorSpy.mockRestore();
     });
   });
 });

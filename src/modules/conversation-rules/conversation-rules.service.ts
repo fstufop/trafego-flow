@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
@@ -14,6 +14,8 @@ import { AesCryptoService } from '../../common/crypto/aes.service.js';
 
 @Injectable()
 export class ConversationRulesService {
+  private readonly logger = new Logger(ConversationRulesService.name);
+
   constructor(
     @InjectRepository(ConversationRuleEntity)
     private readonly repo: Repository<ConversationRuleEntity>,
@@ -96,7 +98,12 @@ export class ConversationRulesService {
       this.httpService.get(`${base}/${pageId}/media`, {
         params: { fields: 'id,caption,timestamp,permalink', access_token: token },
       }),
-    );
+    ).catch((err: { response?: { data?: unknown } }) => {
+      this.logger.error(
+        `Graph API error fetching posts for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`,
+      );
+      throw err;
+    });
     return (resp.data as { data?: Array<{ id: string; caption: string | null; timestamp: string; permalink: string }> }).data ?? [];
   }
 
