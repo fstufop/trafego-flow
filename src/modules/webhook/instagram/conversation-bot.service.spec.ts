@@ -3,6 +3,7 @@ import { ConversationBotService } from './conversation-bot.service.js';
 import { ConversationRulesService } from '../../conversation-rules/conversation-rules.service.js';
 import { IntegrationsService } from '../../integrations/integrations.service.js';
 import { ReplyBuilderService } from './reply-builder.service.js';
+import { GraphApiRateLimitException } from './exceptions/graph-api-rate-limit.exception.js';
 
 const mockRulesService = {
   findKeywordRule: jest.fn(),
@@ -91,6 +92,28 @@ describe('ConversationBotService', () => {
       await service.handleDm('PAGE1', 'USER1', 'quero');
       expect(mockReplyBuilder.send).not.toHaveBeenCalled();
     });
+
+    it('should swallow a non-rate-limit send failure (e.g. expired window)', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      const rule = { reply: { text: 'Oi!' } };
+      mockRulesService.findKeywordRule.mockResolvedValue(rule);
+      mockReplyBuilder.send.mockRejectedValue(new Error('window expired'));
+      await expect(
+        service.handleDm('PAGE1', 'USER1', 'quero'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should rethrow a rate-limit send failure so the job can be retried', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      const rule = { reply: { text: 'Oi!' } };
+      mockRulesService.findKeywordRule.mockResolvedValue(rule);
+      mockReplyBuilder.send.mockRejectedValue(
+        new GraphApiRateLimitException('PAGE1'),
+      );
+      await expect(service.handleDm('PAGE1', 'USER1', 'quero')).rejects.toThrow(
+        GraphApiRateLimitException,
+      );
+    });
   });
 
   describe('handleComment', () => {
@@ -120,6 +143,30 @@ describe('ConversationBotService', () => {
       );
       await service.handleComment('PAGE1', 'POST123', 'COMMENT1');
       expect(mockReplyBuilder.sendCommentReply).not.toHaveBeenCalled();
+    });
+
+    it('should swallow a non-rate-limit send failure (e.g. expired window)', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      const rule = { reply: { text: 'DM enviada!' } };
+      mockRulesService.findPostRule.mockResolvedValue(rule);
+      mockReplyBuilder.sendCommentReply.mockRejectedValue(
+        new Error('window expired'),
+      );
+      await expect(
+        service.handleComment('PAGE1', 'POST123', 'COMMENT1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should rethrow a rate-limit send failure so the job can be retried', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      const rule = { reply: { text: 'DM enviada!' } };
+      mockRulesService.findPostRule.mockResolvedValue(rule);
+      mockReplyBuilder.sendCommentReply.mockRejectedValue(
+        new GraphApiRateLimitException('PAGE1'),
+      );
+      await expect(
+        service.handleComment('PAGE1', 'POST123', 'COMMENT1'),
+      ).rejects.toThrow(GraphApiRateLimitException);
     });
   });
 });

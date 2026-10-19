@@ -115,11 +115,23 @@ rodar com clientes de verdade).
 **Depende de:** nada — foi feito em paralelo/depois da Tarefa 1
 **Nota de design:** retry de 3 tentativas com backoff exponencial (2s, 4s, 8s) é o padrão adotado; falha de enqueue (ex: Redis fora do ar) é logada como warning e não derruba o 200 ao Meta, evitando que o Meta fique reenviando o mesmo evento indefinidamente — trade-off aceitável pois a própria fila já é a camada de confiabilidade.
 
-### Tarefa 3 — Tratar rate limit (429) e janela de mensagens expirada
-**Arquivo:** `instagram-graph.service.ts`
-**O que fazer:** mapear erros conhecidos da Graph API (429, código de janela expirada) para exceptions específicas, sem retry automático indiscriminado
-**Depende de:** Tarefa 2 (para decidir reenvio via fila)
-**Testável:** testes unitários com mocks de erro 429 / janela expirada
+### Tarefa 3 — Tratar rate limit (429) e janela de mensagens expirada ✅ CONCLUÍDA (2026-10-18)
+**Arquivos criados:**
+- `exceptions/graph-api-rate-limit.exception.ts` — `GraphApiRateLimitException` (HTTP 429)
+- `exceptions/messaging-window-expired.exception.ts` — `MessagingWindowExpiredException` (HTTP 400)
+
+**Arquivos alterados:**
+- `instagram-graph.service.ts` — `post()` agora mapeia a resposta de erro da Graph API:
+  - `code === 190` → `OAuthTokenExpiredException` (já existia)
+  - `code === 10` + `error_subcode` em `[2534022, 2018278, 2018065]` → `MessagingWindowExpiredException` (fora da janela de 24h/7 dias)
+  - HTTP `429` ou `code` em `[4, 17, 32, 80004, 613]` → `GraphApiRateLimitException`
+  - qualquer outro caso → comportamento anterior (log + rethrow do erro original)
+- `conversation-bot.service.ts` — `handleDm`/`handleComment` passam a **repropagar** apenas `GraphApiRateLimitException` (para o BullMQ aplicar o retry com backoff configurado na Tarefa 2); qualquer outro erro (token expirado, janela fechada, etc.) continua sendo só logado, já que retry não resolveria
+- Specs atualizados: `instagram-graph.service.spec.ts` (+4 testes: 429, código de rate limit, janela expirada, erro desconhecido repassado) e `conversation-bot.service.spec.ts` (+4 testes: swallow vs rethrow em `handleDm`/`handleComment`)
+
+**Resultado:** `npm run build` ok; módulo `webhook/instagram` com 5 suítes / 41 testes passando (eram 5/33); suíte completa do projeto sem nenhuma regressão nova (mesmas 4 falhas pré-existentes e não relacionadas).
+**Fonte dos códigos de erro:** documentação oficial do Meta (`developers.facebook.com/documentation/business-messaging/messenger-platform/error-codes`) e `developers.facebook.com/docs/graph-api/overview/rate-limiting/`, confirmados via busca antes da implementação para não "chutar" códigos.
+**Depende de:** Tarefa 2 (para o retry via fila fazer sentido) — ambas já concluídas
 
 ### Tarefa 4 — Checklist de setup Meta por cliente (processo, não código)
 **O que fazer:** documentar (README interno) o passo a passo para conectar um novo cliente: criar app/página de teste, obter token, registrar em `/integrations`, registrar regras em `/conversation-rules`

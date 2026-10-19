@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConversationRulesService } from '../../conversation-rules/conversation-rules.service.js';
 import { IntegrationsService } from '../../integrations/integrations.service.js';
 import { ReplyBuilderService } from './reply-builder.service.js';
+import { GraphApiRateLimitException } from './exceptions/graph-api-rate-limit.exception.js';
 
 @Injectable()
 export class ConversationBotService {
@@ -36,9 +37,13 @@ export class ConversationBotService {
 
     if (!rule) return;
 
+    // Rate limit is transient — rethrow so the BullMQ job fails and retries with backoff.
+    // Any other error (expired token, closed messaging window, etc.) is permanent for this
+    // message, so it's just logged instead of wasting retries on something that will never succeed.
     await this.replyBuilder
       .send(pageId, senderId, rule.reply)
       .catch((err: Error) => {
+        if (err instanceof GraphApiRateLimitException) throw err;
         this.logger.error(
           `Failed to send DM reply for pageId ${pageId}: ${err.message}`,
         );
@@ -65,6 +70,7 @@ export class ConversationBotService {
     await this.replyBuilder
       .sendCommentReply(pageId, commentId, rule.reply)
       .catch((err: Error) => {
+        if (err instanceof GraphApiRateLimitException) throw err;
         this.logger.error(
           `Failed to send comment reply for pageId ${pageId}: ${err.message}`,
         );

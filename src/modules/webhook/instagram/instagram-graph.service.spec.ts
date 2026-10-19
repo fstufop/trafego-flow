@@ -10,6 +10,8 @@ import {
   MetaPlatform,
 } from '../../integrations/entities/integration.entity.js';
 import { OAuthTokenExpiredException } from './exceptions/oauth-token-expired.exception.js';
+import { GraphApiRateLimitException } from './exceptions/graph-api-rate-limit.exception.js';
+import { MessagingWindowExpiredException } from './exceptions/messaging-window-expired.exception.js';
 
 const mockIntegration: Partial<IntegrationEntity> = {
   id: 'uuid-int-1',
@@ -73,6 +75,49 @@ describe('InstagramGraphService', () => {
       await expect(
         service.sendTextMessage('PAGE123', 'IGSID_USER', 'Olá'),
       ).rejects.toThrow(OAuthTokenExpiredException);
+    });
+
+    it('should throw GraphApiRateLimitException on HTTP 429', async () => {
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({
+          response: { status: 429, data: { error: { code: 4 } } },
+        })),
+      );
+
+      await expect(
+        service.sendTextMessage('PAGE123', 'IGSID_USER', 'Olá'),
+      ).rejects.toThrow(GraphApiRateLimitException);
+    });
+
+    it('should throw GraphApiRateLimitException on known rate-limit error codes', async () => {
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ response: { data: { error: { code: 613 } } } })),
+      );
+
+      await expect(
+        service.sendTextMessage('PAGE123', 'IGSID_USER', 'Olá'),
+      ).rejects.toThrow(GraphApiRateLimitException);
+    });
+
+    it('should throw MessagingWindowExpiredException when outside the allowed window', async () => {
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({
+          response: { data: { error: { code: 10, error_subcode: 2534022 } } },
+        })),
+      );
+
+      await expect(
+        service.sendTextMessage('PAGE123', 'IGSID_USER', 'Olá'),
+      ).rejects.toThrow(MessagingWindowExpiredException);
+    });
+
+    it('should rethrow the original error when it does not match a known case', async () => {
+      const unknownError = { response: { data: { error: { code: 100 } } } };
+      mockHttpService.post.mockReturnValue(throwError(() => unknownError));
+
+      await expect(
+        service.sendTextMessage('PAGE123', 'IGSID_USER', 'Olá'),
+      ).rejects.toBe(unknownError);
     });
   });
 

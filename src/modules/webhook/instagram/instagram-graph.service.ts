@@ -6,6 +6,13 @@ import { AesCryptoService } from '../../../common/crypto/aes.service.js';
 import { IntegrationsService } from '../../integrations/integrations.service.js';
 import { IInstagramGraphService } from './interfaces/instagram-graph.interface.js';
 import { OAuthTokenExpiredException } from './exceptions/oauth-token-expired.exception.js';
+import { GraphApiRateLimitException } from './exceptions/graph-api-rate-limit.exception.js';
+import { MessagingWindowExpiredException } from './exceptions/messaging-window-expired.exception.js';
+
+// Meta error codes that mean "rate limit reached" (app/page/custom limits, including code 613).
+const RATE_LIMIT_ERROR_CODES = [4, 17, 32, 80004, 613];
+// Meta error code 10 + these subcodes mean "outside the 24h/7-day messaging window".
+const WINDOW_EXPIRED_SUBCODES = [2534022, 2018278, 2018065];
 
 @Injectable()
 export class InstagramGraphService implements IInstagramGraphService {
@@ -89,15 +96,39 @@ export class InstagramGraphService implements IInstagramGraphService {
     const url = `${this.baseUrl}/me/messages`;
     await firstValueFrom(
       this.httpService.post(url, body, { params: { access_token: token } }),
-    ).catch((err: { response?: { data?: { error?: { code?: number } } } }) => {
-      const code = err?.response?.data?.error?.code;
-      if (code === 190) {
-        throw new OAuthTokenExpiredException(pageId);
-      }
-      this.logger.error(
-        `Graph API error for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`,
-      );
-      throw err;
-    });
+    ).catch(
+      (err: {
+        response?: {
+          status?: number;
+          data?: { error?: { code?: number; error_subcode?: number } };
+        };
+      }) => {
+        const status = err?.response?.status;
+        const code = err?.response?.data?.error?.code;
+        const subcode = err?.response?.data?.error?.error_subcode;
+
+        if (code === 190) {
+          throw new OAuthTokenExpiredException(pageId);
+        }
+        if (
+          code === 10 &&
+          subcode !== undefined &&
+          WINDOW_EXPIRED_SUBCODES.includes(subcode)
+        ) {
+          throw new MessagingWindowExpiredException(pageId);
+        }
+        if (
+          status === 429 ||
+          (code !== undefined && RATE_LIMIT_ERROR_CODES.includes(code))
+        ) {
+          throw new GraphApiRateLimitException(pageId);
+        }
+
+        this.logger.error(
+          `Graph API error for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`,
+        );
+        throw err;
+      },
+    );
   }
 }
