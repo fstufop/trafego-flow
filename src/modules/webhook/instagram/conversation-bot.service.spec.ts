@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Logger } from '@nestjs/common';
 import { ConversationBotService } from './conversation-bot.service.js';
 import { ConversationRulesService } from '../../conversation-rules/conversation-rules.service.js';
 import { IntegrationsService } from '../../integrations/integrations.service.js';
@@ -24,9 +25,13 @@ const activeIntegration = { clientId: 'client-1', isActive: true };
 
 describe('ConversationBotService', () => {
   let service: ConversationBotService;
+  let warnSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    warnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConversationBotService,
@@ -36,6 +41,10 @@ describe('ConversationBotService', () => {
       ],
     }).compile();
     service = module.get<ConversationBotService>(ConversationBotService);
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
   });
 
   describe('handleDm', () => {
@@ -93,6 +102,16 @@ describe('ConversationBotService', () => {
       expect(mockReplyBuilder.send).not.toHaveBeenCalled();
     });
 
+    it('should log a warning when integration lookup fails', async () => {
+      mockIntegrationsService.findByPageId.mockRejectedValue(
+        new Error('Not found'),
+      );
+      await service.handleDm('PAGE1', 'USER1', 'quero');
+      expect(warnSpy).toHaveBeenCalledWith(
+        'No integration found for pageId PAGE1 (dm): Not found',
+      );
+    });
+
     it('should swallow a non-rate-limit send failure (e.g. expired window)', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
       const rule = { reply: { text: 'Oi!' } };
@@ -143,6 +162,16 @@ describe('ConversationBotService', () => {
       );
       await service.handleComment('PAGE1', 'POST123', 'COMMENT1');
       expect(mockReplyBuilder.sendCommentReply).not.toHaveBeenCalled();
+    });
+
+    it('should log a warning when integration lookup fails', async () => {
+      mockIntegrationsService.findByPageId.mockRejectedValue(
+        new Error('Not found'),
+      );
+      await service.handleComment('PAGE1', 'POST123', 'COMMENT1');
+      expect(warnSpy).toHaveBeenCalledWith(
+        'No integration found for pageId PAGE1 (comment): Not found',
+      );
     });
 
     it('should swallow a non-rate-limit send failure (e.g. expired window)', async () => {

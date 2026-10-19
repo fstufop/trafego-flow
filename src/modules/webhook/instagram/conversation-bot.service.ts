@@ -27,7 +27,10 @@ export class ConversationBotService {
       const integration = await this.integrationsService.findByPageId(pageId);
       if (!integration.isActive) return;
       clientId = integration.clientId;
-    } catch {
+    } catch (err) {
+      this.logger.warn(
+        `No integration found for pageId ${pageId} (dm): ${(err as Error).message}`,
+      );
       return;
     }
 
@@ -60,7 +63,10 @@ export class ConversationBotService {
       const integration = await this.integrationsService.findByPageId(pageId);
       if (!integration.isActive) return;
       clientId = integration.clientId;
-    } catch {
+    } catch (err) {
+      this.logger.warn(
+        `No integration found for pageId ${pageId} (comment): ${(err as Error).message}`,
+      );
       return;
     }
 
