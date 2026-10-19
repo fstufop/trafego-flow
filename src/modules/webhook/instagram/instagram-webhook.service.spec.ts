@@ -45,15 +45,21 @@ describe('InstagramWebhookService', () => {
 
   describe('verifyWebhook', () => {
     it('should return challenge when mode and token are correct', () => {
-      expect(service.verifyWebhook('subscribe', VERIFY_TOKEN, 'CHALLENGE_ABC')).toBe('CHALLENGE_ABC');
+      expect(
+        service.verifyWebhook('subscribe', VERIFY_TOKEN, 'CHALLENGE_ABC'),
+      ).toBe('CHALLENGE_ABC');
     });
 
     it('should throw ForbiddenException with wrong token', () => {
-      expect(() => service.verifyWebhook('subscribe', 'wrong-token', 'ABC')).toThrow(ForbiddenException);
+      expect(() =>
+        service.verifyWebhook('subscribe', 'wrong-token', 'ABC'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should throw ForbiddenException with wrong mode', () => {
-      expect(() => service.verifyWebhook('unsubscribe', VERIFY_TOKEN, 'ABC')).toThrow(ForbiddenException);
+      expect(() =>
+        service.verifyWebhook('unsubscribe', VERIFY_TOKEN, 'ABC'),
+      ).toThrow(ForbiddenException);
     });
   });
 
@@ -78,12 +84,18 @@ describe('InstagramWebhookService', () => {
 
     it('should throw ForbiddenException with invalid signature', () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
-      expect(() => service.handleEvent(dmPayload, rawBody, 'sha256=invalidsig')).toThrow(ForbiddenException);
+      expect(() =>
+        service.handleEvent(dmPayload, rawBody, 'sha256=invalidsig'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should return void immediately (fire-and-forget) when signature is valid', () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
-      const result = service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
+      const result = service.handleEvent(
+        dmPayload,
+        rawBody,
+        makeSignature(rawBody),
+      );
       expect(result).toBeUndefined();
     });
 
@@ -91,7 +103,11 @@ describe('InstagramWebhookService', () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
       service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
       setImmediate(() => {
-        expect(mockBotService.handleDm).toHaveBeenCalledWith('PAGE123', 'IGSID_USER', 'Olá');
+        expect(mockBotService.handleDm).toHaveBeenCalledWith(
+          'PAGE123',
+          'IGSID_USER',
+          'Olá',
+        );
         done();
       });
     });
@@ -99,26 +115,34 @@ describe('InstagramWebhookService', () => {
     it('should dispatch comment changes with verb=add to handleComment', (done) => {
       const commentPayload: InstagramWebhookPayload = {
         object: 'instagram',
-        entry: [{
-          id: 'PAGE1',
-          time: 1,
-          changes: [{
-            field: 'comments',
-            value: {
-              from: { id: 'COMMENTER1', name: 'Ana' },
-              post_id: 'POST123',
-              comment_id: 'C1',
-              message: 'oi',
-              item: 'comment',
-              verb: 'add',
-            },
-          }],
-        }],
+        entry: [
+          {
+            id: 'PAGE1',
+            time: 1,
+            changes: [
+              {
+                field: 'comments',
+                value: {
+                  from: { id: 'COMMENTER1', name: 'Ana' },
+                  post_id: 'POST123',
+                  comment_id: 'C1',
+                  message: 'oi',
+                  item: 'comment',
+                  verb: 'add',
+                },
+              },
+            ],
+          },
+        ],
       };
       const rawBody = Buffer.from(JSON.stringify(commentPayload));
       service.handleEvent(commentPayload, rawBody, makeSignature(rawBody));
       setImmediate(() => {
-        expect(mockBotService.handleComment).toHaveBeenCalledWith('PAGE1', 'POST123', 'COMMENTER1');
+        expect(mockBotService.handleComment).toHaveBeenCalledWith(
+          'PAGE1',
+          'POST123',
+          'C1',
+        );
         done();
       });
     });
@@ -126,21 +150,25 @@ describe('InstagramWebhookService', () => {
     it('should ignore comment changes with verb !== add', (done) => {
       const editedPayload: InstagramWebhookPayload = {
         object: 'instagram',
-        entry: [{
-          id: 'PAGE1',
-          time: 1,
-          changes: [{
-            field: 'comments',
-            value: {
-              from: { id: 'COMMENTER1', name: 'Ana' },
-              post_id: 'POST123',
-              comment_id: 'C1',
-              message: 'oi',
-              item: 'comment',
-              verb: 'edited',
-            },
-          }],
-        }],
+        entry: [
+          {
+            id: 'PAGE1',
+            time: 1,
+            changes: [
+              {
+                field: 'comments',
+                value: {
+                  from: { id: 'COMMENTER1', name: 'Ana' },
+                  post_id: 'POST123',
+                  comment_id: 'C1',
+                  message: 'oi',
+                  item: 'comment',
+                  verb: 'edited',
+                },
+              },
+            ],
+          },
+        ],
       };
       const rawBody = Buffer.from(JSON.stringify(editedPayload));
       service.handleEvent(editedPayload, rawBody, makeSignature(rawBody));

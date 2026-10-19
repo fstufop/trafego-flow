@@ -16,6 +16,7 @@ const mockIntegrationsService = {
 
 const mockReplyBuilder = {
   send: jest.fn(),
+  sendCommentReply: jest.fn(),
 };
 
 const activeIntegration = { clientId: 'client-1', isActive: true };
@@ -53,7 +54,11 @@ describe('ConversationBotService', () => {
       mockRulesService.findKeywordRule.mockResolvedValue(rule);
       mockReplyBuilder.send.mockResolvedValue(undefined);
       await service.handleDm('PAGE1', 'USER1', 'quero comprar');
-      expect(mockReplyBuilder.send).toHaveBeenCalledWith('PAGE1', 'USER1', rule.reply);
+      expect(mockReplyBuilder.send).toHaveBeenCalledWith(
+        'PAGE1',
+        'USER1',
+        rule.reply,
+      );
       expect(mockRulesService.findDefaultRule).not.toHaveBeenCalled();
     });
 
@@ -64,7 +69,11 @@ describe('ConversationBotService', () => {
       mockRulesService.findDefaultRule.mockResolvedValue(defaultRule);
       mockReplyBuilder.send.mockResolvedValue(undefined);
       await service.handleDm('PAGE1', 'USER1', 'oi');
-      expect(mockReplyBuilder.send).toHaveBeenCalledWith('PAGE1', 'USER1', defaultRule.reply);
+      expect(mockReplyBuilder.send).toHaveBeenCalledWith(
+        'PAGE1',
+        'USER1',
+        defaultRule.reply,
+      );
     });
 
     it('should stay silent when no rules match at all', async () => {
@@ -76,33 +85,41 @@ describe('ConversationBotService', () => {
     });
 
     it('should stay silent when integration is not found', async () => {
-      mockIntegrationsService.findByPageId.mockRejectedValue(new Error('Not found'));
+      mockIntegrationsService.findByPageId.mockRejectedValue(
+        new Error('Not found'),
+      );
       await service.handleDm('PAGE1', 'USER1', 'quero');
       expect(mockReplyBuilder.send).not.toHaveBeenCalled();
     });
   });
 
   describe('handleComment', () => {
-    it('should send reply when post rule exists', async () => {
+    it('should send private reply to the comment when post rule exists', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
       const rule = { reply: { text: 'DM enviada!' } };
       mockRulesService.findPostRule.mockResolvedValue(rule);
-      mockReplyBuilder.send.mockResolvedValue(undefined);
-      await service.handleComment('PAGE1', 'POST123', 'COMMENTER1');
-      expect(mockReplyBuilder.send).toHaveBeenCalledWith('PAGE1', 'COMMENTER1', rule.reply);
+      mockReplyBuilder.sendCommentReply.mockResolvedValue(undefined);
+      await service.handleComment('PAGE1', 'POST123', 'COMMENT1');
+      expect(mockReplyBuilder.sendCommentReply).toHaveBeenCalledWith(
+        'PAGE1',
+        'COMMENT1',
+        rule.reply,
+      );
     });
 
     it('should stay silent when no post rule exists', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
       mockRulesService.findPostRule.mockResolvedValue(null);
-      await service.handleComment('PAGE1', 'POST123', 'COMMENTER1');
-      expect(mockReplyBuilder.send).not.toHaveBeenCalled();
+      await service.handleComment('PAGE1', 'POST123', 'COMMENT1');
+      expect(mockReplyBuilder.sendCommentReply).not.toHaveBeenCalled();
     });
 
     it('should stay silent when integration not found', async () => {
-      mockIntegrationsService.findByPageId.mockRejectedValue(new Error('Not found'));
-      await service.handleComment('PAGE1', 'POST123', 'COMMENTER1');
-      expect(mockReplyBuilder.send).not.toHaveBeenCalled();
+      mockIntegrationsService.findByPageId.mockRejectedValue(
+        new Error('Not found'),
+      );
+      await service.handleComment('PAGE1', 'POST123', 'COMMENT1');
+      expect(mockReplyBuilder.sendCommentReply).not.toHaveBeenCalled();
     });
   });
 });

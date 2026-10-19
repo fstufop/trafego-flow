@@ -5,6 +5,7 @@ import { InstagramGraphService } from './instagram-graph.service.js';
 const mockGraph = {
   sendTextMessage: jest.fn(),
   sendQuickReplies: jest.fn(),
+  sendCommentPrivateReply: jest.fn(),
 };
 
 describe('ReplyBuilderService', () => {
@@ -23,19 +24,38 @@ describe('ReplyBuilderService', () => {
 
   it('should call sendTextMessage when reply has only text', async () => {
     await service.send('PAGE1', 'USER1', { text: 'Olá!' });
-    expect(mockGraph.sendTextMessage).toHaveBeenCalledWith('PAGE1', 'USER1', 'Olá!');
+    expect(mockGraph.sendTextMessage).toHaveBeenCalledWith(
+      'PAGE1',
+      'USER1',
+      'Olá!',
+    );
     expect(mockGraph.sendQuickReplies).not.toHaveBeenCalled();
   });
 
   it('should call sendQuickReplies when reply has text and quickReplies', async () => {
-    await service.send('PAGE1', 'USER1', { text: 'Escolha:', quickReplies: ['Sim', 'Não'] });
-    expect(mockGraph.sendQuickReplies).toHaveBeenCalledWith('PAGE1', 'USER1', 'Escolha:', ['Sim', 'Não']);
+    await service.send('PAGE1', 'USER1', {
+      text: 'Escolha:',
+      quickReplies: ['Sim', 'Não'],
+    });
+    expect(mockGraph.sendQuickReplies).toHaveBeenCalledWith(
+      'PAGE1',
+      'USER1',
+      'Escolha:',
+      ['Sim', 'Não'],
+    );
     expect(mockGraph.sendTextMessage).not.toHaveBeenCalled();
   });
 
   it('should append waLink to text with newline when reply has text and waLink', async () => {
-    await service.send('PAGE1', 'USER1', { text: 'Fale conosco:', waLink: 'https://wa.me/5511999' });
-    expect(mockGraph.sendTextMessage).toHaveBeenCalledWith('PAGE1', 'USER1', 'Fale conosco:\nhttps://wa.me/5511999');
+    await service.send('PAGE1', 'USER1', {
+      text: 'Fale conosco:',
+      waLink: 'https://wa.me/5511999',
+    });
+    expect(mockGraph.sendTextMessage).toHaveBeenCalledWith(
+      'PAGE1',
+      'USER1',
+      'Fale conosco:\nhttps://wa.me/5511999',
+    );
   });
 
   it('should append waLink to text in sendQuickReplies when all three fields present', async () => {
@@ -45,7 +65,47 @@ describe('ReplyBuilderService', () => {
       waLink: 'https://wa.me/5511999',
     });
     expect(mockGraph.sendQuickReplies).toHaveBeenCalledWith(
-      'PAGE1', 'USER1', 'Opções:\nhttps://wa.me/5511999', ['Ver preços'],
+      'PAGE1',
+      'USER1',
+      'Opções:\nhttps://wa.me/5511999',
+      ['Ver preços'],
     );
+  });
+
+  describe('sendCommentReply', () => {
+    it('should send a private reply to the comment via comment_id', async () => {
+      await service.sendCommentReply('PAGE1', 'COMMENT1', {
+        text: 'Te chamei no privado!',
+      });
+      expect(mockGraph.sendCommentPrivateReply).toHaveBeenCalledWith(
+        'PAGE1',
+        'COMMENT1',
+        'Te chamei no privado!',
+      );
+    });
+
+    it('should append waLink to the private reply text', async () => {
+      await service.sendCommentReply('PAGE1', 'COMMENT1', {
+        text: 'Segue o link:',
+        waLink: 'https://wa.me/5511999',
+      });
+      expect(mockGraph.sendCommentPrivateReply).toHaveBeenCalledWith(
+        'PAGE1',
+        'COMMENT1',
+        'Segue o link:\nhttps://wa.me/5511999',
+      );
+    });
+
+    it('should ignore quickReplies since private comment replies do not support them', async () => {
+      await service.sendCommentReply('PAGE1', 'COMMENT1', {
+        text: 'Oi',
+        quickReplies: ['A', 'B'],
+      });
+      expect(mockGraph.sendCommentPrivateReply).toHaveBeenCalledWith(
+        'PAGE1',
+        'COMMENT1',
+        'Oi',
+      );
+    });
   });
 });

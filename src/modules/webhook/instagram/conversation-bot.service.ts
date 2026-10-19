@@ -13,7 +13,11 @@ export class ConversationBotService {
     private readonly replyBuilder: ReplyBuilderService,
   ) {}
 
-  async handleDm(pageId: string, senderId: string, text: string | undefined): Promise<void> {
+  async handleDm(
+    pageId: string,
+    senderId: string,
+    text: string | undefined,
+  ): Promise<void> {
     if (senderId === pageId) return;
     if (!text) return;
 
@@ -32,12 +36,20 @@ export class ConversationBotService {
 
     if (!rule) return;
 
-    await this.replyBuilder.send(pageId, senderId, rule.reply).catch((err: Error) => {
-      this.logger.error(`Failed to send DM reply for pageId ${pageId}: ${err.message}`);
-    });
+    await this.replyBuilder
+      .send(pageId, senderId, rule.reply)
+      .catch((err: Error) => {
+        this.logger.error(
+          `Failed to send DM reply for pageId ${pageId}: ${err.message}`,
+        );
+      });
   }
 
-  async handleComment(pageId: string, postId: string, commenterId: string): Promise<void> {
+  async handleComment(
+    pageId: string,
+    postId: string,
+    commentId: string,
+  ): Promise<void> {
     let clientId: string;
     try {
       const integration = await this.integrationsService.findByPageId(pageId);
@@ -50,8 +62,12 @@ export class ConversationBotService {
     const rule = await this.rulesService.findPostRule(clientId, postId);
     if (!rule) return;
 
-    await this.replyBuilder.send(pageId, commenterId, rule.reply).catch((err: Error) => {
-      this.logger.error(`Failed to send comment reply for pageId ${pageId}: ${err.message}`);
-    });
+    await this.replyBuilder
+      .sendCommentReply(pageId, commentId, rule.reply)
+      .catch((err: Error) => {
+        this.logger.error(
+          `Failed to send comment reply for pageId ${pageId}: ${err.message}`,
+        );
+      });
   }
 }

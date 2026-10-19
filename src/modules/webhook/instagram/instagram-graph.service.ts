@@ -18,7 +18,11 @@ export class InstagramGraphService implements IInstagramGraphService {
     private readonly crypto: AesCryptoService,
   ) {}
 
-  async sendTextMessage(pageId: string, recipientIgsid: string, text: string): Promise<void> {
+  async sendTextMessage(
+    pageId: string,
+    recipientIgsid: string,
+    text: string,
+  ): Promise<void> {
     const token = await this.getDecryptedToken(pageId);
     await this.post(pageId, token, {
       recipient: { id: recipientIgsid },
@@ -46,6 +50,18 @@ export class InstagramGraphService implements IInstagramGraphService {
     });
   }
 
+  async sendCommentPrivateReply(
+    pageId: string,
+    commentId: string,
+    text: string,
+  ): Promise<void> {
+    const token = await this.getDecryptedToken(pageId);
+    await this.post(pageId, token, {
+      recipient: { comment_id: commentId },
+      message: { text },
+    });
+  }
+
   async markSeen(pageId: string, recipientIgsid: string): Promise<void> {
     const token = await this.getDecryptedToken(pageId);
     await this.post(pageId, token, {
@@ -65,7 +81,11 @@ export class InstagramGraphService implements IInstagramGraphService {
     return this.crypto.decrypt(integration.accessToken);
   }
 
-  private async post(pageId: string, token: string, body: object): Promise<void> {
+  private async post(
+    pageId: string,
+    token: string,
+    body: object,
+  ): Promise<void> {
     const url = `${this.baseUrl}/me/messages`;
     await firstValueFrom(
       this.httpService.post(url, body, { params: { access_token: token } }),
@@ -74,7 +94,9 @@ export class InstagramGraphService implements IInstagramGraphService {
       if (code === 190) {
         throw new OAuthTokenExpiredException(pageId);
       }
-      this.logger.error(`Graph API error for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`);
+      this.logger.error(
+        `Graph API error for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`,
+      );
       throw err;
     });
   }
