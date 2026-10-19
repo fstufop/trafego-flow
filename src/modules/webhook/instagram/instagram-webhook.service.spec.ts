@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bullmq';
 import { createHmac } from 'crypto';
@@ -27,9 +27,13 @@ function makeSignature(rawBody: Buffer): string {
 
 describe('InstagramWebhookService', () => {
   let service: InstagramWebhookService;
+  let logSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    logSpy = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,6 +44,10 @@ describe('InstagramWebhookService', () => {
     }).compile();
 
     service = module.get<InstagramWebhookService>(InstagramWebhookService);
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
   });
 
   describe('verifyWebhook', () => {
@@ -89,6 +97,26 @@ describe('InstagramWebhookService', () => {
       expect(mockQueue.add).not.toHaveBeenCalled();
     });
 
+    it('should log the received payload even when the signature is invalid', async () => {
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+      await expect(
+        service.handleEvent(dmPayload, rawBody, 'sha256=invalidsig'),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        `Instagram webhook payload received: ${JSON.stringify(dmPayload)}`,
+      );
+    });
+
+    it('should log the received payload when the signature is valid', async () => {
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+      await service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
+
+      expect(logSpy).toHaveBeenCalledWith(
+        `Instagram webhook payload received: ${JSON.stringify(dmPayload)}`,
+      );
+    });
+
     it('should enqueue a dm job with the correct payload and retry options', async () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
       await service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
@@ -100,7 +128,7 @@ describe('InstagramWebhookService', () => {
       );
     });
 
-    it('should enqueue a comment job for comment changes with verb=add', async () => {
+    it('should enqueue a comment job for a comment change event using the real Instagram payload shape', async () => {
       const commentPayload: InstagramWebhookPayload = {
         object: 'instagram',
         entry: [
@@ -111,12 +139,11 @@ describe('InstagramWebhookService', () => {
               {
                 field: 'comments',
                 value: {
-                  from: { id: 'COMMENTER1', name: 'Ana' },
-                  post_id: 'POST123',
-                  comment_id: 'C1',
-                  message: 'oi',
-                  item: 'comment',
-                  verb: 'add',
+                  from: { id: 'COMMENTER1', username: 'ana' },
+                  media: { id: 'POST123', media_product_type: 'FEED' },
+                  id: 'C1',
+                  parent_id: 'PARENT1',
+                  text: 'oi',
                 },
               },
             ],
@@ -137,8 +164,8 @@ describe('InstagramWebhookService', () => {
       );
     });
 
-    it('should ignore comment changes with verb !== add', async () => {
-      const editedPayload: InstagramWebhookPayload = {
+    it('should ignore changes for fields other than comments', async () => {
+      const otherFieldPayload: InstagramWebhookPayload = {
         object: 'instagram',
         entry: [
           {
@@ -146,22 +173,24 @@ describe('InstagramWebhookService', () => {
             time: 1,
             changes: [
               {
-                field: 'comments',
+                field: 'mentions' as 'comments',
                 value: {
-                  from: { id: 'COMMENTER1', name: 'Ana' },
-                  post_id: 'POST123',
-                  comment_id: 'C1',
-                  message: 'oi',
-                  item: 'comment',
-                  verb: 'edited',
+                  from: { id: 'COMMENTER1', username: 'ana' },
+                  media: { id: 'POST123', media_product_type: 'FEED' },
+                  id: 'C1',
+                  text: 'oi',
                 },
               },
             ],
           },
         ],
       };
-      const rawBody = Buffer.from(JSON.stringify(editedPayload));
-      await service.handleEvent(editedPayload, rawBody, makeSignature(rawBody));
+      const rawBody = Buffer.from(JSON.stringify(otherFieldPayload));
+      await service.handleEvent(
+        otherFieldPayload,
+        rawBody,
+        makeSignature(rawBody),
+      );
 
       expect(mockQueue.add).not.toHaveBeenCalled();
     });

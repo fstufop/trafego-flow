@@ -33,6 +33,11 @@ export class InstagramWebhookService {
     rawBody: Buffer,
     signature: string,
   ): Promise<void> {
+    // Logged before signature validation so a rejected payload still shows up
+    // here — needed to debug mismatches between what Meta sent and what we expect.
+    this.logger.log(
+      `Instagram webhook payload received: ${JSON.stringify(payload)}`,
+    );
     this.validateSignature(rawBody, signature);
     await this.enqueueEvents(payload);
   }
@@ -63,14 +68,14 @@ export class InstagramWebhookService {
     }
 
     for (const change of entry.changes ?? []) {
-      if (change.field !== 'comments' || change.value.verb !== 'add') continue;
+      if (change.field !== 'comments') continue;
       await this.queue
         .add(
           'comment',
           {
             pageId: entry.id,
-            postId: change.value.post_id,
-            commentId: change.value.comment_id,
+            postId: change.value.media.id,
+            commentId: change.value.id,
           },
           { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
         )

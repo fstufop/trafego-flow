@@ -27,11 +27,10 @@ export interface InstagramAttachment {
 export interface InstagramCommentChangeEvent {
   field: 'comments';
   value: {
-    from: { id: string; name: string };
-    post_id: string;
-    comment_id: string;
-    message: string;
-    item: 'comment';
-    verb: 'add' | 'edited' | 'remove';
+    from: { id: string; username: string };
+    media: { id: string; media_product_type?: string };
+    id: string;
+    parent_id?: string;
+    text: string;
   };
 }
