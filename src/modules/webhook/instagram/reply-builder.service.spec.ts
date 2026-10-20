@@ -6,6 +6,7 @@ const mockGraph = {
   sendTextMessage: jest.fn(),
   sendQuickReplies: jest.fn(),
   sendCommentPrivateReply: jest.fn(),
+  replyToComment: jest.fn(),
 };
 
 describe('ReplyBuilderService', () => {
@@ -105,6 +106,17 @@ describe('ReplyBuilderService', () => {
         'PAGE1',
         'COMMENT1',
         'Oi',
+      );
+    });
+  });
+
+  describe('sendPublicCommentReply', () => {
+    it('should reply publicly to the comment via replyToComment', async () => {
+      await service.sendPublicCommentReply('PAGE1', 'COMMENT1', 'Te enviamos na DM!');
+      expect(mockGraph.replyToComment).toHaveBeenCalledWith(
+        'PAGE1',
+        'COMMENT1',
+        'Te enviamos na DM!',
       );
     });
   });

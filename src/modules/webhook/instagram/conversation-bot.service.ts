@@ -57,6 +57,7 @@ export class ConversationBotService {
     pageId: string,
     postId: string,
     commentId: string,
+    text: string,
   ): Promise<void> {
     let clientId: string;
     try {
@@ -70,16 +71,28 @@ export class ConversationBotService {
       return;
     }
 
-    const rule = await this.rulesService.findPostRule(clientId, postId);
+    const rule = await this.rulesService.findPostRule(clientId, postId, text);
     if (!rule) return;
 
-    await this.replyBuilder
-      .sendCommentReply(pageId, commentId, rule.reply)
-      .catch((err: Error) => {
-        if (err instanceof GraphApiRateLimitException) throw err;
-        this.logger.error(
-          `Failed to send comment reply for pageId ${pageId}: ${err.message}`,
-        );
-      });
+    // Private DM and public comment reply are independent: one failing must
+    // not prevent the other from being attempted.
+    const results = await Promise.allSettled([
+      this.replyBuilder.sendCommentReply(pageId, commentId, rule.reply),
+      this.replyBuilder.sendPublicCommentReply(pageId, commentId, rule.publicReply!),
+    ]);
+
+    let rateLimitError: GraphApiRateLimitException | undefined;
+    for (const result of results) {
+      if (result.status !== 'rejected') continue;
+      const err = result.reason as Error;
+      if (err instanceof GraphApiRateLimitException) {
+        rateLimitError = err;
+        continue;
+      }
+      this.logger.error(
+        `Failed to send comment reply for pageId ${pageId}: ${err.message}`,
+      );
+    }
+    if (rateLimitError) throw rateLimitError;
   }
 }

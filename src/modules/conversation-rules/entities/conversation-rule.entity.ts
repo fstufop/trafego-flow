@@ -24,6 +24,12 @@ export class ConversationRuleEntity extends BaseEntity {
   @Column({ type: 'jsonb' })
   reply: ConversationReply;
 
+  @Column({ name: 'comment_keyword', type: 'varchar', nullable: true })
+  commentKeyword: string | null;
+
+  @Column({ name: 'public_reply', type: 'text', nullable: true })
+  publicReply: string | null;
+
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 }

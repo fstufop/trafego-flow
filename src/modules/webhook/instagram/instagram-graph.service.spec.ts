@@ -186,4 +186,47 @@ describe('InstagramGraphService', () => {
       });
     });
   });
+
+  describe('replyToComment', () => {
+    it('should POST to /{commentId}/replies with the message as a param', async () => {
+      mockHttpService.post.mockReturnValue(of({ data: { id: 'REPLY1' } }));
+
+      await service.replyToComment('PAGE123', 'COMMENT1', 'Te enviamos na DM!');
+
+      expect(mockHttpService.post).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/COMMENT1/replies',
+        {},
+        { params: { access_token: 'plaintext-token', message: 'Te enviamos na DM!' } },
+      );
+    });
+
+    it('should throw OAuthTokenExpiredException when Graph API returns error 190', async () => {
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ response: { data: { error: { code: 190 } } } })),
+      );
+
+      await expect(
+        service.replyToComment('PAGE123', 'COMMENT1', 'Oi'),
+      ).rejects.toThrow(OAuthTokenExpiredException);
+    });
+
+    it('should throw GraphApiRateLimitException on HTTP 429', async () => {
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ response: { status: 429, data: { error: { code: 4 } } } })),
+      );
+
+      await expect(
+        service.replyToComment('PAGE123', 'COMMENT1', 'Oi'),
+      ).rejects.toThrow(GraphApiRateLimitException);
+    });
+
+    it('should rethrow the original error when it does not match a known case', async () => {
+      const unknownError = { response: { data: { error: { code: 100 } } } };
+      mockHttpService.post.mockReturnValue(throwError(() => unknownError));
+
+      await expect(
+        service.replyToComment('PAGE123', 'COMMENT1', 'Oi'),
+      ).rejects.toBe(unknownError);
+    });
+  });
 });

@@ -8,4 +8,5 @@ export interface InstagramCommentJobPayload {
   pageId: string;
   postId: string;
   commentId: string;
+  text: string;
 }

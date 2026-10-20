@@ -22,9 +22,9 @@ export class InstagramWebhookProcessor extends WorkerHost {
     }
 
     if (job.name === 'comment') {
-      const { pageId, postId, commentId } =
+      const { pageId, postId, commentId, text } =
         job.data as InstagramCommentJobPayload;
-      await this.botService.handleComment(pageId, postId, commentId);
+      await this.botService.handleComment(pageId, postId, commentId, text);
     }
   }
 }

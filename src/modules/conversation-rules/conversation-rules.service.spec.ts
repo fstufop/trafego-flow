@@ -88,6 +88,38 @@ describe('ConversationRulesService', () => {
         service.create({ clientId: 'c1', type: RuleType.DEFAULT, reply: {} } as any),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('should persist commentKeyword and publicReply for post_comment rules', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.POST_COMMENT,
+        triggerValue: 'post123',
+        reply: { text: 'Te chamei no privado!' },
+        commentKeyword: 'quero',
+        publicReply: 'Te enviamos na DM!',
+      } as any);
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ commentKeyword: 'quero', publicReply: 'Te enviamos na DM!' }),
+      );
+    });
+
+    it('should set commentKeyword and publicReply to null for non post_comment rules', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.KEYWORD_DM,
+        triggerValue: 'oi',
+        reply: { text: 'Olá!' },
+      } as any);
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ commentKeyword: null, publicReply: null }),
+      );
+    });
   });
 
   describe('update', () => {
@@ -173,18 +205,32 @@ describe('ConversationRulesService', () => {
   describe('findPostRule', () => {
     it('should return null when no rule for post', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      const result = await service.findPostRule('c1', 'post123');
+      const result = await service.findPostRule('c1', 'post123', 'quero saber o preço');
       expect(result).toBeNull();
     });
 
-    it('should return rule matching postId', async () => {
-      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT };
+    it('should return the rule when the comment text contains the keyword (case-insensitive)', async () => {
+      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT, commentKeyword: 'Quero' };
       mockRepo.findOne.mockResolvedValue(rule);
-      const result = await service.findPostRule('c1', 'post123');
+      const result = await service.findPostRule('c1', 'post123', 'Eu QUERO esse vestido');
       expect(result).toEqual(rule);
       expect(mockRepo.findOne).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ triggerValue: 'post123' }) }),
       );
+    });
+
+    it('should return null when the comment text does not contain the keyword', async () => {
+      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT, commentKeyword: 'quero' };
+      mockRepo.findOne.mockResolvedValue(rule);
+      const result = await service.findPostRule('c1', 'post123', 'lindo esse vestido');
+      expect(result).toBeNull();
+    });
+
+    it('should return null when the rule has no commentKeyword set', async () => {
+      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT, commentKeyword: null };
+      mockRepo.findOne.mockResolvedValue(rule);
+      const result = await service.findPostRule('c1', 'post123', 'qualquer coisa');
+      expect(result).toBeNull();
     });
   });
 

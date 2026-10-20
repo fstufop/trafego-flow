@@ -47,4 +47,12 @@ export class CreateConversationRuleDto {
   @ValidateNested()
   @Type(() => ConversationReplyDto)
   reply: ConversationReplyDto;
+
+  @ValidateIf(o => o.type === RuleType.POST_COMMENT)
+  @IsString()
+  commentKeyword?: string;
+
+  @ValidateIf(o => o.type === RuleType.POST_COMMENT)
+  @IsString()
+  publicReply?: string;
 }

@@ -43,8 +43,17 @@ export class ConversationRulesService {
       );
     }
 
+    const isPostComment = dto.type === RuleType.POST_COMMENT;
+
     return this.repo.save(
-      this.repo.create({ clientId: dto.clientId, type: dto.type, triggerValue, reply: dto.reply }),
+      this.repo.create({
+        clientId: dto.clientId,
+        type: dto.type,
+        triggerValue,
+        reply: dto.reply,
+        commentKeyword: isPostComment ? (dto.commentKeyword ?? null) : null,
+        publicReply: isPostComment ? (dto.publicReply ?? null) : null,
+      }),
     );
   }
 
@@ -82,10 +91,12 @@ export class ConversationRulesService {
     return this.repo.findOne({ where: { clientId, type: RuleType.DEFAULT, isActive: true } });
   }
 
-  findPostRule(clientId: string, postId: string): Promise<ConversationRuleEntity | null> {
-    return this.repo.findOne({
+  async findPostRule(clientId: string, postId: string, text: string): Promise<ConversationRuleEntity | null> {
+    const rule = await this.repo.findOne({
       where: { clientId, type: RuleType.POST_COMMENT, triggerValue: postId, isActive: true },
     });
+    if (!rule?.commentKeyword) return null;
+    return text.toLowerCase().includes(rule.commentKeyword.toLowerCase()) ? rule : null;
   }
 
   async getRecentPosts(

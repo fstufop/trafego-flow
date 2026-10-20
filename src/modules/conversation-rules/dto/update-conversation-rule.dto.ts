@@ -15,4 +15,12 @@ export class UpdateConversationRuleDto {
   @ValidateNested()
   @Type(() => ConversationReplyDto)
   reply?: ConversationReplyDto;
+
+  @IsOptional()
+  @IsString()
+  commentKeyword?: string;
+
+  @IsOptional()
+  @IsString()
+  publicReply?: string;
 }

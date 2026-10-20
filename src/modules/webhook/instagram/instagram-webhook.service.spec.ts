@@ -159,7 +159,7 @@ describe('InstagramWebhookService', () => {
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         'comment',
-        { pageId: 'PAGE1', postId: 'POST123', commentId: 'C1' },
+        { pageId: 'PAGE1', postId: 'POST123', commentId: 'C1', text: 'oi' },
         { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
       );
     });

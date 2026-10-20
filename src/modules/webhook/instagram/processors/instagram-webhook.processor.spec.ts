@@ -52,12 +52,14 @@ describe('InstagramWebhookProcessor', () => {
       pageId: 'PAGE1',
       postId: 'POST1',
       commentId: 'COMMENT1',
+      text: 'quero',
     });
     await processor.process(job);
     expect(mockBotService.handleComment).toHaveBeenCalledWith(
       'PAGE1',
       'POST1',
       'COMMENT1',
+      'quero',
     );
     expect(mockBotService.handleDm).not.toHaveBeenCalled();
   });

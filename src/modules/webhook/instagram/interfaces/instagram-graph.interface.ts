@@ -16,4 +16,9 @@ export interface IInstagramGraphService {
     text: string,
   ): Promise<void>;
   markSeen(pageId: string, recipientIgsid: string): Promise<void>;
+  replyToComment(
+    pageId: string,
+    commentId: string,
+    message: string,
+  ): Promise<void>;
 }

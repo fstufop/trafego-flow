@@ -76,6 +76,7 @@ export class InstagramWebhookService {
             pageId: entry.id,
             postId: change.value.media.id,
             commentId: change.value.id,
+            text: change.value.text,
           },
           { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
         )

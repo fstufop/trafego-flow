@@ -37,6 +37,14 @@ export class ReplyBuilderService {
     );
   }
 
+  async sendPublicCommentReply(
+    pageId: string,
+    commentId: string,
+    text: string,
+  ): Promise<void> {
+    await this.graph.replyToComment(pageId, commentId, text);
+  }
+
   private buildText(reply: ConversationReply): string {
     return reply.waLink
       ? `${reply.text ?? ''}\n${reply.waLink}`.trim()

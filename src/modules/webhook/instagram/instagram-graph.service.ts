@@ -77,6 +77,26 @@ export class InstagramGraphService implements IInstagramGraphService {
     });
   }
 
+  async replyToComment(
+    pageId: string,
+    commentId: string,
+    message: string,
+  ): Promise<void> {
+    const token = await this.getDecryptedToken(pageId);
+    const url = `${this.baseUrl}/${commentId}/replies`;
+    await firstValueFrom(
+      this.httpService.post(
+        url,
+        {},
+        { params: { access_token: token, message } },
+      ),
+    ).catch(
+      (err: {
+        response?: { status?: number; data?: { error?: { code?: number } } };
+      }) => this.handleCommonGraphError(pageId, err),
+    );
+  }
+
   private get baseUrl(): string {
     const url = this.config.get<string>('meta.graphApiUrl');
     const version = this.config.get<string>('meta.graphApiVersion');
@@ -103,13 +123,9 @@ export class InstagramGraphService implements IInstagramGraphService {
           data?: { error?: { code?: number; error_subcode?: number } };
         };
       }) => {
-        const status = err?.response?.status;
         const code = err?.response?.data?.error?.code;
         const subcode = err?.response?.data?.error?.error_subcode;
 
-        if (code === 190) {
-          throw new OAuthTokenExpiredException(pageId);
-        }
         if (
           code === 10 &&
           subcode !== undefined &&
@@ -117,18 +133,34 @@ export class InstagramGraphService implements IInstagramGraphService {
         ) {
           throw new MessagingWindowExpiredException(pageId);
         }
-        if (
-          status === 429 ||
-          (code !== undefined && RATE_LIMIT_ERROR_CODES.includes(code))
-        ) {
-          throw new GraphApiRateLimitException(pageId);
-        }
 
-        this.logger.error(
-          `Graph API error for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`,
-        );
-        throw err;
+        this.handleCommonGraphError(pageId, err);
       },
     );
+  }
+
+  private handleCommonGraphError(
+    pageId: string,
+    err: {
+      response?: { status?: number; data?: { error?: { code?: number } } };
+    },
+  ): never {
+    const status = err?.response?.status;
+    const code = err?.response?.data?.error?.code;
+
+    if (code === 190) {
+      throw new OAuthTokenExpiredException(pageId);
+    }
+    if (
+      status === 429 ||
+      (code !== undefined && RATE_LIMIT_ERROR_CODES.includes(code))
+    ) {
+      throw new GraphApiRateLimitException(pageId);
+    }
+
+    this.logger.error(
+      `Graph API error for pageId ${pageId}: ${JSON.stringify(err?.response?.data)}`,
+    );
+    throw err;
   }
 }
