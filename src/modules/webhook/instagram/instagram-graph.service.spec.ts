@@ -61,7 +61,7 @@ describe('InstagramGraphService', () => {
       await service.sendTextMessage('PAGE123', 'IGSID_USER', 'Olá!');
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v21.0/me/messages',
+        'https://graph.facebook.com/v21.0/PAGE123/messages',
         { recipient: { id: 'IGSID_USER' }, message: { text: 'Olá!' } },
         { params: { access_token: 'plaintext-token' } },
       );
@@ -153,7 +153,7 @@ describe('InstagramGraphService', () => {
       );
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v21.0/me/messages',
+        'https://graph.facebook.com/v21.0/PAGE123/messages',
         {
           recipient: { comment_id: 'COMMENT1' },
           message: { text: 'Te chamei no privado!' },

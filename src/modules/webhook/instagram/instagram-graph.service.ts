@@ -93,7 +93,7 @@ export class InstagramGraphService implements IInstagramGraphService {
     token: string,
     body: object,
   ): Promise<void> {
-    const url = `${this.baseUrl}/me/messages`;
+    const url = `${this.baseUrl}/${pageId}/messages`;
     await firstValueFrom(
       this.httpService.post(url, body, { params: { access_token: token } }),
     ).catch(
