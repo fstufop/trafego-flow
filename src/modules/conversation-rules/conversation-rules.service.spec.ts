@@ -235,17 +235,45 @@ describe('ConversationRulesService', () => {
   });
 
   describe('getRecentPosts', () => {
-    it('should call Graph API and return posts array', async () => {
+    it('should call Graph API and return posts page with no next cursor', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue({ accessToken: 'enc' });
       mockHttp.get.mockReturnValue(
-        of({ data: { data: [{ id: '123', caption: 'Test', timestamp: '2026-09-01T00:00:00Z', permalink: 'https://www.instagram.com/p/ABC/' }] } }),
+        of({
+          data: {
+            data: [{ id: '123', caption: 'Test', timestamp: '2026-09-01T00:00:00Z', permalink: 'https://www.instagram.com/p/ABC/' }],
+            paging: { cursors: { before: 'B', after: 'A' } },
+          },
+        }),
       );
       const result = await service.getRecentPosts('PAGE123');
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('123');
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe('123');
+      expect(result.paging).toBeNull();
       expect(mockHttp.get).toHaveBeenCalledWith(
         'https://graph.facebook.com/v21.0/PAGE123/media',
-        expect.objectContaining({ params: expect.objectContaining({ access_token: 'plain-token' }) }),
+        expect.objectContaining({
+          params: expect.objectContaining({ access_token: 'plain-token', limit: 12 }),
+        }),
+      );
+    });
+
+    it('should forward the after cursor and expose paging when Graph API has a next page', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue({ accessToken: 'enc' });
+      mockHttp.get.mockReturnValue(
+        of({
+          data: {
+            data: [{ id: '456', caption: null, timestamp: '2026-09-02T00:00:00Z', permalink: 'https://www.instagram.com/p/DEF/' }],
+            paging: { cursors: { before: 'B2', after: 'A2' }, next: 'https://graph.facebook.com/next' },
+          },
+        }),
+      );
+      const result = await service.getRecentPosts('PAGE123', 5, 'A');
+      expect(result.paging).toEqual({ cursors: { before: 'B2', after: 'A2' } });
+      expect(mockHttp.get).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/PAGE123/media',
+        expect.objectContaining({
+          params: expect.objectContaining({ access_token: 'plain-token', limit: 5, after: 'A' }),
+        }),
       );
     });
 

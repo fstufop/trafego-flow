@@ -9,6 +9,7 @@ import { RuleType } from './enums/rule-type.enum.js';
 import { CreateConversationRuleDto } from './dto/create-conversation-rule.dto.js';
 import { UpdateConversationRuleDto } from './dto/update-conversation-rule.dto.js';
 import { ConversationReply } from './interfaces/conversation-reply.interface.js';
+import { InstagramPostsResult } from './interfaces/instagram-post.interface.js';
 import { IntegrationsService } from '../integrations/integrations.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 
@@ -101,13 +102,20 @@ export class ConversationRulesService {
 
   async getRecentPosts(
     pageId: string,
-  ): Promise<Array<{ id: string; caption: string | null; timestamp: string; permalink: string }>> {
+    limit = 12,
+    after?: string,
+  ): Promise<InstagramPostsResult> {
     const integration = await this.integrationsService.findByPageId(pageId);
     const token = this.crypto.decrypt(integration.accessToken);
     const base = `${this.config.get<string>('meta.graphApiUrl')}/${this.config.get<string>('meta.graphApiVersion')}`;
     const resp = await firstValueFrom(
       this.httpService.get(`${base}/${pageId}/media`, {
-        params: { fields: 'id,caption,timestamp,permalink', access_token: token },
+        params: {
+          fields: 'id,caption,timestamp,permalink',
+          access_token: token,
+          limit,
+          ...(after && { after }),
+        },
       }),
     ).catch((err: { response?: { data?: unknown } }) => {
       this.logger.error(
@@ -115,7 +123,16 @@ export class ConversationRulesService {
       );
       throw err;
     });
-    return (resp.data as { data?: Array<{ id: string; caption: string | null; timestamp: string; permalink: string }> }).data ?? [];
+
+    const body = resp.data as {
+      data?: InstagramPostsResult['data'];
+      paging?: { cursors?: { before?: string; after?: string }; next?: string };
+    };
+
+    return {
+      data: body.data ?? [],
+      paging: body.paging?.next && body.paging.cursors ? { cursors: body.paging.cursors } : null,
+    };
   }
 
   private assertReplyNotEmpty(reply: ConversationReply): void {

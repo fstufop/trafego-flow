@@ -17,6 +17,7 @@ import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { CreateConversationRuleDto } from './dto/create-conversation-rule.dto.js';
 import { UpdateConversationRuleDto } from './dto/update-conversation-rule.dto.js';
+import { GetPostsQueryDto } from './dto/get-posts-query.dto.js';
 
 @ApiTags('conversation-rules')
 @ApiBearerAuth()
@@ -27,10 +28,11 @@ export class ConversationRulesController {
   constructor(private readonly rulesService: ConversationRulesService) {}
 
   @Get('posts')
-  @ApiOperation({ summary: 'Listar posts recentes da página (para usar como triggerValue)' })
-  @ApiQuery({ name: 'pageId', required: true, type: String })
-  getPosts(@Query('pageId') pageId: string) {
-    return this.rulesService.getRecentPosts(pageId);
+  @ApiOperation({
+    summary: 'Listar posts recentes da página (para usar como triggerValue), paginado por cursor',
+  })
+  getPosts(@Query() query: GetPostsQueryDto) {
+    return this.rulesService.getRecentPosts(query.pageId, query.limit, query.after);
   }
 
   @Post()
