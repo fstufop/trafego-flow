@@ -126,6 +126,20 @@ export class InstagramGraphService implements IInstagramGraphService {
   ): Promise<void> {
     const token = await this.getDecryptedToken(pageId);
     const url = `${this.baseUrl}/${pageId}/messenger_profile`;
+    const errorHandler = (err: {
+      response?: { status?: number; data?: { error?: { code?: number } } };
+    }) => this.handleCommonGraphError(pageId, err);
+
+    if (questions.length === 0) {
+      await firstValueFrom(
+        this.httpService.delete(url, {
+          data: { fields: ['ice_breakers'] },
+          params: { access_token: token },
+        }),
+      ).catch(errorHandler);
+      return;
+    }
+
     await firstValueFrom(
       this.httpService.post(
         url,
@@ -143,11 +157,7 @@ export class InstagramGraphService implements IInstagramGraphService {
         },
         { params: { access_token: token } },
       ),
-    ).catch(
-      (err: {
-        response?: { status?: number; data?: { error?: { code?: number } } };
-      }) => this.handleCommonGraphError(pageId, err),
-    );
+    ).catch(errorHandler);
   }
 
   private get baseUrl(): string {

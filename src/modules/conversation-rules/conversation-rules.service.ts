@@ -39,6 +39,7 @@ export class ConversationRulesService {
     dto: CreateConversationRuleDto,
   ): Promise<ConversationRuleEntity> {
     this.assertReplyNotEmpty(dto.reply);
+    this.assertNoButtonOnPostComment(dto.type, dto.reply);
 
     const triggerValue =
       dto.type === RuleType.DEFAULT
@@ -101,6 +102,7 @@ export class ConversationRulesService {
     const rule = await this.repo.findOne({ where: { id, clientId } });
     if (!rule)
       throw new NotFoundException(`Rule ${id} not found for this client`);
+    if (dto.reply) this.assertNoButtonOnPostComment(rule.type, dto.reply);
     if (
       dto.triggerValue !== undefined &&
       (rule.type === RuleType.ICEBREAKER || rule.type === RuleType.DEFAULT)
@@ -118,7 +120,7 @@ export class ConversationRulesService {
           triggerValue: rule.triggerValue!,
         });
       } else {
-        await this.syncIfIcebreaker(rule.clientId, rule.id, null);
+        await this.syncIfIcebreakerBestEffort(rule.clientId, rule.id);
       }
     }
     return this.repo.save({ ...rule, ...dto });
@@ -129,9 +131,27 @@ export class ConversationRulesService {
     if (!rule)
       throw new NotFoundException(`Rule ${id} not found for this client`);
     if (rule.type === RuleType.ICEBREAKER) {
-      await this.syncIfIcebreaker(rule.clientId, rule.id, null);
+      await this.syncIfIcebreakerBestEffort(rule.clientId, rule.id);
     }
     await this.repo.softDelete(id);
+  }
+
+  // Removing/deactivating an icebreaker rule must never be blocked by a Meta
+  // sync failure (e.g. the client's Instagram integration was disconnected,
+  // or its token expired) — a traffic manager must always be able to clean
+  // up their own rule list locally, even when we can't currently tell Meta
+  // about it.
+  private async syncIfIcebreakerBestEffort(
+    clientId: string,
+    excludeId: string,
+  ): Promise<void> {
+    await this.syncIfIcebreaker(clientId, excludeId, null).catch(
+      (err: Error) => {
+        this.logger.warn(
+          `Icebreaker sync failed while removing/deactivating a rule for client ${clientId} — proceeding with the local change anyway: ${err.message}`,
+        );
+      },
+    );
   }
 
   private async syncIfIcebreaker(
@@ -270,6 +290,20 @@ export class ConversationRulesService {
     if ((reply.buttonText || reply.buttonUrl) && !reply.text) {
       throw new BadRequestException(
         'reply.text is required when buttonText/buttonUrl is set',
+      );
+    }
+  }
+
+  private assertNoButtonOnPostComment(
+    type: RuleType,
+    reply: ConversationReply,
+  ): void {
+    if (
+      type === RuleType.POST_COMMENT &&
+      (reply.buttonText || reply.buttonUrl)
+    ) {
+      throw new BadRequestException(
+        'buttonText/buttonUrl is not supported for post_comment rules — comment private replies only support text',
       );
     }
   }

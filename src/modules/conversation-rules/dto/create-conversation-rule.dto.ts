@@ -15,9 +15,8 @@ import { Type } from 'class-transformer';
 import { RuleType } from '../enums/rule-type.enum.js';
 
 export class ConversationReplyDto {
-  @ValidateIf((o) => !!o.buttonText || !!o.buttonUrl)
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'text is required when buttonText/buttonUrl is set' })
   @MaxLength(2000)
   text?: string;
 

@@ -205,6 +205,43 @@ describe('ConversationRulesService', () => {
     });
   });
 
+  describe('create/update — button not supported on post_comment rules', () => {
+    it('should throw BadRequestException when creating a post_comment rule with a button', async () => {
+      await expect(
+        service.create({
+          clientId: 'c1',
+          type: RuleType.POST_COMMENT,
+          triggerValue: 'post123',
+          commentKeyword: 'quero',
+          publicReply: 'Te enviamos na DM!',
+          reply: {
+            text: 'Oi!',
+            buttonText: 'Entrar',
+            buttonUrl: 'https://chat.whatsapp.com/X',
+          },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when updating a post_comment rule to add a button', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.POST_COMMENT,
+        triggerValue: 'post123',
+      });
+      await expect(
+        service.update('r1', 'c1', {
+          reply: {
+            text: 'Oi!',
+            buttonText: 'Entrar',
+            buttonUrl: 'https://chat.whatsapp.com/X',
+          },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('assertReplyNotEmpty — button requires text', () => {
     it('should throw BadRequestException when buttonUrl is set without text', async () => {
       await expect(
@@ -416,6 +453,28 @@ describe('ConversationRulesService', () => {
 
       expect(mockIcebreakerSync.sync).toHaveBeenCalledWith('c1', []);
     });
+
+    it('should still deactivate the rule when the Meta sync fails (e.g. Instagram integration disconnected)', async () => {
+      const rule = {
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        isActive: true,
+        triggerValue: 'P1',
+        icebreakerQuestion: 'Q1',
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.find.mockResolvedValue([rule]);
+      mockRepo.save.mockResolvedValue({ ...rule, isActive: false });
+      mockIcebreakerSync.sync.mockRejectedValue(
+        new BadRequestException('Client has no active Instagram integration'),
+      );
+
+      const result = await service.update('r1', 'c1', { isActive: false });
+
+      expect(result.isActive).toBe(false);
+      expect(mockRepo.save).toHaveBeenCalled();
+    });
   });
 
   describe('remove', () => {
@@ -465,6 +524,25 @@ describe('ConversationRulesService', () => {
       mockRepo.softDelete.mockResolvedValue(undefined);
       await service.remove('r1', 'c1');
       expect(mockIcebreakerSync.sync).not.toHaveBeenCalled();
+    });
+
+    it('should still soft-delete the rule when the Meta sync fails (e.g. Instagram integration disconnected)', async () => {
+      const rule = {
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        triggerValue: 'P1',
+        icebreakerQuestion: 'Q1',
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.find.mockResolvedValue([rule]);
+      mockIcebreakerSync.sync.mockRejectedValue(
+        new BadRequestException('Client has no active Instagram integration'),
+      );
+      mockRepo.softDelete.mockResolvedValue(undefined);
+
+      await expect(service.remove('r1', 'c1')).resolves.toBeUndefined();
+      expect(mockRepo.softDelete).toHaveBeenCalledWith('r1');
     });
   });
 

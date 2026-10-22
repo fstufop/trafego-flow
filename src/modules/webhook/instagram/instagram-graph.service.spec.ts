@@ -28,7 +28,7 @@ const mockConfig = {
   }),
 };
 
-const mockHttpService = { post: jest.fn() };
+const mockHttpService = { post: jest.fn(), delete: jest.fn() };
 const mockIntegrationsService = { findByPageId: jest.fn() };
 const mockCrypto = { decrypt: jest.fn().mockReturnValue('plaintext-token') };
 
@@ -196,7 +196,12 @@ describe('InstagramGraphService', () => {
       expect(mockHttpService.post).toHaveBeenCalledWith(
         'https://graph.facebook.com/v21.0/COMMENT1/replies',
         {},
-        { params: { access_token: 'plaintext-token', message: 'Te enviamos na DM!' } },
+        {
+          params: {
+            access_token: 'plaintext-token',
+            message: 'Te enviamos na DM!',
+          },
+        },
       );
     });
 
@@ -212,7 +217,9 @@ describe('InstagramGraphService', () => {
 
     it('should throw GraphApiRateLimitException on HTTP 429', async () => {
       mockHttpService.post.mockReturnValue(
-        throwError(() => ({ response: { status: 429, data: { error: { code: 4 } } } })),
+        throwError(() => ({
+          response: { status: 429, data: { error: { code: 4 } } },
+        })),
       );
 
       await expect(
@@ -232,10 +239,16 @@ describe('InstagramGraphService', () => {
 
   describe('sendButtonTemplate', () => {
     it('should send a button template with a single web_url button', async () => {
-      mockHttpService.post.mockReturnValue(of({ data: { message_id: 'MSG_1' } }));
+      mockHttpService.post.mockReturnValue(
+        of({ data: { message_id: 'MSG_1' } }),
+      );
 
       await service.sendButtonTemplate(
-        'PAGE123', 'IGSID_USER', 'Clique abaixo:', 'Entrar no grupo', 'https://chat.whatsapp.com/XXXX',
+        'PAGE123',
+        'IGSID_USER',
+        'Clique abaixo:',
+        'Entrar no grupo',
+        'https://chat.whatsapp.com/XXXX',
       );
 
       expect(mockHttpService.post).toHaveBeenCalledWith(
@@ -248,7 +261,13 @@ describe('InstagramGraphService', () => {
               payload: {
                 template_type: 'button',
                 text: 'Clique abaixo:',
-                buttons: [{ type: 'web_url', url: 'https://chat.whatsapp.com/XXXX', title: 'Entrar no grupo' }],
+                buttons: [
+                  {
+                    type: 'web_url',
+                    url: 'https://chat.whatsapp.com/XXXX',
+                    title: 'Entrar no grupo',
+                  },
+                ],
               },
             },
           },
@@ -258,9 +277,17 @@ describe('InstagramGraphService', () => {
     });
 
     it('should throw OAuthTokenExpiredException when Graph API returns error 190', async () => {
-      mockHttpService.post.mockReturnValue(throwError(() => ({ response: { data: { error: { code: 190 } } } })));
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ response: { data: { error: { code: 190 } } } })),
+      );
       await expect(
-        service.sendButtonTemplate('PAGE123', 'IGSID_USER', 'txt', 'btn', 'https://chat.whatsapp.com/X'),
+        service.sendButtonTemplate(
+          'PAGE123',
+          'IGSID_USER',
+          'txt',
+          'btn',
+          'https://chat.whatsapp.com/X',
+        ),
       ).rejects.toThrow(OAuthTokenExpiredException);
     });
   });
@@ -277,24 +304,63 @@ describe('InstagramGraphService', () => {
         'https://graph.facebook.com/v21.0/PAGE123/messenger_profile',
         {
           platform: 'instagram',
-          ice_breakers: [{
-            locale: 'default',
-            call_to_actions: [{ question: 'Quero entrar no grupo VIP 🎉', payload: 'PAYLOAD_1' }],
-          }],
+          ice_breakers: [
+            {
+              locale: 'default',
+              call_to_actions: [
+                {
+                  question: 'Quero entrar no grupo VIP 🎉',
+                  payload: 'PAYLOAD_1',
+                },
+              ],
+            },
+          ],
         },
         { params: { access_token: 'plaintext-token' } },
       );
     });
 
     it('should throw GraphApiRateLimitException on HTTP 429', async () => {
-      mockHttpService.post.mockReturnValue(throwError(() => ({ response: { status: 429, data: { error: { code: 4 } } } })));
-      await expect(service.setIceBreakers('PAGE123', [])).rejects.toThrow(GraphApiRateLimitException);
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({
+          response: { status: 429, data: { error: { code: 4 } } },
+        })),
+      );
+      await expect(
+        service.setIceBreakers('PAGE123', [{ question: 'Q', payload: 'P' }]),
+      ).rejects.toThrow(GraphApiRateLimitException);
     });
 
     it('should rethrow the original error on an unrecognized Graph API error', async () => {
       const unknownError = { response: { data: { error: { code: 100 } } } };
       mockHttpService.post.mockReturnValue(throwError(() => unknownError));
-      await expect(service.setIceBreakers('PAGE123', [])).rejects.toBe(unknownError);
+      await expect(
+        service.setIceBreakers('PAGE123', [{ question: 'Q', payload: 'P' }]),
+      ).rejects.toBe(unknownError);
+    });
+
+    it('should DELETE ice_breakers from messenger_profile when the question list is empty', async () => {
+      mockHttpService.delete.mockReturnValue(of({ data: { success: true } }));
+
+      await service.setIceBreakers('PAGE123', []);
+
+      expect(mockHttpService.delete).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/PAGE123/messenger_profile',
+        {
+          data: { fields: ['ice_breakers'] },
+          params: { access_token: 'plaintext-token' },
+        },
+      );
+      expect(mockHttpService.post).not.toHaveBeenCalled();
+    });
+
+    it('should route DELETE errors through the same Graph error handling', async () => {
+      mockHttpService.delete.mockReturnValue(
+        throwError(() => ({ response: { data: { error: { code: 190 } } } })),
+      );
+      await expect(service.setIceBreakers('PAGE123', [])).rejects.toThrow(
+        OAuthTokenExpiredException,
+      );
     });
   });
 });

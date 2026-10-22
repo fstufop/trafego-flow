@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  HttpException,
+  Injectable,
+} from '@nestjs/common';
 import { IntegrationsService } from '../integrations/integrations.service.js';
 import { InstagramGraphService } from '../webhook/instagram/instagram-graph.service.js';
 import { MetaPlatform } from '../integrations/entities/integration.entity.js';
@@ -24,12 +29,21 @@ export class IcebreakerSyncService {
       );
     }
 
-    await this.graph.setIceBreakers(
-      integration.pageId,
-      activeRules.map((r) => ({
-        question: r.icebreakerQuestion,
-        payload: r.triggerValue,
-      })),
-    );
+    await this.graph
+      .setIceBreakers(
+        integration.pageId,
+        activeRules.map((r) => ({
+          question: r.icebreakerQuestion,
+          payload: r.triggerValue,
+        })),
+      )
+      .catch((err: unknown) => {
+        if (err instanceof HttpException) throw err;
+        const metaMessage = (
+          err as { response?: { data?: { error?: { message?: string } } } }
+        )?.response?.data?.error?.message;
+        if (metaMessage) throw new BadGatewayException(metaMessage);
+        throw err;
+      });
   }
 }
