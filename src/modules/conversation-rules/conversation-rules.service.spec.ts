@@ -1,6 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
@@ -46,7 +51,10 @@ describe('ConversationRulesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConversationRulesService,
-        { provide: getRepositoryToken(ConversationRuleEntity), useValue: mockRepo },
+        {
+          provide: getRepositoryToken(ConversationRuleEntity),
+          useValue: mockRepo,
+        },
         { provide: IntegrationsService, useValue: mockIntegrationsService },
         { provide: AesCryptoService, useValue: mockCrypto },
         { provide: HttpService, useValue: mockHttp },
@@ -60,7 +68,11 @@ describe('ConversationRulesService', () => {
     it('should throw ConflictException when duplicate rule exists', async () => {
       mockRepo.findOne.mockResolvedValue({ id: 'existing' });
       await expect(
-        service.create({ clientId: 'c1', type: RuleType.DEFAULT, reply: { text: 'hi' } } as any),
+        service.create({
+          clientId: 'c1',
+          type: RuleType.DEFAULT,
+          reply: { text: 'hi' },
+        } as any),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -69,7 +81,11 @@ describe('ConversationRulesService', () => {
       const rule = { id: 'new', clientId: 'c1', type: RuleType.DEFAULT };
       mockRepo.create.mockReturnValue(rule);
       mockRepo.save.mockResolvedValue(rule);
-      const result = await service.create({ clientId: 'c1', type: RuleType.DEFAULT, reply: { text: 'hi' } } as any);
+      const result = await service.create({
+        clientId: 'c1',
+        type: RuleType.DEFAULT,
+        reply: { text: 'hi' },
+      });
       expect(result).toEqual(rule);
     });
 
@@ -77,7 +93,12 @@ describe('ConversationRulesService', () => {
       mockRepo.findOne.mockResolvedValue(null);
       mockRepo.create.mockReturnValue({});
       mockRepo.save.mockResolvedValue({});
-      await service.create({ clientId: 'c1', type: RuleType.DEFAULT, triggerValue: 'ignored', reply: { text: 'hi' } } as any);
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.DEFAULT,
+        triggerValue: 'ignored',
+        reply: { text: 'hi' },
+      });
       expect(mockRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ triggerValue: null }),
       );
@@ -85,7 +106,11 @@ describe('ConversationRulesService', () => {
 
     it('should throw BadRequestException when reply has no fields', async () => {
       await expect(
-        service.create({ clientId: 'c1', type: RuleType.DEFAULT, reply: {} } as any),
+        service.create({
+          clientId: 'c1',
+          type: RuleType.DEFAULT,
+          reply: {},
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -100,9 +125,12 @@ describe('ConversationRulesService', () => {
         reply: { text: 'Te chamei no privado!' },
         commentKeyword: 'quero',
         publicReply: 'Te enviamos na DM!',
-      } as any);
+      });
       expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ commentKeyword: 'quero', publicReply: 'Te enviamos na DM!' }),
+        expect.objectContaining({
+          commentKeyword: 'quero',
+          publicReply: 'Te enviamos na DM!',
+        }),
       );
     });
 
@@ -115,17 +143,98 @@ describe('ConversationRulesService', () => {
         type: RuleType.KEYWORD_DM,
         triggerValue: 'oi',
         reply: { text: 'Olá!' },
-      } as any);
+      });
       expect(mockRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ commentKeyword: null, publicReply: null }),
       );
     });
   });
 
+  describe('create — icebreaker-specific behavior', () => {
+    it('should generate the triggerValue and ignore any value sent by the client', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        triggerValue: 'client-supplied',
+        icebreakerQuestion: 'Quero o grupo',
+        reply: { text: 'Oi!' },
+      });
+      const created = mockRepo.create.mock.calls[0][0];
+      expect(created.triggerValue).not.toBe('client-supplied');
+      expect(typeof created.triggerValue).toBe('string');
+      expect(created.triggerValue.length).toBeGreaterThan(0);
+    });
+
+    it('should persist icebreakerQuestion for icebreaker rules and null it out for other types', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        icebreakerQuestion: 'Quero o grupo',
+        reply: { text: 'Oi!' },
+      });
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ icebreakerQuestion: 'Quero o grupo' }),
+      );
+
+      jest.clearAllMocks();
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.DEFAULT,
+        reply: { text: 'Oi!' },
+      });
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ icebreakerQuestion: null }),
+      );
+    });
+  });
+
+  describe('assertReplyNotEmpty — button requires text', () => {
+    it('should throw BadRequestException when buttonUrl is set without text', async () => {
+      await expect(
+        service.create({
+          clientId: 'c1',
+          type: RuleType.DEFAULT,
+          reply: {
+            buttonText: 'Entrar',
+            buttonUrl: 'https://chat.whatsapp.com/X',
+          },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should accept a reply with text and a button', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await expect(
+        service.create({
+          clientId: 'c1',
+          type: RuleType.DEFAULT,
+          reply: {
+            text: 'Oi!',
+            buttonText: 'Entrar',
+            buttonUrl: 'https://chat.whatsapp.com/X',
+          },
+        } as any),
+      ).resolves.toBeDefined();
+    });
+  });
+
   describe('update', () => {
     it('should throw NotFoundException when rule does not belong to client', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.update('rule-id', 'wrong-client', { isActive: false })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('rule-id', 'wrong-client', { isActive: false }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should update rule when rule belongs to client', async () => {
@@ -139,14 +248,59 @@ describe('ConversationRulesService', () => {
     it('should throw BadRequestException when updating with empty reply', async () => {
       const rule = { id: 'rule-id', clientId: 'c1' };
       mockRepo.findOne.mockResolvedValue(rule);
-      await expect(service.update('rule-id', 'c1', { reply: {} } as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update('rule-id', 'c1', { reply: {} } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('update — immutability guards', () => {
+    it('should reject a triggerValue change on an icebreaker rule', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        triggerValue: 'PAYLOAD_1',
+      });
+      await expect(
+        service.update('r1', 'c1', { triggerValue: 'NEW_PAYLOAD' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a triggerValue change on a default rule', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.DEFAULT,
+        triggerValue: null,
+      });
+      await expect(
+        service.update('r1', 'c1', { triggerValue: 'something' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should still allow triggerValue changes on keyword_dm rules', async () => {
+      const rule = {
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.KEYWORD_DM,
+        triggerValue: 'old',
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.save.mockResolvedValue({ ...rule, triggerValue: 'new' });
+      const result = await service.update('r1', 'c1', {
+        triggerValue: 'new',
+      });
+      expect(result.triggerValue).toBe('new');
     });
   });
 
   describe('remove', () => {
     it('should throw NotFoundException when rule does not belong to client', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.remove('rule-id', 'wrong-client')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('rule-id', 'wrong-client')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should soft-delete rule when it belongs to client', async () => {
@@ -165,22 +319,38 @@ describe('ConversationRulesService', () => {
     });
 
     it('should return rule when keyword is contained in text (case-insensitive)', async () => {
-      const rule = { id: 'r1', triggerValue: 'quero', type: RuleType.KEYWORD_DM };
+      const rule = {
+        id: 'r1',
+        triggerValue: 'quero',
+        type: RuleType.KEYWORD_DM,
+      };
       mockRepo.find.mockResolvedValue([rule]);
       const result = await service.findKeywordRule('c1', 'Eu Quero comprar');
       expect(result).toEqual(rule);
     });
 
     it('should return the longest matching keyword rule', async () => {
-      const short = { id: 'r1', triggerValue: 'quero', type: RuleType.KEYWORD_DM };
-      const long = { id: 'r2', triggerValue: 'quero preco', type: RuleType.KEYWORD_DM };
+      const short = {
+        id: 'r1',
+        triggerValue: 'quero',
+        type: RuleType.KEYWORD_DM,
+      };
+      const long = {
+        id: 'r2',
+        triggerValue: 'quero preco',
+        type: RuleType.KEYWORD_DM,
+      };
       mockRepo.find.mockResolvedValue([short, long]);
       const result = await service.findKeywordRule('c1', 'quero preco agora');
       expect(result).toEqual(long);
     });
 
     it('should return null when keyword not contained in text', async () => {
-      const rule = { id: 'r1', triggerValue: 'quero', type: RuleType.KEYWORD_DM };
+      const rule = {
+        id: 'r1',
+        triggerValue: 'quero',
+        type: RuleType.KEYWORD_DM,
+      };
       mockRepo.find.mockResolvedValue([rule]);
       const result = await service.findKeywordRule('c1', 'olá tudo bem');
       expect(result).toBeNull();
@@ -205,42 +375,111 @@ describe('ConversationRulesService', () => {
   describe('findPostRule', () => {
     it('should return null when no rule for post', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      const result = await service.findPostRule('c1', 'post123', 'quero saber o preço');
+      const result = await service.findPostRule(
+        'c1',
+        'post123',
+        'quero saber o preço',
+      );
       expect(result).toBeNull();
     });
 
     it('should return the rule when the comment text contains the keyword (case-insensitive)', async () => {
-      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT, commentKeyword: 'Quero' };
+      const rule = {
+        id: 'r1',
+        triggerValue: 'post123',
+        type: RuleType.POST_COMMENT,
+        commentKeyword: 'Quero',
+      };
       mockRepo.findOne.mockResolvedValue(rule);
-      const result = await service.findPostRule('c1', 'post123', 'Eu QUERO esse vestido');
+      const result = await service.findPostRule(
+        'c1',
+        'post123',
+        'Eu QUERO esse vestido',
+      );
       expect(result).toEqual(rule);
       expect(mockRepo.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ triggerValue: 'post123' }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({ triggerValue: 'post123' }),
+        }),
       );
     });
 
     it('should return null when the comment text does not contain the keyword', async () => {
-      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT, commentKeyword: 'quero' };
+      const rule = {
+        id: 'r1',
+        triggerValue: 'post123',
+        type: RuleType.POST_COMMENT,
+        commentKeyword: 'quero',
+      };
       mockRepo.findOne.mockResolvedValue(rule);
-      const result = await service.findPostRule('c1', 'post123', 'lindo esse vestido');
+      const result = await service.findPostRule(
+        'c1',
+        'post123',
+        'lindo esse vestido',
+      );
       expect(result).toBeNull();
     });
 
     it('should return null when the rule has no commentKeyword set', async () => {
-      const rule = { id: 'r1', triggerValue: 'post123', type: RuleType.POST_COMMENT, commentKeyword: null };
+      const rule = {
+        id: 'r1',
+        triggerValue: 'post123',
+        type: RuleType.POST_COMMENT,
+        commentKeyword: null,
+      };
       mockRepo.findOne.mockResolvedValue(rule);
-      const result = await service.findPostRule('c1', 'post123', 'qualquer coisa');
+      const result = await service.findPostRule(
+        'c1',
+        'post123',
+        'qualquer coisa',
+      );
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findIcebreakerRule', () => {
+    it('should return the rule when payload matches exactly', async () => {
+      const rule = {
+        id: 'r1',
+        triggerValue: 'PAYLOAD_1',
+        type: RuleType.ICEBREAKER,
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      const result = await service.findIcebreakerRule('c1', 'PAYLOAD_1');
+      expect(result).toEqual(rule);
+      expect(mockRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: RuleType.ICEBREAKER,
+            triggerValue: 'PAYLOAD_1',
+          }),
+        }),
+      );
+    });
+
+    it('should return null when no rule has that exact payload', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      const result = await service.findIcebreakerRule('c1', 'UNKNOWN');
       expect(result).toBeNull();
     });
   });
 
   describe('getRecentPosts', () => {
     it('should call Graph API and return posts page with no next cursor', async () => {
-      mockIntegrationsService.findByPageId.mockResolvedValue({ accessToken: 'enc' });
+      mockIntegrationsService.findByPageId.mockResolvedValue({
+        accessToken: 'enc',
+      });
       mockHttp.get.mockReturnValue(
         of({
           data: {
-            data: [{ id: '123', caption: 'Test', timestamp: '2026-09-01T00:00:00Z', permalink: 'https://www.instagram.com/p/ABC/' }],
+            data: [
+              {
+                id: '123',
+                caption: 'Test',
+                timestamp: '2026-09-01T00:00:00Z',
+                permalink: 'https://www.instagram.com/p/ABC/',
+              },
+            ],
             paging: { cursors: { before: 'B', after: 'A' } },
           },
         }),
@@ -252,18 +491,33 @@ describe('ConversationRulesService', () => {
       expect(mockHttp.get).toHaveBeenCalledWith(
         'https://graph.facebook.com/v21.0/PAGE123/media',
         expect.objectContaining({
-          params: expect.objectContaining({ access_token: 'plain-token', limit: 12 }),
+          params: expect.objectContaining({
+            access_token: 'plain-token',
+            limit: 12,
+          }),
         }),
       );
     });
 
     it('should forward the after cursor and expose paging when Graph API has a next page', async () => {
-      mockIntegrationsService.findByPageId.mockResolvedValue({ accessToken: 'enc' });
+      mockIntegrationsService.findByPageId.mockResolvedValue({
+        accessToken: 'enc',
+      });
       mockHttp.get.mockReturnValue(
         of({
           data: {
-            data: [{ id: '456', caption: null, timestamp: '2026-09-02T00:00:00Z', permalink: 'https://www.instagram.com/p/DEF/' }],
-            paging: { cursors: { before: 'B2', after: 'A2' }, next: 'https://graph.facebook.com/next' },
+            data: [
+              {
+                id: '456',
+                caption: null,
+                timestamp: '2026-09-02T00:00:00Z',
+                permalink: 'https://www.instagram.com/p/DEF/',
+              },
+            ],
+            paging: {
+              cursors: { before: 'B2', after: 'A2' },
+              next: 'https://graph.facebook.com/next',
+            },
           },
         }),
       );
@@ -272,26 +526,43 @@ describe('ConversationRulesService', () => {
       expect(mockHttp.get).toHaveBeenCalledWith(
         'https://graph.facebook.com/v21.0/PAGE123/media',
         expect.objectContaining({
-          params: expect.objectContaining({ access_token: 'plain-token', limit: 5, after: 'A' }),
+          params: expect.objectContaining({
+            access_token: 'plain-token',
+            limit: 5,
+            after: 'A',
+          }),
         }),
       );
     });
 
     it('should log the Graph API error response and rethrow on failure', async () => {
-      mockIntegrationsService.findByPageId.mockResolvedValue({ accessToken: 'enc' });
+      mockIntegrationsService.findByPageId.mockResolvedValue({
+        accessToken: 'enc',
+      });
       const graphError = {
         response: {
           status: 400,
-          data: { error: { message: 'Unsupported get request.', type: 'GraphMethodException', code: 100, fbtrace_id: 'ABC123' } },
+          data: {
+            error: {
+              message: 'Unsupported get request.',
+              type: 'GraphMethodException',
+              code: 100,
+              fbtrace_id: 'ABC123',
+            },
+          },
         },
       };
       mockHttp.get.mockReturnValue(throwError(() => graphError));
-      const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const errorSpy = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation();
 
       await expect(service.getRecentPosts('PAGE123')).rejects.toBe(graphError);
 
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('PAGE123'));
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Unsupported get request.'));
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unsupported get request.'),
+      );
       errorSpy.mockRestore();
     });
   });

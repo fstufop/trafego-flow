@@ -1,9 +1,16 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { randomUUID } from 'crypto';
 import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
 import { RuleType } from './enums/rule-type.enum.js';
 import { CreateConversationRuleDto } from './dto/create-conversation-rule.dto.js';
@@ -26,10 +33,17 @@ export class ConversationRulesService {
     private readonly config: ConfigService,
   ) {}
 
-  async create(dto: CreateConversationRuleDto): Promise<ConversationRuleEntity> {
+  async create(
+    dto: CreateConversationRuleDto,
+  ): Promise<ConversationRuleEntity> {
     this.assertReplyNotEmpty(dto.reply);
 
-    const triggerValue = dto.type === RuleType.DEFAULT ? null : (dto.triggerValue ?? null);
+    const triggerValue =
+      dto.type === RuleType.DEFAULT
+        ? null
+        : dto.type === RuleType.ICEBREAKER
+          ? randomUUID()
+          : (dto.triggerValue ?? null);
 
     const existing = await this.repo.findOne({
       where: {
@@ -45,6 +59,7 @@ export class ConversationRulesService {
     }
 
     const isPostComment = dto.type === RuleType.POST_COMMENT;
+    const isIcebreaker = dto.type === RuleType.ICEBREAKER;
 
     return this.repo.save(
       this.repo.create({
@@ -54,6 +69,9 @@ export class ConversationRulesService {
         reply: dto.reply,
         commentKeyword: isPostComment ? (dto.commentKeyword ?? null) : null,
         publicReply: isPostComment ? (dto.publicReply ?? null) : null,
+        icebreakerQuestion: isIcebreaker
+          ? (dto.icebreakerQuestion ?? null)
+          : null,
       }),
     );
   }
@@ -65,39 +83,87 @@ export class ConversationRulesService {
     });
   }
 
-  async update(id: string, clientId: string, dto: UpdateConversationRuleDto): Promise<ConversationRuleEntity> {
+  async update(
+    id: string,
+    clientId: string,
+    dto: UpdateConversationRuleDto,
+  ): Promise<ConversationRuleEntity> {
     if (dto.reply) this.assertReplyNotEmpty(dto.reply);
     const rule = await this.repo.findOne({ where: { id, clientId } });
-    if (!rule) throw new NotFoundException(`Rule ${id} not found for this client`);
+    if (!rule)
+      throw new NotFoundException(`Rule ${id} not found for this client`);
+    if (
+      dto.triggerValue !== undefined &&
+      (rule.type === RuleType.ICEBREAKER || rule.type === RuleType.DEFAULT)
+    ) {
+      throw new BadRequestException(
+        'triggerValue cannot be changed for this rule type',
+      );
+    }
     return this.repo.save({ ...rule, ...dto });
   }
 
   async remove(id: string, clientId: string): Promise<void> {
     const rule = await this.repo.findOne({ where: { id, clientId } });
-    if (!rule) throw new NotFoundException(`Rule ${id} not found for this client`);
+    if (!rule)
+      throw new NotFoundException(`Rule ${id} not found for this client`);
     await this.repo.softDelete(id);
   }
 
-  async findKeywordRule(clientId: string, text: string): Promise<ConversationRuleEntity | null> {
+  async findKeywordRule(
+    clientId: string,
+    text: string,
+  ): Promise<ConversationRuleEntity | null> {
     const rules = await this.repo.find({
       where: { clientId, type: RuleType.KEYWORD_DM, isActive: true },
     });
     const lower = text.toLowerCase();
-    const matched = rules.filter(r => r.triggerValue && lower.includes(r.triggerValue.toLowerCase()));
+    const matched = rules.filter(
+      (r) => r.triggerValue && lower.includes(r.triggerValue.toLowerCase()),
+    );
     if (!matched.length) return null;
-    return matched.reduce((best, r) => r.triggerValue!.length > best.triggerValue!.length ? r : best);
+    return matched.reduce((best, r) =>
+      r.triggerValue!.length > best.triggerValue!.length ? r : best,
+    );
   }
 
   findDefaultRule(clientId: string): Promise<ConversationRuleEntity | null> {
-    return this.repo.findOne({ where: { clientId, type: RuleType.DEFAULT, isActive: true } });
+    return this.repo.findOne({
+      where: { clientId, type: RuleType.DEFAULT, isActive: true },
+    });
   }
 
-  async findPostRule(clientId: string, postId: string, text: string): Promise<ConversationRuleEntity | null> {
+  findIcebreakerRule(
+    clientId: string,
+    payload: string,
+  ): Promise<ConversationRuleEntity | null> {
+    return this.repo.findOne({
+      where: {
+        clientId,
+        type: RuleType.ICEBREAKER,
+        triggerValue: payload,
+        isActive: true,
+      },
+    });
+  }
+
+  async findPostRule(
+    clientId: string,
+    postId: string,
+    text: string,
+  ): Promise<ConversationRuleEntity | null> {
     const rule = await this.repo.findOne({
-      where: { clientId, type: RuleType.POST_COMMENT, triggerValue: postId, isActive: true },
+      where: {
+        clientId,
+        type: RuleType.POST_COMMENT,
+        triggerValue: postId,
+        isActive: true,
+      },
     });
     if (!rule?.commentKeyword) return null;
-    return text.toLowerCase().includes(rule.commentKeyword.toLowerCase()) ? rule : null;
+    return text.toLowerCase().includes(rule.commentKeyword.toLowerCase())
+      ? rule
+      : null;
   }
 
   async getRecentPosts(
@@ -131,13 +197,23 @@ export class ConversationRulesService {
 
     return {
       data: body.data ?? [],
-      paging: body.paging?.next && body.paging.cursors ? { cursors: body.paging.cursors } : null,
+      paging:
+        body.paging?.next && body.paging.cursors
+          ? { cursors: body.paging.cursors }
+          : null,
     };
   }
 
   private assertReplyNotEmpty(reply: ConversationReply): void {
-    if (!reply.text && !reply.quickReplies?.length && !reply.waLink) {
-      throw new BadRequestException('reply must have at least one of: text, quickReplies, waLink');
+    if (!reply.text && !reply.quickReplies?.length && !reply.buttonUrl) {
+      throw new BadRequestException(
+        'reply must have at least one of: text, quickReplies, buttonUrl',
+      );
+    }
+    if ((reply.buttonText || reply.buttonUrl) && !reply.text) {
+      throw new BadRequestException(
+        'reply.text is required when buttonText/buttonUrl is set',
+      );
     }
   }
 }
