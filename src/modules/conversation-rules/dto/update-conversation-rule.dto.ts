@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ConversationReplyDto } from './create-conversation-rule.dto.js';
 
@@ -23,4 +23,9 @@ export class UpdateConversationRuleDto {
   @IsOptional()
   @IsString()
   publicReply?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  icebreakerQuestion?: string;
 }

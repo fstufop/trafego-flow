@@ -2,11 +2,11 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
   IsUrl,
-  Matches,
   MaxLength,
   ValidateIf,
   ValidateNested,
@@ -15,8 +15,9 @@ import { Type } from 'class-transformer';
 import { RuleType } from '../enums/rule-type.enum.js';
 
 export class ConversationReplyDto {
-  @IsOptional()
+  @ValidateIf(o => !!o.buttonText || !!o.buttonUrl)
   @IsString()
+  @IsNotEmpty({ message: 'text is required when buttonText/buttonUrl is set' })
   @MaxLength(2000)
   text?: string;
 
@@ -27,10 +28,15 @@ export class ConversationReplyDto {
   @MaxLength(13, { each: true })
   quickReplies?: string[];
 
-  @IsOptional()
+  @ValidateIf(o => !!o.buttonUrl || !!o.buttonText)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  buttonText?: string;
+
+  @ValidateIf(o => !!o.buttonText || !!o.buttonUrl)
   @IsUrl({ protocols: ['https'] })
-  @Matches(/^https:\/\/wa\.me\//, { message: 'waLink must be a valid wa.me URL (https://wa.me/...)' })
-  waLink?: string;
+  buttonUrl?: string;
 }
 
 export class CreateConversationRuleDto {
@@ -40,7 +46,7 @@ export class CreateConversationRuleDto {
   @IsEnum(RuleType)
   type: RuleType;
 
-  @ValidateIf(o => o.type !== RuleType.DEFAULT)
+  @ValidateIf(o => o.type !== RuleType.DEFAULT && o.type !== RuleType.ICEBREAKER)
   @IsString()
   triggerValue?: string;
 
@@ -55,4 +61,9 @@ export class CreateConversationRuleDto {
   @ValidateIf(o => o.type === RuleType.POST_COMMENT)
   @IsString()
   publicReply?: string;
+
+  @ValidateIf(o => o.type === RuleType.ICEBREAKER)
+  @IsString()
+  @MaxLength(80)
+  icebreakerQuestion?: string;
 }
