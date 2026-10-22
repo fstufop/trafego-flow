@@ -4,9 +4,10 @@ import { GoogleDriveService } from './google-drive.service.js';
 jest.mock('googleapis', () => ({
   google: {
     auth: {
-      OAuth2: jest.fn().mockImplementation(() => ({
+      OAuth2: jest.fn().mockReturnValue({
         setCredentials: jest.fn(),
-      })),
+        request: jest.fn(),
+      }),
     },
     drive: jest.fn().mockReturnValue({
       files: {
@@ -28,7 +29,9 @@ import * as fs from 'fs';
 import { PassThrough } from 'stream';
 
 function makeSvc() {
-  const config = { get: jest.fn().mockReturnValue('val') } as unknown as ConfigService;
+  const config = {
+    get: jest.fn().mockReturnValue('val'),
+  } as unknown as ConfigService;
   return new GoogleDriveService(config);
 }
 
@@ -36,12 +39,18 @@ describe('GoogleDriveService', () => {
   describe('extractFolderId', () => {
     it('extracts from /folders/<id> URL', () => {
       const svc = makeSvc();
-      expect(svc.extractFolderId('https://drive.google.com/drive/folders/1ABC_def-XYZ')).toBe('1ABC_def-XYZ');
+      expect(
+        svc.extractFolderId(
+          'https://drive.google.com/drive/folders/1ABC_def-XYZ',
+        ),
+      ).toBe('1ABC_def-XYZ');
     });
 
     it('extracts from ?id=<id> URL', () => {
       const svc = makeSvc();
-      expect(svc.extractFolderId('https://drive.google.com/open?id=1ABC_def-XYZ')).toBe('1ABC_def-XYZ');
+      expect(
+        svc.extractFolderId('https://drive.google.com/open?id=1ABC_def-XYZ'),
+      ).toBe('1ABC_def-XYZ');
     });
 
     it('throws on unrecognized URL format', () => {
@@ -54,8 +63,13 @@ describe('GoogleDriveService', () => {
     it('calls drive.files.create with correct folderId and returns fileId and webViewLink', async () => {
       const svc = makeSvc();
       const driveInstance = google.drive({} as any) as any;
-    const mockCreate = (driveInstance.files.create as jest.Mock).mockResolvedValue({
-        data: { id: 'file123', webViewLink: 'https://drive.google.com/file/d/file123' },
+      const mockCreate = (
+        driveInstance.files.create as jest.Mock
+      ).mockResolvedValue({
+        data: {
+          id: 'file123',
+          webViewLink: 'https://drive.google.com/file/d/file123',
+        },
       });
 
       const result = await svc.upload(
@@ -70,7 +84,77 @@ describe('GoogleDriveService', () => {
           requestBody: expect.objectContaining({ parents: ['folder456'] }),
         }),
       );
-      expect(result).toEqual({ fileId: 'file123', webViewLink: 'https://drive.google.com/file/d/file123' });
+      expect(result).toEqual({
+        fileId: 'file123',
+        webViewLink: 'https://drive.google.com/file/d/file123',
+      });
+    });
+  });
+
+  describe('createResumableUploadSession', () => {
+    it('posts metadata to the Drive resumable endpoint and returns the Location header as the session URL', async () => {
+      const svc = makeSvc();
+      const authInstance = google.auth.OAuth2({} as any) as any;
+      (authInstance.request as jest.Mock).mockResolvedValue({
+        headers: {
+          location:
+            'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=XYZ',
+        },
+      });
+
+      const url = await svc.createResumableUploadSession(
+        'https://drive.google.com/drive/folders/folder456',
+        'video.mp4',
+        'video/mp4',
+      );
+
+      expect(authInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('uploadType=resumable'),
+          data: expect.objectContaining({
+            name: 'video.mp4',
+            parents: ['folder456'],
+            mimeType: 'video/mp4',
+          }),
+          headers: expect.objectContaining({
+            'X-Upload-Content-Type': 'video/mp4',
+          }),
+        }),
+      );
+      expect(url).toBe(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=XYZ',
+      );
+    });
+
+    it('throws when Drive does not return a Location header', async () => {
+      const svc = makeSvc();
+      const authInstance = google.auth.OAuth2({} as any) as any;
+      (authInstance.request as jest.Mock).mockResolvedValue({ headers: {} });
+
+      await expect(
+        svc.createResumableUploadSession(
+          'https://drive.google.com/drive/folders/folder456',
+          'video.mp4',
+          'video/mp4',
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('propagates the error when the Drive request itself fails', async () => {
+      const svc = makeSvc();
+      const authInstance = google.auth.OAuth2({} as any) as any;
+      (authInstance.request as jest.Mock).mockRejectedValue(
+        new Error('network down'),
+      );
+
+      await expect(
+        svc.createResumableUploadSession(
+          'https://drive.google.com/drive/folders/folder456',
+          'video.mp4',
+          'video/mp4',
+        ),
+      ).rejects.toThrow('network down');
     });
   });
 
@@ -79,7 +163,9 @@ describe('GoogleDriveService', () => {
       const svc = makeSvc();
       const driveInstance = google.drive({} as any) as any;
       (driveInstance.files.create as jest.Mock).mockResolvedValue({
-        data: { webViewLink: 'https://drive.google.com/drive/folders/newFolder123' },
+        data: {
+          webViewLink: 'https://drive.google.com/drive/folders/newFolder123',
+        },
       });
 
       const url = await svc.createFolder('Cliente ABC');
@@ -105,7 +191,9 @@ describe('GoogleDriveService', () => {
       const readable = new PassThrough();
       const writable = new PassThrough();
 
-      (driveInstance.files.get as jest.Mock).mockResolvedValue({ data: readable });
+      (driveInstance.files.get as jest.Mock).mockResolvedValue({
+        data: readable,
+      });
       (fs.createWriteStream as jest.Mock).mockReturnValue(writable);
 
       const downloadPromise = svc.download('file-abc', '/tmp/output.mp4');
@@ -126,7 +214,9 @@ describe('GoogleDriveService', () => {
       const readable = new PassThrough();
       const writable = new PassThrough();
 
-      (driveInstance.files.get as jest.Mock).mockResolvedValue({ data: readable });
+      (driveInstance.files.get as jest.Mock).mockResolvedValue({
+        data: readable,
+      });
       (fs.createWriteStream as jest.Mock).mockReturnValue(writable);
 
       const downloadPromise = svc.download('file-abc', '/tmp/output.mp4');
@@ -144,7 +234,9 @@ describe('GoogleDriveService', () => {
       const mockSource = new PassThrough();
       const mockDest = new PassThrough();
 
-      (driveInstance.files.get as jest.Mock).mockResolvedValue({ data: mockSource });
+      (driveInstance.files.get as jest.Mock).mockResolvedValue({
+        data: mockSource,
+      });
       (fs.createWriteStream as jest.Mock).mockReturnValue(mockDest);
 
       const promise = svc.download('file-id', '/tmp/test-output');

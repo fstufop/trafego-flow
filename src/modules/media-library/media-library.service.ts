@@ -1,6 +1,17 @@
-import { BadRequestException, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindOptionsWhere, ILike, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  FindOptionsWhere,
+  ILike,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as fs from 'fs';
@@ -10,10 +21,15 @@ import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { FileNamerService } from './services/file-namer.service.js';
 import { GoogleDriveService } from '../google-drive/google-drive.service.js';
 import { UploadMediaDto } from './dto/upload-media.dto.js';
+import { CreateUploadSessionDto } from './dto/create-upload-session.dto.js';
+import { CompleteUploadSessionDto } from './dto/complete-upload-session.dto.js';
 import { MediaUploadLog } from './entities/media-upload-log.entity.js';
 import { MediaUploadStatus } from './enums/media-upload-status.enum.js';
 import { MetaUploadJobPayload } from './types/meta-upload-job.type.js';
-import { PaginatedLogs, UploadInitiatedResult } from './types/upload-result.type.js';
+import {
+  PaginatedLogs,
+  UploadInitiatedResult,
+} from './types/upload-result.type.js';
 
 @Injectable()
 export class MediaLibraryService {
@@ -29,7 +45,10 @@ export class MediaLibraryService {
     private readonly queue: Queue,
   ) {}
 
-  async upload(dto: UploadMediaDto, file: Express.Multer.File): Promise<UploadInitiatedResult> {
+  async upload(
+    dto: UploadMediaDto,
+    file: Express.Multer.File,
+  ): Promise<UploadInitiatedResult> {
     const [adAccount, client] = await Promise.all([
       this.adAccounts.findByAdAccountId(dto.adAccountId),
       this.clients.findOne(dto.clientId),
@@ -50,12 +69,13 @@ export class MediaLibraryService {
       dto.startVersion,
     );
 
-    const { fileId: driveFileId, webViewLink: driveUrl } = await this.drive.upload(
-      client.googleDriveFolderUrl,
-      file.path,
-      mediaName,
-      file.mimetype,
-    );
+    const { fileId: driveFileId, webViewLink: driveUrl } =
+      await this.drive.upload(
+        client.googleDriveFolderUrl,
+        file.path,
+        mediaName,
+        file.mimetype,
+      );
 
     fs.unlink(file.path, () => {});
 
@@ -84,7 +104,86 @@ export class MediaLibraryService {
 
     await this.queue.add('meta-upload', payload, { attempts: 1 });
 
-    return { logId: log.id, mediaName, driveUrl, status: MediaUploadStatus.PROCESSING };
+    return {
+      logId: log.id,
+      mediaName,
+      driveUrl,
+      status: MediaUploadStatus.PROCESSING,
+    };
+  }
+
+  /**
+   * Starts a direct browser-to-Drive upload: no file bytes pass through this
+   * API (or the dashboard's proxy), so neither platform's request-size cap
+   * applies. Nothing is persisted yet — completeUploadSession() does that
+   * once the browser confirms the Drive upload finished.
+   */
+  async createUploadSession(
+    dto: CreateUploadSessionDto,
+  ): Promise<{ uploadUrl: string; mediaName: string }> {
+    const client = await this.clients.findOne(dto.clientId);
+
+    if (!client.googleDriveFolderUrl) {
+      throw new UnprocessableEntityException(
+        `Client ${dto.clientId} has no Google Drive folder configured`,
+      );
+    }
+
+    const mediaName = await this.fileNamer.generateName(
+      { originalname: dto.originalFileName },
+      dto.intention,
+      dto.productName,
+      dto.clientId,
+      new Date(),
+      dto.startVersion,
+    );
+
+    const uploadUrl = await this.drive.createResumableUploadSession(
+      client.googleDriveFolderUrl,
+      mediaName,
+      dto.mimeType,
+    );
+
+    return { uploadUrl, mediaName };
+  }
+
+  /** Confirms a direct browser-to-Drive upload finished, and queues the Meta Ads upload job — the same tail end `upload()` runs after its own Drive call succeeds. */
+  async completeUploadSession(
+    dto: CompleteUploadSessionDto,
+  ): Promise<UploadInitiatedResult> {
+    const adAccount = await this.adAccounts.findByAdAccountId(dto.adAccountId);
+
+    const log = await this.logsRepo.save({
+      clientId: dto.clientId,
+      adAccountId: dto.adAccountId,
+      mediaName: dto.mediaName,
+      originalFileName: dto.originalFileName,
+      mimeType: dto.mimeType,
+      status: MediaUploadStatus.PROCESSING,
+      driveFileId: dto.driveFileId,
+      driveUrl: dto.driveUrl,
+      metaAssetId: null,
+      errorMessage: null,
+      attemptCount: 0,
+    });
+
+    const payload: MetaUploadJobPayload = {
+      logId: log.id,
+      driveFileId: dto.driveFileId,
+      adAccountId: dto.adAccountId,
+      encryptedAccessToken: adAccount.accessToken,
+      mimeType: dto.mimeType,
+      mediaName: dto.mediaName,
+    };
+
+    await this.queue.add('meta-upload', payload, { attempts: 1 });
+
+    return {
+      logId: log.id,
+      mediaName: dto.mediaName,
+      driveUrl: dto.driveUrl,
+      status: MediaUploadStatus.PROCESSING,
+    };
   }
 
   async getLogs(
@@ -101,7 +200,10 @@ export class MediaLibraryService {
     if (status) where.status = status;
     if (mediaName) where.mediaName = ILike(`%${mediaName}%`);
     if (startDate && endDate) {
-      where.createdAt = Between(new Date(startDate), new Date(endDate + 'T23:59:59.999Z'));
+      where.createdAt = Between(
+        new Date(startDate),
+        new Date(endDate + 'T23:59:59.999Z'),
+      );
     } else if (startDate) {
       where.createdAt = MoreThanOrEqual(new Date(startDate));
     } else if (endDate) {
@@ -117,7 +219,9 @@ export class MediaLibraryService {
     return { data, total, page, limit };
   }
 
-  async retryOne(logId: string): Promise<{ logId: string; status: MediaUploadStatus }> {
+  async retryOne(
+    logId: string,
+  ): Promise<{ logId: string; status: MediaUploadStatus }> {
     const log = await this.logsRepo.findOneOrFail({ where: { id: logId } });
 
     if (log.status !== MediaUploadStatus.FAILED) {
@@ -153,8 +257,10 @@ export class MediaLibraryService {
 
     if (failedLogs.length === 0) return { retried: 0 };
 
-    const results = await Promise.allSettled(failedLogs.map(log => this.retryOne(log.id)));
-    const retried = results.filter(r => r.status === 'fulfilled').length;
+    const results = await Promise.allSettled(
+      failedLogs.map((log) => this.retryOne(log.id)),
+    );
+    const retried = results.filter((r) => r.status === 'fulfilled').length;
     return { retried };
   }
 }

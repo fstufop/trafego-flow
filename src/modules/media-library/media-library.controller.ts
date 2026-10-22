@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -25,17 +26,12 @@ import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { MediaUploadAuthGuard } from '../../common/guards/media-upload-auth.guard.js';
 import { MediaLibraryService } from './media-library.service.js';
 import { UploadMediaDto } from './dto/upload-media.dto.js';
+import { CreateUploadSessionDto } from './dto/create-upload-session.dto.js';
+import { CompleteUploadSessionDto } from './dto/complete-upload-session.dto.js';
 import { GetLogsQueryDto } from './dto/get-logs-query.dto.js';
 import { RetryFailedDto } from './dto/retry-failed.dto.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
-
-const ACCEPTED_MIMES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'video/mp4',
-  'video/quicktime',
-]);
+import { ACCEPTED_MIMES } from './constants/accepted-mimes.constant.js';
 
 const MAX_FILE_SIZE_BYTES =
   parseInt(process.env.MAX_FILE_SIZE_MB ?? '500', 10) * 1024 * 1024;
@@ -81,16 +77,51 @@ export class MediaLibraryController {
     @Body() dto: UploadMediaDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const adAccount = await this.adAccounts.findByAdAccountId(dto.adAccountId);
-    if (adAccount.clientId !== dto.clientId) {
-      throw new ForbiddenException(
-        'Ad account does not belong to the specified client',
-      );
-    }
+    await this.assertAdAccountBelongsToClient(dto.adAccountId, dto.clientId);
     try {
       return await this.service.upload(dto, file);
     } finally {
       fs.unlink(file.path, () => {});
+    }
+  }
+
+  @Post('upload-session')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary:
+      'Start a direct browser-to-Google-Drive upload: returns a Drive resumable-upload ' +
+      'session URL the dashboard PUTs the file bytes to directly, bypassing both the ' +
+      "dashboard's own proxy and this API's request-size limits entirely.",
+  })
+  async createUploadSession(@Body() dto: CreateUploadSessionDto) {
+    await this.assertAdAccountBelongsToClient(dto.adAccountId, dto.clientId);
+    if (!ACCEPTED_MIMES.has(dto.mimeType)) {
+      throw new BadRequestException(`Unsupported MIME type: ${dto.mimeType}`);
+    }
+    return this.service.createUploadSession(dto);
+  }
+
+  @Post('upload-complete')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary:
+      'Confirm a direct browser-to-Drive upload (started via POST upload-session) finished, ' +
+      'and queue the Meta Ads upload job.',
+  })
+  async completeUploadSession(@Body() dto: CompleteUploadSessionDto) {
+    await this.assertAdAccountBelongsToClient(dto.adAccountId, dto.clientId);
+    return this.service.completeUploadSession(dto);
+  }
+
+  private async assertAdAccountBelongsToClient(
+    adAccountId: string,
+    clientId: string,
+  ): Promise<void> {
+    const adAccount = await this.adAccounts.findByAdAccountId(adAccountId);
+    if (adAccount.clientId !== clientId) {
+      throw new ForbiddenException(
+        'Ad account does not belong to the specified client',
+      );
     }
   }
 

@@ -8,14 +8,17 @@ import * as path from 'path';
 export class GoogleDriveService {
   private readonly logger = new Logger(GoogleDriveService.name);
   private readonly drive;
+  private readonly auth;
 
   constructor(private readonly config: ConfigService) {
-    const auth = new google.auth.OAuth2(
+    this.auth = new google.auth.OAuth2(
       config.get<string>('google.clientId'),
       config.get<string>('google.clientSecret'),
     );
-    auth.setCredentials({ refresh_token: config.get<string>('google.refreshToken') });
-    this.drive = google.drive({ version: 'v3', auth });
+    this.auth.setCredentials({
+      refresh_token: config.get<string>('google.refreshToken'),
+    });
+    this.drive = google.drive({ version: 'v3', auth: this.auth });
   }
 
   extractFolderId(folderUrl: string): string {
@@ -61,6 +64,39 @@ export class GoogleDriveService {
     }
   }
 
+  /**
+   * Starts a Drive resumable-upload session for a file the caller will upload
+   * directly (e.g. a browser, bypassing both our proxy and this API's own
+   * request-size limits) and returns the session URL to PUT the bytes to.
+   */
+  async createResumableUploadSession(
+    folderUrl: string,
+    fileName: string,
+    mimeType: string,
+  ): Promise<string> {
+    const folderId = this.extractFolderId(folderUrl);
+    try {
+      const response = await this.auth.request({
+        method: 'POST',
+        url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
+        data: { name: fileName, parents: [folderId], mimeType },
+        headers: { 'X-Upload-Content-Type': mimeType },
+      });
+      const location = (response.headers as Record<string, string>)['location'];
+      if (!location) {
+        throw new Error(
+          `Drive did not return a resumable upload session URI (missing Location header) [${fileName}]`,
+        );
+      }
+      return location;
+    } catch (err) {
+      this.logger.error(
+        `Drive createResumableUploadSession failed [${fileName}]: ${err}`,
+      );
+      throw err;
+    }
+  }
+
   async createFolder(name: string): Promise<string> {
     const rootFolderId = this.config.get<string>('google.driveRootFolderId');
     try {
@@ -90,7 +126,9 @@ export class GoogleDriveService {
         const dest = fs.createWriteStream(destPath);
         dest.on('error', reject);
         (response.data as NodeJS.ReadableStream).on('error', reject);
-        (response.data as NodeJS.ReadableStream).pipe(dest).on('finish', resolve);
+        (response.data as NodeJS.ReadableStream)
+          .pipe(dest)
+          .on('finish', resolve);
       });
     } catch (err) {
       this.logger.error(`Drive download failed [${fileId}]: ${err}`);
