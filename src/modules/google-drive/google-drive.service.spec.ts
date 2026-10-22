@@ -126,6 +126,11 @@ describe('GoogleDriveService', () => {
           }),
         }),
       );
+      // Without `fields=id,webViewLink` on the initiation URL, Drive's final
+      // completion response (after the browser PUTs the bytes) omits
+      // webViewLink entirely — confirmed against the live API.
+      const initiationUrl = (authInstance.request as jest.Mock).mock.calls.at(-1)[0].url as string;
+      expect(initiationUrl).toContain('fields=id,webViewLink');
       expect(url).toBe(
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=XYZ',
       );

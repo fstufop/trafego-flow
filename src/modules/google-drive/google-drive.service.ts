@@ -79,7 +79,7 @@ export class GoogleDriveService {
     try {
       const response = await this.auth.request({
         method: 'POST',
-        url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
+        url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,webViewLink',
         data: { name: fileName, parents: [folderId], mimeType },
         headers: {
           'X-Upload-Content-Type': mimeType,
