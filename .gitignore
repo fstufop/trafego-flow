@@ -22,3 +22,6 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# superpowers SDD workspace (plan ledgers/briefs, not part of the repo)
+.superpowers/
