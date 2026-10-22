@@ -10,6 +10,7 @@ import { of, throwError } from 'rxjs';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
 import { RuleType } from './enums/rule-type.enum.js';
+import { IcebreakerSyncService } from './icebreaker-sync.service.js';
 import { IntegrationsService } from '../integrations/integrations.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { HttpService } from '@nestjs/axios';
@@ -22,6 +23,8 @@ const mockRepo = {
   save: jest.fn(),
   softDelete: jest.fn(),
 };
+
+const mockIcebreakerSync = { sync: jest.fn() };
 
 const mockIntegrationsService = {
   findByPageId: jest.fn(),
@@ -59,6 +62,7 @@ describe('ConversationRulesService', () => {
         { provide: AesCryptoService, useValue: mockCrypto },
         { provide: HttpService, useValue: mockHttp },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: IcebreakerSyncService, useValue: mockIcebreakerSync },
       ],
     }).compile();
     service = module.get<ConversationRulesService>(ConversationRulesService);
@@ -153,8 +157,10 @@ describe('ConversationRulesService', () => {
   describe('create — icebreaker-specific behavior', () => {
     it('should generate the triggerValue and ignore any value sent by the client', async () => {
       mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.find.mockResolvedValue([]);
       mockRepo.create.mockReturnValue({});
       mockRepo.save.mockResolvedValue({});
+      mockIcebreakerSync.sync.mockResolvedValue(undefined);
       await service.create({
         clientId: 'c1',
         type: RuleType.ICEBREAKER,
@@ -170,8 +176,10 @@ describe('ConversationRulesService', () => {
 
     it('should persist icebreakerQuestion for icebreaker rules and null it out for other types', async () => {
       mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.find.mockResolvedValue([]);
       mockRepo.create.mockReturnValue({});
       mockRepo.save.mockResolvedValue({});
+      mockIcebreakerSync.sync.mockResolvedValue(undefined);
       await service.create({
         clientId: 'c1',
         type: RuleType.ICEBREAKER,
@@ -226,6 +234,83 @@ describe('ConversationRulesService', () => {
           },
         } as any),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('create — icebreaker sync and cap', () => {
+    it('should call IcebreakerSyncService.sync with the prospective list before saving', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.find.mockResolvedValue([
+        { icebreakerQuestion: 'Q1', triggerValue: 'P1' },
+      ]);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      mockIcebreakerSync.sync.mockResolvedValue(undefined);
+
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        icebreakerQuestion: 'Q2',
+        reply: { text: 'Oi' },
+      });
+
+      expect(mockIcebreakerSync.sync).toHaveBeenCalledWith(
+        'c1',
+        expect.arrayContaining([
+          expect.objectContaining({
+            icebreakerQuestion: 'Q1',
+            triggerValue: 'P1',
+          }),
+          expect.objectContaining({ icebreakerQuestion: 'Q2' }),
+        ]),
+      );
+      const syncOrder = mockIcebreakerSync.sync.mock.invocationCallOrder[0];
+      const saveOrder = mockRepo.save.mock.invocationCallOrder[0];
+      expect(syncOrder).toBeLessThan(saveOrder);
+    });
+
+    it('should not call repo.save when sync throws, and should propagate the error', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.find.mockResolvedValue([]);
+      const syncError = new Error('Meta rejected the config');
+      mockIcebreakerSync.sync.mockRejectedValue(syncError);
+
+      await expect(
+        service.create({
+          clientId: 'c1',
+          type: RuleType.ICEBREAKER,
+          icebreakerQuestion: 'Q1',
+          reply: { text: 'Oi' },
+        } as any),
+      ).rejects.toBe(syncError);
+      expect(mockRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when the client already has 4 active icebreaker rules', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.find.mockResolvedValue([{}, {}, {}, {}]);
+      await expect(
+        service.create({
+          clientId: 'c1',
+          type: RuleType.ICEBREAKER,
+          icebreakerQuestion: 'Q5',
+          reply: { text: 'Oi' },
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(mockIcebreakerSync.sync).not.toHaveBeenCalled();
+    });
+
+    it('should not touch IcebreakerSyncService for non-icebreaker rule types', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockRepo.create.mockReturnValue({});
+      mockRepo.save.mockResolvedValue({});
+      await service.create({
+        clientId: 'c1',
+        type: RuleType.KEYWORD_DM,
+        triggerValue: 'oi',
+        reply: { text: 'Olá' },
+      });
+      expect(mockIcebreakerSync.sync).not.toHaveBeenCalled();
     });
   });
 
@@ -295,6 +380,44 @@ describe('ConversationRulesService', () => {
     });
   });
 
+  describe('update — icebreaker sync and cap on reactivation', () => {
+    it('should throw ConflictException reactivating a 5th icebreaker rule', async () => {
+      const rule = {
+        id: 'r5',
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        isActive: false,
+        triggerValue: 'P5',
+        icebreakerQuestion: 'Q5',
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.find.mockResolvedValue([{}, {}, {}, {}]); // 4 already active, excluding this one
+      await expect(
+        service.update('r5', 'c1', { isActive: true } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(mockIcebreakerSync.sync).not.toHaveBeenCalled();
+    });
+
+    it('should sync before saving when deactivating an icebreaker rule, with it excluded from the prospective list', async () => {
+      const rule = {
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        isActive: true,
+        triggerValue: 'P1',
+        icebreakerQuestion: 'Q1',
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.find.mockResolvedValue([rule]);
+      mockRepo.save.mockResolvedValue({ ...rule, isActive: false });
+      mockIcebreakerSync.sync.mockResolvedValue(undefined);
+
+      await service.update('r1', 'c1', { isActive: false });
+
+      expect(mockIcebreakerSync.sync).toHaveBeenCalledWith('c1', []);
+    });
+  });
+
   describe('remove', () => {
     it('should throw NotFoundException when rule does not belong to client', async () => {
       mockRepo.findOne.mockResolvedValue(null);
@@ -308,6 +431,40 @@ describe('ConversationRulesService', () => {
       mockRepo.softDelete.mockResolvedValue(undefined);
       await expect(service.remove('rule-id', 'c1')).resolves.toBeUndefined();
       expect(mockRepo.softDelete).toHaveBeenCalledWith('rule-id');
+    });
+  });
+
+  describe('remove — icebreaker sync', () => {
+    it('should sync the remaining active list before soft-deleting an icebreaker rule', async () => {
+      const rule = {
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.ICEBREAKER,
+        triggerValue: 'P1',
+        icebreakerQuestion: 'Q1',
+      };
+      mockRepo.findOne.mockResolvedValue(rule);
+      mockRepo.find.mockResolvedValue([rule]);
+      mockIcebreakerSync.sync.mockResolvedValue(undefined);
+      mockRepo.softDelete.mockResolvedValue(undefined);
+
+      await service.remove('r1', 'c1');
+
+      expect(mockIcebreakerSync.sync).toHaveBeenCalledWith('c1', []);
+      const syncOrder = mockIcebreakerSync.sync.mock.invocationCallOrder[0];
+      const deleteOrder = mockRepo.softDelete.mock.invocationCallOrder[0];
+      expect(syncOrder).toBeLessThan(deleteOrder);
+    });
+
+    it('should not touch IcebreakerSyncService when removing a non-icebreaker rule', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        clientId: 'c1',
+        type: RuleType.KEYWORD_DM,
+      });
+      mockRepo.softDelete.mockResolvedValue(undefined);
+      await service.remove('r1', 'c1');
+      expect(mockIcebreakerSync.sync).not.toHaveBeenCalled();
     });
   });
 

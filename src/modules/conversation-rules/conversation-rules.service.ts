@@ -19,6 +19,7 @@ import { ConversationReply } from './interfaces/conversation-reply.interface.js'
 import { InstagramPostsResult } from './interfaces/instagram-post.interface.js';
 import { IntegrationsService } from '../integrations/integrations.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
+import { IcebreakerSyncService } from './icebreaker-sync.service.js';
 
 @Injectable()
 export class ConversationRulesService {
@@ -31,6 +32,7 @@ export class ConversationRulesService {
     private readonly crypto: AesCryptoService,
     private readonly httpService: HttpService,
     private readonly config: ConfigService,
+    private readonly icebreakerSync: IcebreakerSyncService,
   ) {}
 
   async create(
@@ -60,6 +62,13 @@ export class ConversationRulesService {
 
     const isPostComment = dto.type === RuleType.POST_COMMENT;
     const isIcebreaker = dto.type === RuleType.ICEBREAKER;
+
+    if (isIcebreaker) {
+      await this.syncIfIcebreaker(dto.clientId, null, {
+        icebreakerQuestion: dto.icebreakerQuestion!,
+        triggerValue: triggerValue!,
+      });
+    }
 
     return this.repo.save(
       this.repo.create({
@@ -100,6 +109,18 @@ export class ConversationRulesService {
         'triggerValue cannot be changed for this rule type',
       );
     }
+    if (rule.type === RuleType.ICEBREAKER) {
+      const willBeActive = dto.isActive ?? rule.isActive;
+      if (willBeActive) {
+        await this.syncIfIcebreaker(rule.clientId, rule.id, {
+          icebreakerQuestion:
+            dto.icebreakerQuestion ?? rule.icebreakerQuestion!,
+          triggerValue: rule.triggerValue!,
+        });
+      } else {
+        await this.syncIfIcebreaker(rule.clientId, rule.id, null);
+      }
+    }
     return this.repo.save({ ...rule, ...dto });
   }
 
@@ -107,7 +128,43 @@ export class ConversationRulesService {
     const rule = await this.repo.findOne({ where: { id, clientId } });
     if (!rule)
       throw new NotFoundException(`Rule ${id} not found for this client`);
+    if (rule.type === RuleType.ICEBREAKER) {
+      await this.syncIfIcebreaker(rule.clientId, rule.id, null);
+    }
     await this.repo.softDelete(id);
+  }
+
+  private async syncIfIcebreaker(
+    clientId: string,
+    excludeId: string | null,
+    prospectiveAddition: {
+      icebreakerQuestion: string;
+      triggerValue: string;
+    } | null,
+  ): Promise<void> {
+    const active = await this.repo.find({
+      where: { clientId, type: RuleType.ICEBREAKER, isActive: true },
+    });
+    const remaining = excludeId
+      ? active.filter((r) => r.id !== excludeId)
+      : active;
+    const prospective = prospectiveAddition
+      ? [...remaining, prospectiveAddition]
+      : remaining;
+
+    if (prospective.length > 4) {
+      throw new ConflictException(
+        `Client already has ${remaining.length} active icebreaker rules (max 4)`,
+      );
+    }
+
+    await this.icebreakerSync.sync(
+      clientId,
+      prospective.map((r) => ({
+        icebreakerQuestion: r.icebreakerQuestion!,
+        triggerValue: r.triggerValue!,
+      })),
+    );
   }
 
   async findKeywordRule(
