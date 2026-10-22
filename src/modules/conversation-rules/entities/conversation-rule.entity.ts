@@ -30,6 +30,9 @@ export class ConversationRuleEntity extends BaseEntity {
   @Column({ name: 'public_reply', type: 'text', nullable: true })
   publicReply: string | null;
 
+  @Column({ name: 'icebreaker_question', type: 'varchar', nullable: true })
+  icebreakerQuestion: string | null;
+
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 }

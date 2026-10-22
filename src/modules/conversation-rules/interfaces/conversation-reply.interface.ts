@@ -1,5 +1,6 @@
 export interface ConversationReply {
   text?: string;
   quickReplies?: string[];
-  waLink?: string;
+  buttonText?: string;
+  buttonUrl?: string;
 }
