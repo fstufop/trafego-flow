@@ -32,12 +32,19 @@ export class AuthGuard implements CanActivate {
 
     const token = extractBearerToken(request);
     if (token) {
+      let payload: JwtPayload;
       try {
-        request.user = await this.jwtService.verifyAsync<JwtPayload>(token);
-        return true;
+        payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       } catch {
         throw new UnauthorizedException('Invalid or expired token');
       }
+      if (payload.scope !== undefined) {
+        throw new UnauthorizedException(
+          'This token cannot be used for this endpoint',
+        );
+      }
+      request.user = payload;
+      return true;
     }
 
     throw new UnauthorizedException('Provide a valid API key or Bearer token');

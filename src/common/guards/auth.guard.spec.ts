@@ -53,4 +53,12 @@ describe('AuthGuard', () => {
       UnauthorizedException,
     );
   });
+
+  it('rejects a token carrying a scope claim (e.g. an upload-scoped token)', async () => {
+    verifyAsync.mockResolvedValue({ sub: 'user-id', scope: 'media-upload' });
+
+    await expect(
+      guard.canActivate(makeContext({ authorization: 'Bearer scoped-token' })),
+    ).rejects.toThrow(UnauthorizedException);
+  });
 });

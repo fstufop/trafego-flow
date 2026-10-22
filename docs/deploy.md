@@ -74,6 +74,8 @@ echo -n "1//04..."         | gcloud secrets create GOOGLE_REFRESH_TOKEN --data-f
 echo -n "64-chars-hex"     | gcloud secrets create JWT_SECRET --data-file=-
 echo -n "EAAOPT3..."       | gcloud secrets create META_SYSTEM_USER_TOKEN --data-file=-
 echo -n "AQ.Ab8..."        | gcloud secrets create GEMINI_API_KEY --data-file=-
+echo -n "seu-valor"        | gcloud secrets create SWAGGER_USER --data-file=-
+echo -n "seu-valor"        | gcloud secrets create SWAGGER_PASSWORD --data-file=-
 ```
 
 > Valores não sensíveis (`GOOGLE_CLIENT_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, `AI_PROVIDER`, `AI_MODEL`, `META_APP_ID`, `WHATSAPP_DEDICATED_PHONE`, `MANAGERS_GROUP_JID`, `MAX_FILE_SIZE_MB`) vão em `--set-env-vars` no deploy — sem custo de Secret Manager.
@@ -135,8 +137,12 @@ gcloud run deploy trafegoflow \
   --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest \
   --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
   --set-secrets GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest \
-  --set-secrets GOOGLE_REFRESH_TOKEN=GOOGLE_REFRESH_TOKEN:latest
+  --set-secrets GOOGLE_REFRESH_TOKEN=GOOGLE_REFRESH_TOKEN:latest \
+  --set-secrets SWAGGER_USER=SWAGGER_USER:latest \
+  --set-secrets SWAGGER_PASSWORD=SWAGGER_PASSWORD:latest
 ```
+
+> Se `SWAGGER_USER`/`SWAGGER_PASSWORD` não forem definidas, o Swagger (`/docs`) fica acessível sem autenticação — defina ambas em produção.
 
 Ao final, o GCP exibirá a URL pública da aplicação, ex: `https://trafegoflow-xxx-rj.a.run.app`
 

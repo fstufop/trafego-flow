@@ -14,8 +14,15 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as os from 'os';
 import * as fs from 'fs';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
+import { MediaUploadAuthGuard } from '../../common/guards/media-upload-auth.guard.js';
 import { MediaLibraryService } from './media-library.service.js';
 import { UploadMediaDto } from './dto/upload-media.dto.js';
 import { GetLogsQueryDto } from './dto/get-logs-query.dto.js';
@@ -30,12 +37,12 @@ const ACCEPTED_MIMES = new Set([
   'video/quicktime',
 ]);
 
-const MAX_FILE_SIZE_BYTES = (parseInt(process.env.MAX_FILE_SIZE_MB ?? '500', 10)) * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES =
+  parseInt(process.env.MAX_FILE_SIZE_MB ?? '500', 10) * 1024 * 1024;
 
 @ApiTags('media-library')
 @ApiBearerAuth()
 @ApiSecurity('x-api-key')
-@UseGuards(AuthGuard)
 @Controller('media-library')
 export class MediaLibraryController {
   constructor(
@@ -44,13 +51,21 @@ export class MediaLibraryController {
   ) {}
 
   @Post('upload')
-  @ApiOperation({ summary: 'Upload one media file to Google Drive and queue Meta Ads upload' })
+  @UseGuards(MediaUploadAuthGuard)
+  @ApiOperation({
+    summary:
+      'Upload one media file to Google Drive and queue Meta Ads upload. ' +
+      'Accepts either a normal session token or a short-lived media-upload-scoped ' +
+      'token (see POST /auth/upload-token) — the dashboard calls this endpoint ' +
+      "directly from the browser to avoid the Vercel proxy's request size limit.",
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
         destination: os.tmpdir(),
-        filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+        filename: (_req, file, cb) =>
+          cb(null, `${Date.now()}-${file.originalname}`),
       }),
       fileFilter: (_req, file, cb) => {
         if (ACCEPTED_MIMES.has(file.mimetype)) {
@@ -68,7 +83,9 @@ export class MediaLibraryController {
   ) {
     const adAccount = await this.adAccounts.findByAdAccountId(dto.adAccountId);
     if (adAccount.clientId !== dto.clientId) {
-      throw new ForbiddenException('Ad account does not belong to the specified client');
+      throw new ForbiddenException(
+        'Ad account does not belong to the specified client',
+      );
     }
     try {
       return await this.service.upload(dto, file);
@@ -78,6 +95,7 @@ export class MediaLibraryController {
   }
 
   @Get('logs')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'List upload history for a client' })
   async getLogs(@Query() query: GetLogsQueryDto) {
     return this.service.getLogs(
@@ -94,12 +112,14 @@ export class MediaLibraryController {
   // NOTE: this route must be declared BEFORE logs/:id/retry to avoid
   // 'retry-failed' being matched as the :id param
   @Post('logs/retry-failed')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Re-enqueue all failed uploads for a client' })
   async retryFailed(@Body() dto: RetryFailedDto) {
     return this.service.retryFailed(dto.clientId);
   }
 
   @Post('logs/:id/retry')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Re-enqueue a single failed upload' })
   async retryOne(@Param('id') id: string) {
     return this.service.retryOne(id);

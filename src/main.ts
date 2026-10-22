@@ -5,6 +5,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import basicAuth from 'express-basic-auth';
 import { AppModule } from './app.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
@@ -28,6 +29,16 @@ async function bootstrap() {
     .addApiKey({ type: 'apiKey', in: 'header', name: 'x-api-key' }, 'x-api-key')
     .addBearerAuth()
     .build();
+
+  if (process.env.SWAGGER_USER && process.env.SWAGGER_PASSWORD) {
+    app.use(
+      ['/docs', '/docs-json'],
+      basicAuth({
+        users: { [process.env.SWAGGER_USER]: process.env.SWAGGER_PASSWORD },
+        challenge: true,
+      }),
+    );
+  }
 
   SwaggerModule.setup(
     'docs',

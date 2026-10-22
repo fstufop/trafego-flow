@@ -122,6 +122,43 @@ describe('AuthService', () => {
     });
   });
 
+  describe('issueUploadToken', () => {
+    it('signs a short-lived, scoped token for the given user', async () => {
+      const result = await service.issueUploadToken({
+        sub: 'user-uuid',
+        email: 'user@test.com',
+        name: 'Test User',
+      });
+
+      expect(result.accessToken).toBe('signed-token');
+      expect(result.tokenType).toBe('Bearer');
+      expect(result.expiresIn).toBe('5m');
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        {
+          sub: 'user-uuid',
+          email: 'user@test.com',
+          name: 'Test User',
+          scope: 'media-upload',
+        },
+        { expiresIn: '5m' },
+      );
+    });
+
+    it('does not carry over a scope already present on the current user payload', async () => {
+      await service.issueUploadToken({
+        sub: 'user-uuid',
+        email: 'user@test.com',
+        name: 'Test User',
+        scope: 'some-other-scope',
+      });
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ scope: 'media-upload' }),
+        { expiresIn: '5m' },
+      );
+    });
+  });
+
   describe('findById', () => {
     it('returns the active user', async () => {
       const user = await makeUser();

@@ -13,9 +13,14 @@ import {
   IAuthService,
   JwtPayload,
   LoginResult,
+  UploadTokenResult,
 } from './interfaces/auth-service.interface.js';
 import { LoginDto } from './dto/login.dto.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import {
+  UPLOAD_TOKEN_EXPIRES_IN,
+  UPLOAD_TOKEN_SCOPE,
+} from './constants/upload-token.constant.js';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -67,6 +72,22 @@ export class AuthService implements IAuthService {
       }
       throw err;
     }
+  }
+
+  async issueUploadToken(currentUser: JwtPayload): Promise<UploadTokenResult> {
+    const payload: JwtPayload = {
+      sub: currentUser.sub,
+      email: currentUser.email,
+      name: currentUser.name,
+      scope: UPLOAD_TOKEN_SCOPE,
+    };
+    return {
+      accessToken: await this.jwtService.signAsync(payload, {
+        expiresIn: UPLOAD_TOKEN_EXPIRES_IN,
+      }),
+      tokenType: 'Bearer',
+      expiresIn: UPLOAD_TOKEN_EXPIRES_IN,
+    };
   }
 
   async findById(id: string): Promise<UserEntity> {

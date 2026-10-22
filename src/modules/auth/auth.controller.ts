@@ -43,6 +43,18 @@ export class AuthController {
     return this.authService.findById(payload.sub);
   }
 
+  @Post('upload-token')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Issue a short-lived, upload-scoped token for direct browser-to-backend file uploads (bypasses the dashboard proxy, which cannot carry large request bodies)',
+  })
+  uploadToken(@CurrentUser() payload: JwtPayload) {
+    return this.authService.issueUploadToken(payload);
+  }
+
   @Post('users')
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.CREATED)

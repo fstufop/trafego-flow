@@ -133,10 +133,31 @@ rodar com clientes de verdade).
 **Fonte dos códigos de erro:** documentação oficial do Meta (`developers.facebook.com/documentation/business-messaging/messenger-platform/error-codes`) e `developers.facebook.com/docs/graph-api/overview/rate-limiting/`, confirmados via busca antes da implementação para não "chutar" códigos.
 **Depende de:** Tarefa 2 (para o retry via fila fazer sentido) — ambas já concluídas
 
-### Tarefa 4 — Checklist de setup Meta por cliente (processo, não código)
-**O que fazer:** documentar (README interno) o passo a passo para conectar um novo cliente: criar app/página de teste, obter token, registrar em `/integrations`, registrar regras em `/conversation-rules`
+### Tarefa 4 — Checklist de setup Meta por cliente (processo, não código) ✅ CONCLUÍDA (2026-10-18)
+Checklist e tutorial completos entregues ao usuário no chat (ver histórico da conversa). Resumo:
+
+**Setup único da plataforma (1x):** criar App no Meta for Developers, produto Webhooks + caso de uso
+Facebook Login for Business, **Business Verification** do portfólio (obrigatória — atendemos contas de
+terceiros, logo precisamos de Advanced Access), callback `https://SEU_DOMINIO/webhook/instagram` com o
+mesmo valor de `META_VERIFY_TOKEN`, inscrição nos campos `messages` e `comments`, App Review solicitando
+`instagram_basic`, `instagram_manage_messages`, `instagram_manage_comments`, `pages_manage_metadata`.
+
+**Por cliente novo:** conta IG Profissional vinculada a uma Página do Facebook, "Allow access to messages"
+habilitado em Conexões de Ferramentas, obter Page ID (`GET /me/accounts`) e Page Access Token de longa
+duração (`GET /{page-id}?fields=access_token`), registrar em `POST /api/v1/integrations`, **assinar a
+página nos webhooks do app** (`POST /{page-id}/subscribed_apps?subscribed_fields=messages,comments` —
+passo manual hoje, candidato à automação na Tarefa 5), cadastrar regras em `POST /api/v1/conversation-rules`.
+
+**Importante — onde cada segredo mora:** `META_APP_SECRET` e `META_VERIFY_TOKEN` são segredos **globais da
+plataforma** (um App Meta só, compartilhado por todos os clientes) e por isso vivem em `.env`. O
+`accessToken` (Page Access Token) de **cada cliente é diferente** e nunca vai para `.env` — ele entra uma
+única vez via `POST /api/v1/integrations`, é criptografado pelo `AesCryptoService` (AES-256-GCM) e fica
+salvo na coluna `access_token` da tabela `integrations` (Postgres), com cache por `pageId` no Redis. Nunca
+retorna em plaintext na API (`@Exclude()` + `ClassSerializerInterceptor`). Rotação de token é feita via
+`PATCH /integrations/:id`, nunca editando arquivo de configuração.
+
 **Depende de:** nada
-**Testável:** um cliente piloto completando o fluxo ponta a ponta
+**Testável:** um cliente piloto completando o fluxo ponta a ponta (DM de teste + comentário de teste)
 
 ### Tarefa 5 (opcional, não bloqueante) — Fluxo de conexão OAuth self-service
 **O que fazer:** endpoint que inicia OAuth do Meta e troca `code` por long-lived token automaticamente, eliminando o passo manual
