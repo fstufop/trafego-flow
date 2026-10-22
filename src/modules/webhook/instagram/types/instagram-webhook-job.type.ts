@@ -10,3 +10,9 @@ export interface InstagramCommentJobPayload {
   commentId: string;
   text: string;
 }
+
+export interface InstagramPostbackJobPayload {
+  pageId: string;
+  senderId: string;
+  payload: string;
+}

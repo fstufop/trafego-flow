@@ -50,6 +50,25 @@ export class InstagramWebhookService {
 
   private async enqueueEntry(entry: InstagramEntry): Promise<void> {
     for (const event of entry.messaging ?? []) {
+      if (event.postback) {
+        await this.queue
+          .add(
+            'postback',
+            {
+              pageId: entry.id,
+              senderId: event.sender.id,
+              payload: event.postback.payload,
+            },
+            { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+          )
+          .catch((err: Error) =>
+            this.logger.warn(
+              `enqueue postback failed pageId=${entry.id}: ${err.message}`,
+            ),
+          );
+        continue;
+      }
+      if (!event.message) continue;
       await this.queue
         .add(
           'dm',

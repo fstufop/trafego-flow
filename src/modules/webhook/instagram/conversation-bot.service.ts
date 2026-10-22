@@ -78,7 +78,11 @@ export class ConversationBotService {
     // not prevent the other from being attempted.
     const results = await Promise.allSettled([
       this.replyBuilder.sendCommentReply(pageId, commentId, rule.reply),
-      this.replyBuilder.sendPublicCommentReply(pageId, commentId, rule.publicReply!),
+      this.replyBuilder.sendPublicCommentReply(
+        pageId,
+        commentId,
+        rule.publicReply!,
+      ),
     ]);
 
     let rateLimitError: GraphApiRateLimitException | undefined;
@@ -94,5 +98,35 @@ export class ConversationBotService {
       );
     }
     if (rateLimitError) throw rateLimitError;
+  }
+
+  async handleIcebreaker(
+    pageId: string,
+    senderId: string,
+    payload: string,
+  ): Promise<void> {
+    let clientId: string;
+    try {
+      const integration = await this.integrationsService.findByPageId(pageId);
+      if (!integration.isActive) return;
+      clientId = integration.clientId;
+    } catch (err) {
+      this.logger.warn(
+        `No integration found for pageId ${pageId} (postback): ${(err as Error).message}`,
+      );
+      return;
+    }
+
+    const rule = await this.rulesService.findIcebreakerRule(clientId, payload);
+    if (!rule) return;
+
+    await this.replyBuilder
+      .send(pageId, senderId, rule.reply)
+      .catch((err: Error) => {
+        if (err instanceof GraphApiRateLimitException) throw err;
+        this.logger.error(
+          `Failed to send icebreaker reply for pageId ${pageId}: ${err.message}`,
+        );
+      });
   }
 }

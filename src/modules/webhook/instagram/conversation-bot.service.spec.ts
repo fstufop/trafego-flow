@@ -10,6 +10,7 @@ const mockRulesService = {
   findKeywordRule: jest.fn(),
   findDefaultRule: jest.fn(),
   findPostRule: jest.fn(),
+  findIcebreakerRule: jest.fn(),
 };
 
 const mockIntegrationsService = {
@@ -139,7 +140,10 @@ describe('ConversationBotService', () => {
   describe('handleComment', () => {
     it('should send both the private DM reply and the public comment reply when post rule matches', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
-      const rule = { reply: { text: 'DM enviada!' }, publicReply: 'Te enviamos na DM!' };
+      const rule = {
+        reply: { text: 'DM enviada!' },
+        publicReply: 'Te enviamos na DM!',
+      };
       mockRulesService.findPostRule.mockResolvedValue(rule);
       mockReplyBuilder.sendCommentReply.mockResolvedValue(undefined);
       mockReplyBuilder.sendPublicCommentReply.mockResolvedValue(undefined);
@@ -154,7 +158,11 @@ describe('ConversationBotService', () => {
         'COMMENT1',
         rule.publicReply,
       );
-      expect(mockRulesService.findPostRule).toHaveBeenCalledWith('client-1', 'POST123', 'quero');
+      expect(mockRulesService.findPostRule).toHaveBeenCalledWith(
+        'client-1',
+        'POST123',
+        'quero',
+      );
     });
 
     it('should stay silent when no post rule matches (wrong post or missing keyword)', async () => {
@@ -186,9 +194,14 @@ describe('ConversationBotService', () => {
 
     it('should still attempt the public reply even when the private DM send fails', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
-      const rule = { reply: { text: 'DM enviada!' }, publicReply: 'Te enviamos na DM!' };
+      const rule = {
+        reply: { text: 'DM enviada!' },
+        publicReply: 'Te enviamos na DM!',
+      };
       mockRulesService.findPostRule.mockResolvedValue(rule);
-      mockReplyBuilder.sendCommentReply.mockRejectedValue(new Error('window expired'));
+      mockReplyBuilder.sendCommentReply.mockRejectedValue(
+        new Error('window expired'),
+      );
       mockReplyBuilder.sendPublicCommentReply.mockResolvedValue(undefined);
       await expect(
         service.handleComment('PAGE1', 'POST123', 'COMMENT1', 'quero'),
@@ -198,10 +211,15 @@ describe('ConversationBotService', () => {
 
     it('should still attempt the private DM even when the public reply send fails', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
-      const rule = { reply: { text: 'DM enviada!' }, publicReply: 'Te enviamos na DM!' };
+      const rule = {
+        reply: { text: 'DM enviada!' },
+        publicReply: 'Te enviamos na DM!',
+      };
       mockRulesService.findPostRule.mockResolvedValue(rule);
       mockReplyBuilder.sendCommentReply.mockResolvedValue(undefined);
-      mockReplyBuilder.sendPublicCommentReply.mockRejectedValue(new Error('comment deleted'));
+      mockReplyBuilder.sendPublicCommentReply.mockRejectedValue(
+        new Error('comment deleted'),
+      );
       await expect(
         service.handleComment('PAGE1', 'POST123', 'COMMENT1', 'quero'),
       ).resolves.toBeUndefined();
@@ -210,10 +228,17 @@ describe('ConversationBotService', () => {
 
     it('should swallow non-rate-limit failures on both sends', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
-      const rule = { reply: { text: 'DM enviada!' }, publicReply: 'Te enviamos na DM!' };
+      const rule = {
+        reply: { text: 'DM enviada!' },
+        publicReply: 'Te enviamos na DM!',
+      };
       mockRulesService.findPostRule.mockResolvedValue(rule);
-      mockReplyBuilder.sendCommentReply.mockRejectedValue(new Error('window expired'));
-      mockReplyBuilder.sendPublicCommentReply.mockRejectedValue(new Error('comment deleted'));
+      mockReplyBuilder.sendCommentReply.mockRejectedValue(
+        new Error('window expired'),
+      );
+      mockReplyBuilder.sendPublicCommentReply.mockRejectedValue(
+        new Error('comment deleted'),
+      );
       await expect(
         service.handleComment('PAGE1', 'POST123', 'COMMENT1', 'quero'),
       ).resolves.toBeUndefined();
@@ -221,7 +246,10 @@ describe('ConversationBotService', () => {
 
     it('should rethrow when the private DM send hits a rate limit, after both sends complete', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
-      const rule = { reply: { text: 'DM enviada!' }, publicReply: 'Te enviamos na DM!' };
+      const rule = {
+        reply: { text: 'DM enviada!' },
+        publicReply: 'Te enviamos na DM!',
+      };
       mockRulesService.findPostRule.mockResolvedValue(rule);
       mockReplyBuilder.sendCommentReply.mockRejectedValue(
         new GraphApiRateLimitException('PAGE1'),
@@ -235,7 +263,10 @@ describe('ConversationBotService', () => {
 
     it('should rethrow when the public reply send hits a rate limit', async () => {
       mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
-      const rule = { reply: { text: 'DM enviada!' }, publicReply: 'Te enviamos na DM!' };
+      const rule = {
+        reply: { text: 'DM enviada!' },
+        publicReply: 'Te enviamos na DM!',
+      };
       mockRulesService.findPostRule.mockResolvedValue(rule);
       mockReplyBuilder.sendCommentReply.mockResolvedValue(undefined);
       mockReplyBuilder.sendPublicCommentReply.mockRejectedValue(
@@ -243,6 +274,59 @@ describe('ConversationBotService', () => {
       );
       await expect(
         service.handleComment('PAGE1', 'POST123', 'COMMENT1', 'quero'),
+      ).rejects.toThrow(GraphApiRateLimitException);
+    });
+  });
+
+  describe('handleIcebreaker', () => {
+    it('should send the matched rule reply', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      const rule = {
+        reply: {
+          text: 'Oi!',
+          buttonText: 'Entrar',
+          buttonUrl: 'https://chat.whatsapp.com/X',
+        },
+      };
+      mockRulesService.findIcebreakerRule.mockResolvedValue(rule);
+      mockReplyBuilder.send.mockResolvedValue(undefined);
+      await service.handleIcebreaker('PAGE1', 'USER1', 'PAYLOAD_1');
+      expect(mockRulesService.findIcebreakerRule).toHaveBeenCalledWith(
+        'client-1',
+        'PAYLOAD_1',
+      );
+      expect(mockReplyBuilder.send).toHaveBeenCalledWith(
+        'PAGE1',
+        'USER1',
+        rule.reply,
+      );
+    });
+
+    it('should stay silent when no rule matches the payload', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      mockRulesService.findIcebreakerRule.mockResolvedValue(null);
+      await service.handleIcebreaker('PAGE1', 'USER1', 'UNKNOWN_PAYLOAD');
+      expect(mockReplyBuilder.send).not.toHaveBeenCalled();
+    });
+
+    it('should stay silent when the integration is not found', async () => {
+      mockIntegrationsService.findByPageId.mockRejectedValue(
+        new Error('Not found'),
+      );
+      await service.handleIcebreaker('PAGE1', 'USER1', 'P1');
+      expect(mockReplyBuilder.send).not.toHaveBeenCalled();
+    });
+
+    it('should rethrow a rate-limit send failure so the job can be retried', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValue(activeIntegration);
+      mockRulesService.findIcebreakerRule.mockResolvedValue({
+        reply: { text: 'Oi' },
+      });
+      mockReplyBuilder.send.mockRejectedValue(
+        new GraphApiRateLimitException('PAGE1'),
+      );
+      await expect(
+        service.handleIcebreaker('PAGE1', 'USER1', 'P1'),
       ).rejects.toThrow(GraphApiRateLimitException);
     });
   });

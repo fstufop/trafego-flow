@@ -5,11 +5,13 @@ import { ConversationBotService } from '../conversation-bot.service.js';
 import {
   InstagramCommentJobPayload,
   InstagramDmJobPayload,
+  InstagramPostbackJobPayload,
 } from '../types/instagram-webhook-job.type.js';
 
 const mockBotService = {
   handleDm: jest.fn().mockResolvedValue(undefined),
   handleComment: jest.fn().mockResolvedValue(undefined),
+  handleIcebreaker: jest.fn().mockResolvedValue(undefined),
 };
 
 function makeJob<T>(name: string, data: T): Job<T> {
@@ -62,6 +64,20 @@ describe('InstagramWebhookProcessor', () => {
       'quero',
     );
     expect(mockBotService.handleDm).not.toHaveBeenCalled();
+  });
+
+  it('should call botService.handleIcebreaker for a postback job', async () => {
+    const job = makeJob<InstagramPostbackJobPayload>('postback', {
+      pageId: 'PAGE1',
+      senderId: 'USER1',
+      payload: 'P1',
+    });
+    await processor.process(job);
+    expect(mockBotService.handleIcebreaker).toHaveBeenCalledWith(
+      'PAGE1',
+      'USER1',
+      'P1',
+    );
   });
 
   it('should do nothing for an unknown job name', async () => {

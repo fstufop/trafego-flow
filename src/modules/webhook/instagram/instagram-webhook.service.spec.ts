@@ -203,5 +203,98 @@ describe('InstagramWebhookService', () => {
         service.handleEvent(dmPayload, rawBody, makeSignature(rawBody)),
       ).resolves.toBeUndefined();
     });
+
+    it('should enqueue a postback job (not a dm job) when the messaging event has a postback', async () => {
+      const postbackPayload: InstagramWebhookPayload = {
+        object: 'instagram',
+        entry: [
+          {
+            id: 'PAGE1',
+            time: 1,
+            messaging: [
+              {
+                sender: { id: 'USER1' },
+                recipient: { id: 'PAGE1' },
+                timestamp: 1,
+                postback: {
+                  payload: 'ICEBREAKER_PAYLOAD_1',
+                  title: 'Quero o grupo',
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const rawBody = Buffer.from(JSON.stringify(postbackPayload));
+      await service.handleEvent(
+        postbackPayload,
+        rawBody,
+        makeSignature(rawBody),
+      );
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'postback',
+        { pageId: 'PAGE1', senderId: 'USER1', payload: 'ICEBREAKER_PAYLOAD_1' },
+        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+      );
+    });
+
+    it('should not enqueue a dm job for an event that has only a postback', async () => {
+      const postbackPayload: InstagramWebhookPayload = {
+        object: 'instagram',
+        entry: [
+          {
+            id: 'PAGE1',
+            time: 1,
+            messaging: [
+              {
+                sender: { id: 'USER1' },
+                recipient: { id: 'PAGE1' },
+                timestamp: 1,
+                postback: { payload: 'P1' },
+              },
+            ],
+          },
+        ],
+      };
+      const rawBody = Buffer.from(JSON.stringify(postbackPayload));
+      await service.handleEvent(
+        postbackPayload,
+        rawBody,
+        makeSignature(rawBody),
+      );
+      expect(mockQueue.add).not.toHaveBeenCalledWith(
+        'dm',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('should not enqueue anything for a messaging event with neither message nor postback (e.g. a read receipt)', async () => {
+      const readReceiptPayload: InstagramWebhookPayload = {
+        object: 'instagram',
+        entry: [
+          {
+            id: 'PAGE1',
+            time: 1,
+            messaging: [
+              {
+                sender: { id: 'USER1' },
+                recipient: { id: 'PAGE1' },
+                timestamp: 1,
+                read: { mid: 'MID1' },
+              },
+            ],
+          },
+        ],
+      };
+      const rawBody = Buffer.from(JSON.stringify(readReceiptPayload));
+      await service.handleEvent(
+        readReceiptPayload,
+        rawBody,
+        makeSignature(rawBody),
+      );
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
   });
 });
