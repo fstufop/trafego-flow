@@ -75,12 +75,16 @@ export class GoogleDriveService {
     mimeType: string,
   ): Promise<string> {
     const folderId = this.extractFolderId(folderUrl);
+    const dashboardOrigin = this.config.get<string>('google.dashboardOrigin');
     try {
       const response = await this.auth.request({
         method: 'POST',
         url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
         data: { name: fileName, parents: [folderId], mimeType },
-        headers: { 'X-Upload-Content-Type': mimeType },
+        headers: {
+          'X-Upload-Content-Type': mimeType,
+          ...(dashboardOrigin ? { Origin: dashboardOrigin } : {}),
+        },
       });
       // google-auth-library returns response.headers as a native Fetch API
       // Headers object — it does not support bracket/property access.

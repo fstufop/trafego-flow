@@ -122,6 +122,7 @@ describe('GoogleDriveService', () => {
           }),
           headers: expect.objectContaining({
             'X-Upload-Content-Type': 'video/mp4',
+            Origin: 'val',
           }),
         }),
       );
@@ -130,10 +131,33 @@ describe('GoogleDriveService', () => {
       );
     });
 
+    it('omits the Origin header when no dashboard origin is configured', async () => {
+      const config = {
+        get: jest.fn().mockReturnValue(undefined),
+      } as unknown as ConfigService;
+      const svc = new GoogleDriveService(config);
+      const authInstance = google.auth.OAuth2({} as any) as any;
+      (authInstance.request as jest.Mock).mockResolvedValue({
+        headers: new Headers({ location: 'https://example.com/session' }),
+      });
+
+      await svc.createResumableUploadSession(
+        'https://drive.google.com/drive/folders/folder456',
+        'video.mp4',
+        'video/mp4',
+      );
+
+      const calls = (authInstance.request as jest.Mock).mock.calls;
+      const call = calls[calls.length - 1][0];
+      expect(call.headers).not.toHaveProperty('Origin');
+    });
+
     it('throws when Drive does not return a Location header', async () => {
       const svc = makeSvc();
       const authInstance = google.auth.OAuth2({} as any) as any;
-      (authInstance.request as jest.Mock).mockResolvedValue({ headers: new Headers() });
+      (authInstance.request as jest.Mock).mockResolvedValue({
+        headers: new Headers(),
+      });
 
       await expect(
         svc.createResumableUploadSession(
