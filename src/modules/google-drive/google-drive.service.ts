@@ -82,7 +82,9 @@ export class GoogleDriveService {
         data: { name: fileName, parents: [folderId], mimeType },
         headers: { 'X-Upload-Content-Type': mimeType },
       });
-      const location = (response.headers as Record<string, string>)['location'];
+      // google-auth-library returns response.headers as a native Fetch API
+      // Headers object — it does not support bracket/property access.
+      const location = (response.headers as Headers).get('location');
       if (!location) {
         throw new Error(
           `Drive did not return a resumable upload session URI (missing Location header) [${fileName}]`,

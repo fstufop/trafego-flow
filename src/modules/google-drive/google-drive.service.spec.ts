@@ -95,11 +95,14 @@ describe('GoogleDriveService', () => {
     it('posts metadata to the Drive resumable endpoint and returns the Location header as the session URL', async () => {
       const svc = makeSvc();
       const authInstance = google.auth.OAuth2({} as any) as any;
+      // google-auth-library's `request()` returns response.headers as a native
+      // Fetch API Headers object (requires .get(), not bracket access) — see
+      // the real shape confirmed against the live Drive API before this fix.
       (authInstance.request as jest.Mock).mockResolvedValue({
-        headers: {
+        headers: new Headers({
           location:
             'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=XYZ',
-        },
+        }),
       });
 
       const url = await svc.createResumableUploadSession(
@@ -130,7 +133,7 @@ describe('GoogleDriveService', () => {
     it('throws when Drive does not return a Location header', async () => {
       const svc = makeSvc();
       const authInstance = google.auth.OAuth2({} as any) as any;
-      (authInstance.request as jest.Mock).mockResolvedValue({ headers: {} });
+      (authInstance.request as jest.Mock).mockResolvedValue({ headers: new Headers() });
 
       await expect(
         svc.createResumableUploadSession(
