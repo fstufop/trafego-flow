@@ -7,6 +7,7 @@ const mockGraph = {
   sendQuickReplies: jest.fn(),
   sendCommentPrivateReply: jest.fn(),
   replyToComment: jest.fn(),
+  sendButtonTemplate: jest.fn(),
 };
 
 describe('ReplyBuilderService', () => {
@@ -47,30 +48,38 @@ describe('ReplyBuilderService', () => {
     expect(mockGraph.sendTextMessage).not.toHaveBeenCalled();
   });
 
-  it('should append waLink to text with newline when reply has text and waLink', async () => {
+  it('should call sendButtonTemplate when reply has text, buttonText and buttonUrl', async () => {
     await service.send('PAGE1', 'USER1', {
-      text: 'Fale conosco:',
-      waLink: 'https://wa.me/5511999',
+      text: 'Clique:',
+      buttonText: 'Entrar no grupo',
+      buttonUrl: 'https://chat.whatsapp.com/X',
     });
-    expect(mockGraph.sendTextMessage).toHaveBeenCalledWith(
+    expect(mockGraph.sendButtonTemplate).toHaveBeenCalledWith(
       'PAGE1',
       'USER1',
-      'Fale conosco:\nhttps://wa.me/5511999',
+      'Clique:',
+      'Entrar no grupo',
+      'https://chat.whatsapp.com/X',
     );
+    expect(mockGraph.sendTextMessage).not.toHaveBeenCalled();
+    expect(mockGraph.sendQuickReplies).not.toHaveBeenCalled();
   });
 
-  it('should append waLink to text in sendQuickReplies when all three fields present', async () => {
+  it('should prefer the button over quickReplies when both are present', async () => {
     await service.send('PAGE1', 'USER1', {
       text: 'Opções:',
       quickReplies: ['Ver preços'],
-      waLink: 'https://wa.me/5511999',
+      buttonText: 'Entrar',
+      buttonUrl: 'https://chat.whatsapp.com/X',
     });
-    expect(mockGraph.sendQuickReplies).toHaveBeenCalledWith(
+    expect(mockGraph.sendButtonTemplate).toHaveBeenCalledWith(
       'PAGE1',
       'USER1',
-      'Opções:\nhttps://wa.me/5511999',
-      ['Ver preços'],
+      'Opções:',
+      'Entrar',
+      'https://chat.whatsapp.com/X',
     );
+    expect(mockGraph.sendQuickReplies).not.toHaveBeenCalled();
   });
 
   describe('sendCommentReply', () => {
@@ -85,15 +94,16 @@ describe('ReplyBuilderService', () => {
       );
     });
 
-    it('should append waLink to the private reply text', async () => {
+    it('should ignore buttonText/buttonUrl since comment private replies only support text', async () => {
       await service.sendCommentReply('PAGE1', 'COMMENT1', {
-        text: 'Segue o link:',
-        waLink: 'https://wa.me/5511999',
+        text: 'Oi',
+        buttonText: 'Entrar',
+        buttonUrl: 'https://chat.whatsapp.com/X',
       });
       expect(mockGraph.sendCommentPrivateReply).toHaveBeenCalledWith(
         'PAGE1',
         'COMMENT1',
-        'Segue o link:\nhttps://wa.me/5511999',
+        'Oi',
       );
     });
 
@@ -112,7 +122,11 @@ describe('ReplyBuilderService', () => {
 
   describe('sendPublicCommentReply', () => {
     it('should reply publicly to the comment via replyToComment', async () => {
-      await service.sendPublicCommentReply('PAGE1', 'COMMENT1', 'Te enviamos na DM!');
+      await service.sendPublicCommentReply(
+        'PAGE1',
+        'COMMENT1',
+        'Te enviamos na DM!',
+      );
       expect(mockGraph.replyToComment).toHaveBeenCalledWith(
         'PAGE1',
         'COMMENT1',

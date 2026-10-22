@@ -11,8 +11,18 @@ export class ReplyBuilderService {
     recipientId: string,
     reply: ConversationReply,
   ): Promise<void> {
-    const text = this.buildText(reply);
+    if (reply.buttonUrl) {
+      await this.graph.sendButtonTemplate(
+        pageId,
+        recipientId,
+        reply.text ?? '',
+        reply.buttonText ?? '',
+        reply.buttonUrl,
+      );
+      return;
+    }
 
+    const text = reply.text ?? '';
     if (reply.quickReplies?.length) {
       await this.graph.sendQuickReplies(
         pageId,
@@ -46,8 +56,6 @@ export class ReplyBuilderService {
   }
 
   private buildText(reply: ConversationReply): string {
-    return reply.waLink
-      ? `${reply.text ?? ''}\n${reply.waLink}`.trim()
-      : (reply.text ?? '');
+    return reply.text ?? '';
   }
 }
