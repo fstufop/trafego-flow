@@ -97,6 +97,59 @@ export class InstagramGraphService implements IInstagramGraphService {
     );
   }
 
+  async sendButtonTemplate(
+    pageId: string,
+    recipientIgsid: string,
+    text: string,
+    buttonTitle: string,
+    buttonUrl: string,
+  ): Promise<void> {
+    const token = await this.getDecryptedToken(pageId);
+    await this.post(pageId, token, {
+      recipient: { id: recipientIgsid },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'button',
+            text,
+            buttons: [{ type: 'web_url', url: buttonUrl, title: buttonTitle }],
+          },
+        },
+      },
+    });
+  }
+
+  async setIceBreakers(
+    pageId: string,
+    questions: Array<{ question: string; payload: string }>,
+  ): Promise<void> {
+    const token = await this.getDecryptedToken(pageId);
+    const url = `${this.baseUrl}/${pageId}/messenger_profile`;
+    await firstValueFrom(
+      this.httpService.post(
+        url,
+        {
+          platform: 'instagram',
+          ice_breakers: [
+            {
+              locale: 'default',
+              call_to_actions: questions.map((q) => ({
+                question: q.question,
+                payload: q.payload,
+              })),
+            },
+          ],
+        },
+        { params: { access_token: token } },
+      ),
+    ).catch(
+      (err: {
+        response?: { status?: number; data?: { error?: { code?: number } } };
+      }) => this.handleCommonGraphError(pageId, err),
+    );
+  }
+
   private get baseUrl(): string {
     const url = this.config.get<string>('meta.graphApiUrl');
     const version = this.config.get<string>('meta.graphApiVersion');

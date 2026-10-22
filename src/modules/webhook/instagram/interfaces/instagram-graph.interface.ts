@@ -21,4 +21,15 @@ export interface IInstagramGraphService {
     commentId: string,
     message: string,
   ): Promise<void>;
+  sendButtonTemplate(
+    pageId: string,
+    recipientIgsid: string,
+    text: string,
+    buttonTitle: string,
+    buttonUrl: string,
+  ): Promise<void>;
+  setIceBreakers(
+    pageId: string,
+    questions: Array<{ question: string; payload: string }>,
+  ): Promise<void>;
 }

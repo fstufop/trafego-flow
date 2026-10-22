@@ -229,4 +229,72 @@ describe('InstagramGraphService', () => {
       ).rejects.toBe(unknownError);
     });
   });
+
+  describe('sendButtonTemplate', () => {
+    it('should send a button template with a single web_url button', async () => {
+      mockHttpService.post.mockReturnValue(of({ data: { message_id: 'MSG_1' } }));
+
+      await service.sendButtonTemplate(
+        'PAGE123', 'IGSID_USER', 'Clique abaixo:', 'Entrar no grupo', 'https://chat.whatsapp.com/XXXX',
+      );
+
+      expect(mockHttpService.post).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/PAGE123/messages',
+        {
+          recipient: { id: 'IGSID_USER' },
+          message: {
+            attachment: {
+              type: 'template',
+              payload: {
+                template_type: 'button',
+                text: 'Clique abaixo:',
+                buttons: [{ type: 'web_url', url: 'https://chat.whatsapp.com/XXXX', title: 'Entrar no grupo' }],
+              },
+            },
+          },
+        },
+        { params: { access_token: 'plaintext-token' } },
+      );
+    });
+
+    it('should throw OAuthTokenExpiredException when Graph API returns error 190', async () => {
+      mockHttpService.post.mockReturnValue(throwError(() => ({ response: { data: { error: { code: 190 } } } })));
+      await expect(
+        service.sendButtonTemplate('PAGE123', 'IGSID_USER', 'txt', 'btn', 'https://chat.whatsapp.com/X'),
+      ).rejects.toThrow(OAuthTokenExpiredException);
+    });
+  });
+
+  describe('setIceBreakers', () => {
+    it('should POST to messenger_profile with locale "default" and the given questions', async () => {
+      mockHttpService.post.mockReturnValue(of({ data: { success: true } }));
+
+      await service.setIceBreakers('PAGE123', [
+        { question: 'Quero entrar no grupo VIP 🎉', payload: 'PAYLOAD_1' },
+      ]);
+
+      expect(mockHttpService.post).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/PAGE123/messenger_profile',
+        {
+          platform: 'instagram',
+          ice_breakers: [{
+            locale: 'default',
+            call_to_actions: [{ question: 'Quero entrar no grupo VIP 🎉', payload: 'PAYLOAD_1' }],
+          }],
+        },
+        { params: { access_token: 'plaintext-token' } },
+      );
+    });
+
+    it('should throw GraphApiRateLimitException on HTTP 429', async () => {
+      mockHttpService.post.mockReturnValue(throwError(() => ({ response: { status: 429, data: { error: { code: 4 } } } })));
+      await expect(service.setIceBreakers('PAGE123', [])).rejects.toThrow(GraphApiRateLimitException);
+    });
+
+    it('should rethrow the original error on an unrecognized Graph API error', async () => {
+      const unknownError = { response: { data: { error: { code: 100 } } } };
+      mockHttpService.post.mockReturnValue(throwError(() => unknownError));
+      await expect(service.setIceBreakers('PAGE123', [])).rejects.toBe(unknownError);
+    });
+  });
 });
