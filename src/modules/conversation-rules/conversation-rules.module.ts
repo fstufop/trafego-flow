@@ -4,8 +4,10 @@ import { HttpModule } from '@nestjs/axios';
 import { ConversationRuleEntity } from './entities/conversation-rule.entity.js';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { ConversationRulesController } from './conversation-rules.controller.js';
+import { IcebreakerSyncService } from './icebreaker-sync.service.js';
 import { IntegrationsModule } from '../integrations/integrations.module.js';
 import { CryptoModule } from '../../common/crypto/crypto.module.js';
+import { InstagramGraphService } from '../webhook/instagram/instagram-graph.service.js';
 
 @Module({
   imports: [
@@ -15,7 +17,7 @@ import { CryptoModule } from '../../common/crypto/crypto.module.js';
     HttpModule,
   ],
   controllers: [ConversationRulesController],
-  providers: [ConversationRulesService],
+  providers: [ConversationRulesService, IcebreakerSyncService, InstagramGraphService],
   exports: [ConversationRulesService],
 })
 export class ConversationRulesModule {}
