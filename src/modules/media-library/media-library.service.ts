@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  PayloadTooLargeException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -30,6 +31,7 @@ import {
   PaginatedLogs,
   UploadInitiatedResult,
 } from './types/upload-result.type.js';
+import { MAX_FILE_SIZE_BYTES } from './constants/max-file-size.constant.js';
 
 @Injectable()
 export class MediaLibraryService {
@@ -151,6 +153,13 @@ export class MediaLibraryService {
   async completeUploadSession(
     dto: CompleteUploadSessionDto,
   ): Promise<UploadInitiatedResult> {
+    const fileSize = await this.drive.getFileSize(dto.driveFileId);
+    if (fileSize > MAX_FILE_SIZE_BYTES) {
+      throw new PayloadTooLargeException(
+        `File ${dto.driveFileId} is ${fileSize} bytes, which exceeds the ${MAX_FILE_SIZE_BYTES}-byte limit`,
+      );
+    }
+
     const adAccount = await this.adAccounts.findByAdAccountId(dto.adAccountId);
 
     const log = await this.logsRepo.save({

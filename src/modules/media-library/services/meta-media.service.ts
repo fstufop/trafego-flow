@@ -41,8 +41,7 @@ export class MetaMediaService {
     mimeType: string,
   ): Promise<string> {
     const url = `${this.graphUrl}/${adAccountId}/adimages`;
-    const fileBuffer = await fs.promises.readFile(filePath);
-    const blob = new Blob([fileBuffer], { type: mimeType });
+    const blob = await fs.openAsBlob(filePath, { type: mimeType });
 
     const form = new FormData();
     form.append('access_token', accessToken);
@@ -83,8 +82,7 @@ export class MetaMediaService {
     mimeType: string,
   ): Promise<string> {
     const url = `${this.graphUrl}/${adAccountId}/advideos`;
-    const fileBuffer = await fs.promises.readFile(filePath);
-    const blob = new Blob([fileBuffer], { type: mimeType });
+    const blob = await fs.openAsBlob(filePath, { type: mimeType });
 
     const form = new FormData();
     form.append('access_token', accessToken);

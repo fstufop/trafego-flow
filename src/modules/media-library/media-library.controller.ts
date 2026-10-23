@@ -32,9 +32,7 @@ import { GetLogsQueryDto } from './dto/get-logs-query.dto.js';
 import { RetryFailedDto } from './dto/retry-failed.dto.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { ACCEPTED_MIMES } from './constants/accepted-mimes.constant.js';
-
-const MAX_FILE_SIZE_BYTES =
-  parseInt(process.env.MAX_FILE_SIZE_MB ?? '500', 10) * 1024 * 1024;
+import { MAX_FILE_SIZE_BYTES } from './constants/max-file-size.constant.js';
 
 @ApiTags('media-library')
 @ApiBearerAuth()

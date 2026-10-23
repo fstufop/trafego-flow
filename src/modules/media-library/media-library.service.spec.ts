@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import {
   BadRequestException,
+  PayloadTooLargeException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -78,6 +79,7 @@ describe('MediaLibraryService', () => {
           useValue: {
             upload: jest.fn(),
             createResumableUploadSession: jest.fn(),
+            getFileSize: jest.fn().mockResolvedValue(1024),
           },
         },
         { provide: getRepositoryToken(MediaUploadLog), useValue: logsRepo },
@@ -263,6 +265,20 @@ describe('MediaLibraryService', () => {
         }),
         { attempts: 1 },
       );
+    });
+
+    it('checks the uploaded file size against the Drive file before persisting anything', async () => {
+      await svc.completeUploadSession(COMPLETE_DTO);
+      expect(drive.getFileSize).toHaveBeenCalledWith('drv-1');
+    });
+
+    it('rejects with 413 when the Drive file exceeds the max size, without persisting or enqueueing', async () => {
+      drive.getFileSize.mockResolvedValue(600 * 1024 * 1024);
+      await expect(svc.completeUploadSession(COMPLETE_DTO)).rejects.toThrow(
+        PayloadTooLargeException,
+      );
+      expect(logsRepo.save).not.toHaveBeenCalled();
+      expect(queue.add).not.toHaveBeenCalled();
     });
   });
 

@@ -103,6 +103,16 @@ export class GoogleDriveService {
     }
   }
 
+  /** Fetches the size (in bytes) of a file already uploaded to Drive. */
+  async getFileSize(fileId: string): Promise<number> {
+    const response = await this.drive.files.get({
+      fileId,
+      fields: 'size',
+      supportsAllDrives: true,
+    });
+    return parseInt(response.data.size!, 10);
+  }
+
   async createFolder(name: string): Promise<string> {
     const rootFolderId = this.config.get<string>('google.driveRootFolderId');
     try {

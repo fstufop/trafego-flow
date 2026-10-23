@@ -7,7 +7,6 @@ import * as fs from 'fs';
 jest.mock('axios');
 jest.mock('fs', () => ({
   promises: {
-    readFile: jest.fn().mockResolvedValue(Buffer.from('fake-file-content')),
     stat: jest.fn().mockResolvedValue({ size: 1024 }),
     open: jest.fn().mockResolvedValue({
       read: jest.fn().mockImplementation((_buf: Buffer, _off: number, len: number) =>
@@ -16,11 +15,14 @@ jest.mock('fs', () => ({
       close: jest.fn().mockResolvedValue(undefined),
     }),
   },
+  openAsBlob: jest
+    .fn()
+    .mockResolvedValue(new Blob(['fake-file-content'])),
 }));
 
 const mockedAxiosPost = axios.post as jest.Mock;
 const mockedStat = fs.promises.stat as jest.Mock;
-const mockedReadFile = fs.promises.readFile as jest.Mock;
+const mockedOpenAsBlob = fs.openAsBlob as jest.Mock;
 
 async function makeService(): Promise<MetaMediaService> {
   const module = await Test.createTestingModule({
@@ -60,6 +62,20 @@ describe('MetaMediaService', () => {
     expect(result).toBe('abc123');
   });
 
+  it('opens the image file as a lazily-read Blob instead of buffering it fully into memory', async () => {
+    mockedStat.mockResolvedValue({ size: 1024 });
+    mockedAxiosPost.mockResolvedValue({
+      data: { images: { 'photo.jpg': { hash: 'abc123' } } },
+    });
+
+    const svc = await makeService();
+    await svc.upload('act_123', 'token', '/tmp/photo.jpg', 'photo.jpg', 'image/jpeg');
+
+    expect(mockedOpenAsBlob).toHaveBeenCalledWith('/tmp/photo.jpg', {
+      type: 'image/jpeg',
+    });
+  });
+
   it('calls /advideos single-part for small MP4 and returns video id', async () => {
     mockedStat.mockResolvedValue({ size: 1024 });
     mockedAxiosPost.mockResolvedValue({ data: { id: 'vid_456' } });
@@ -72,6 +88,18 @@ describe('MetaMediaService', () => {
       expect.any(FormData),
     );
     expect(result).toBe('vid_456');
+  });
+
+  it('opens a small video file as a lazily-read Blob instead of buffering it fully into memory', async () => {
+    mockedStat.mockResolvedValue({ size: 1024 });
+    mockedAxiosPost.mockResolvedValue({ data: { id: 'vid_456' } });
+
+    const svc = await makeService();
+    await svc.upload('act_123', 'token', '/tmp/clip.mp4', 'clip.mp4', 'video/mp4');
+
+    expect(mockedOpenAsBlob).toHaveBeenCalledWith('/tmp/clip.mp4', {
+      type: 'video/mp4',
+    });
   });
 
   it('uses chunked upload for large video (>100 MB) and returns video_id', async () => {

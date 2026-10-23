@@ -190,6 +190,25 @@ describe('GoogleDriveService', () => {
     });
   });
 
+  describe('getFileSize', () => {
+    it('fetches the file size field and returns it as a number', async () => {
+      const svc = makeSvc();
+      const driveInstance = google.drive({} as any) as any;
+      (driveInstance.files.get as jest.Mock).mockResolvedValue({
+        data: { size: '104857600' },
+      });
+
+      const size = await svc.getFileSize('file-abc');
+
+      expect(driveInstance.files.get).toHaveBeenCalledWith({
+        fileId: 'file-abc',
+        fields: 'size',
+        supportsAllDrives: true,
+      });
+      expect(size).toBe(104857600);
+    });
+  });
+
   describe('createFolder', () => {
     it('creates a folder under driveRootFolderId and returns its webViewLink', async () => {
       const svc = makeSvc();
