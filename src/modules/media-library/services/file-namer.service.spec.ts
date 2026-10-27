@@ -48,6 +48,13 @@ describe('FileNamerService.generateName', () => {
     expect(name).toBe('PRD - IMG - Produto X - Ago 26 - V5.jpg');
   });
 
+  it('uses AQC prefix for aquecimento de live files', async () => {
+    const module = await makeModule(0);
+    const svc = module.get(FileNamerService);
+    const name = await svc.generateName({ originalname: 'live.mp4' }, MediaIntention.AQC, 'Live X', 'client-1', DATE);
+    expect(name).toBe('AQC - VID - Live X - Ago 26.mp4');
+  });
+
   it('detects .mov as VID', async () => {
     const module = await makeModule(0);
     const svc = module.get(FileNamerService);

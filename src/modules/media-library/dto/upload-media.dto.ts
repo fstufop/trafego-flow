@@ -4,6 +4,7 @@ import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 
 export enum MediaIntention {
   PRD = 'PRD',
   CAP = 'CAP',
+  AQC = 'AQC',
 }
 
 export class UploadMediaDto {
