@@ -11,6 +11,7 @@ import {
   RequestWithUser,
 } from '../../modules/auth/guards/jwt-auth.guard.js';
 import { JwtPayload } from '../../modules/auth/interfaces/auth-service.interface.js';
+import { CLIENT_PORTAL_SCOPE } from '../../modules/auth/constants/client-portal.constant.js';
 
 /**
  * Accepts either the master API key (machine-to-machine) or a user JWT (frontend).
@@ -39,7 +40,10 @@ export class AuthGuard implements CanActivate {
       } catch {
         throw new UnauthorizedException('Invalid or expired token');
       }
-      if (payload.scope !== undefined) {
+      if (
+        payload.scope !== undefined &&
+        payload.scope !== CLIENT_PORTAL_SCOPE
+      ) {
         throw new UnauthorizedException(
           'This token cannot be used for this endpoint',
         );

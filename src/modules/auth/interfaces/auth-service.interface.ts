@@ -14,6 +14,8 @@ export interface JwtPayload {
   // tokens) — absent on normal session tokens. Guards that protect general
   // endpoints must reject any token carrying a scope they don't expect.
   scope?: string;
+  // Present only on client-portal tokens — absent on normal session tokens.
+  clientId?: string;
 }
 
 export interface LoginResult {
