@@ -54,7 +54,7 @@
 
 - [ ] **Step 2: Adicionar a coluna `role` em `UserEntity`** (`src/modules/auth/entities/user.entity.ts`): `@Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN }) role: UserRole;`.
 
-- [ ] **Step 3: Criar a migração `1787000000000-AddRoleToUsers.ts`**, seguindo o padrão de `1785000000000-AddIcebreakerSupportToConversationRules.ts`: `up()` cria o tipo enum Postgres (`CREATE TYPE "users_role_enum" AS ENUM('admin', 'member')`) e adiciona a coluna (`ALTER TABLE "users" ADD COLUMN "role" "users_role_enum" NOT NULL DEFAULT 'admin'`); `down()` remove a coluna e depois o tipo.
+- [ ] **Step 3: Criar a migração `1787000000000-AddRoleToUsers.ts`**, seguindo o padrão de `1783000000000-CreateConversationRulesTable.ts` (que nomeia o tipo enum Postgres a partir do nome do enum TS em snake_case — `RuleType` → `rule_type_enum` — não de `<tabela>_<coluna>`): `up()` cria o tipo (`CREATE TYPE "user_role_enum" AS ENUM('admin', 'member')`) e adiciona a coluna (`ALTER TABLE "users" ADD COLUMN "role" "user_role_enum" NOT NULL DEFAULT 'admin'`); `down()` remove a coluna e depois o tipo.
 
 - [ ] **Step 4: Escrever o teste falho do `RolesGuard`** em `src/common/guards/roles.guard.spec.ts`:
   ```typescript
