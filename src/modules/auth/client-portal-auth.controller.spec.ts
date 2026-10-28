@@ -1,5 +1,9 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -58,6 +62,47 @@ describe('ClientPortalAuthController wiring', () => {
       | unknown[]
       | undefined;
     expect(guards).toEqual([ClientPortalAuthGuard]);
+  });
+
+  // Regression: ClientPortalAuthGuard now runs the cascade-revocation check
+  // (assertAccess) for every client-portal-scoped token, not just a new
+  // per-route check. Since GET /auth/client-portal/me uses this same guard,
+  // it inherits the protection for free — this confirms that concretely by
+  // exercising the guard itself (not just the metadata wiring above) with a
+  // token whose portal user has been deactivated.
+  it('ClientPortalAuthGuard rejects a deactivated client-portal token before /me ever runs', async () => {
+    const mockConfig = {
+      get: jest.fn().mockReturnValue('master-key'),
+    } as unknown as ConfigService;
+    const verifyAsync = jest.fn().mockResolvedValue({
+      sub: 'u1',
+      clientId: 'c1',
+      scope: CLIENT_PORTAL_SCOPE,
+    });
+    const mockJwtService = { verifyAsync } as unknown as JwtService;
+    const assertAccess = jest.fn().mockRejectedValue(new ForbiddenException());
+    const mockClientPortalAuthService = {
+      assertAccess,
+    } as unknown as ClientPortalAuthService;
+
+    const guard = new ClientPortalAuthGuard(
+      mockConfig,
+      mockJwtService,
+      mockClientPortalAuthService,
+    );
+    const ctx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: { authorization: 'Bearer deactivated-portal-token' },
+        }),
+      }),
+    } as unknown as ExecutionContext;
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow();
+    expect(assertAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'c1' }),
+      'c1',
+    );
   });
 
   // Closes a gap flagged by the plan's pre-flight review: a client-portal

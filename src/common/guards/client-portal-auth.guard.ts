@@ -12,6 +12,7 @@ import {
 } from '../../modules/auth/guards/jwt-auth.guard.js';
 import { JwtPayload } from '../../modules/auth/interfaces/auth-service.interface.js';
 import { CLIENT_PORTAL_SCOPE } from '../../modules/auth/constants/client-portal.constant.js';
+import { ClientPortalAuthService } from '../../modules/auth/client-portal-auth.service.js';
 
 /**
  * Guards client-portal endpoints. Accepts the master API key
@@ -23,6 +24,7 @@ export class ClientPortalAuthGuard implements CanActivate {
   constructor(
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly clientPortalAuthService: ClientPortalAuthService,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -50,6 +52,21 @@ export class ClientPortalAuthGuard implements CanActivate {
     if (payload.scope !== undefined && payload.scope !== CLIENT_PORTAL_SCOPE) {
       throw new UnauthorizedException(
         'This token cannot be used for the client portal',
+      );
+    }
+
+    // A client-portal-scoped JWT stays valid for its lifetime even after the
+    // portal account is deactivated or the parent Client is cancelled — the
+    // token itself doesn't know that. Re-check both on every request, not
+    // just at login, so a revoked principal loses access immediately rather
+    // than whenever the JWT happens to expire. assertAccess's clientId match
+    // is trivially satisfied here (we check the token against its own
+    // clientId); we only need its isActive checks. Any ForbiddenException it
+    // throws propagates as-is.
+    if (payload.scope === CLIENT_PORTAL_SCOPE) {
+      await this.clientPortalAuthService.assertAccess(
+        payload,
+        payload.clientId,
       );
     }
 

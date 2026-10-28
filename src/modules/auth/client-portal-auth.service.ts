@@ -87,13 +87,26 @@ export class ClientPortalAuthService {
     try {
       await this.repo.save(user);
     } catch (err) {
-      if (
-        err instanceof QueryFailedError &&
-        (err as QueryFailedError & { code: string }).code === '23505'
-      ) {
-        throw new ConflictException(
-          'A client portal account with this email already exists',
-        );
+      if (err instanceof QueryFailedError) {
+        const pgError = err as QueryFailedError & {
+          code?: string;
+          constraint?: string;
+        };
+
+        if (pgError.code === '23505') {
+          if (pgError.constraint === 'UQ_client_portal_users_client_id') {
+            throw new ConflictException(
+              'This client already has a portal account',
+            );
+          }
+          throw new ConflictException(
+            'A client portal account with this email already exists',
+          );
+        }
+
+        if (pgError.code === '23503') {
+          throw new NotFoundException('Client not found');
+        }
       }
       throw err;
     }
@@ -183,7 +196,9 @@ export class ClientPortalAuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
-    const user = await this.repo.findOne({ where: { email: dto.email } });
+    const user = await this.repo.findOne({
+      where: { email: dto.email, isActive: true },
+    });
     if (!user) {
       return;
     }

@@ -110,6 +110,34 @@ describe('ClientPortalAuthService', () => {
       await expect(
         service.createAccount({ clientId: 'c1', email: 'second@x.com' }),
       ).rejects.toThrow(ConflictException);
+      await expect(
+        service.createAccount({ clientId: 'c1', email: 'second@x.com' }),
+      ).rejects.toThrow('This client already has a portal account');
+    });
+
+    it('keeps the email-conflict message when the unique violation is on the email constraint', async () => {
+      mockRepo.save.mockRejectedValue(
+        Object.assign(new QueryFailedError('', [], new Error()), {
+          code: '23505',
+          constraint: 'UQ_client_portal_users_email',
+        }),
+      );
+      await expect(
+        service.createAccount({ clientId: 'c1', email: 'dup@x.com' }),
+      ).rejects.toThrow(
+        'A client portal account with this email already exists',
+      );
+    });
+
+    it('throws NotFoundException when clientId does not reference an existing Client (FK violation)', async () => {
+      mockRepo.save.mockRejectedValue(
+        Object.assign(new QueryFailedError('', [], new Error()), {
+          code: '23503',
+        }),
+      );
+      await expect(
+        service.createAccount({ clientId: 'missing-client', email: 'x@x.com' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -318,6 +346,23 @@ describe('ClientPortalAuthService', () => {
         service.forgotPassword({ email: 'unknown@x.com' }),
       ).resolves.toBeUndefined();
       expect(mockMailService.send).not.toHaveBeenCalled();
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { email: 'unknown@x.com', isActive: true },
+      });
+    });
+
+    it('resolves silently (no email sent) for an existing but deactivated account, same as an unknown email', async () => {
+      // The repo is filtered by isActive: true, so a deactivated account's
+      // email never matches here — findOne returns null, same as if the
+      // address didn't exist at all.
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.forgotPassword({ email: 'deactivated@x.com' }),
+      ).resolves.toBeUndefined();
+      expect(mockMailService.send).not.toHaveBeenCalled();
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { email: 'deactivated@x.com', isActive: true },
+      });
     });
 
     it('resolves silently even when the reset email fails to send for a known address', async () => {

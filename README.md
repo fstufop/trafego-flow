@@ -121,7 +121,7 @@ erDiagram
 
 ## Autenticação e autorização
 
-Toda rota protegida passa pelo `AuthGuard`, que aceita dois tipos de credencial:
+Toda rota protegida passa por um guard de autenticação — `AuthGuard` nas rotas internas (equipe), ou `ClientPortalAuthGuard` nas rotas voltadas ao portal do cliente (ver [Portal do cliente](#portal-do-cliente) para o detalhamento da divisão). Esta seção descreve o `AuthGuard`, que aceita dois tipos de credencial:
 
 - **Master API key** (`x-api-key`): credencial de máquina para máquina (integrações e jobs). Não tem usuário associado, então não é afetada pelas checagens de papel.
 - **JWT** (`Authorization: Bearer <token>`): token emitido no login, usado pelo frontend.
