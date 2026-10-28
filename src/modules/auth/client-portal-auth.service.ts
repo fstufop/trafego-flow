@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -23,6 +24,7 @@ import {
   CLIENT_PORTAL_RESET_TOKEN_TTL_MS,
   CLIENT_PORTAL_SCOPE,
 } from './constants/client-portal.constant.js';
+import { JwtPayload } from './interfaces/auth-service.interface.js';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -227,5 +229,43 @@ export class ClientPortalAuthService {
     user.passwordResetTokenHash = null;
     user.passwordResetExpiresAt = null;
     await this.repo.save(user);
+  }
+
+  /**
+   * Confirms that a client-portal principal may only touch data belonging
+   * to its own client. Non-client-portal payloads (e.g. admin session
+   * tokens) are out of scope for this check and pass through silently —
+   * they're subject to RolesGuard/ClientPortalAuthGuard instead.
+   */
+  async assertAccess(
+    payload: JwtPayload,
+    targetClientId: string | undefined,
+  ): Promise<void> {
+    if (payload.scope !== CLIENT_PORTAL_SCOPE) {
+      return;
+    }
+
+    if (!targetClientId || targetClientId !== payload.clientId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const user = await this.repo.findOne({ where: { id: payload.sub } });
+    if (!user || !user.isActive) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    let client: ClientEntity;
+    try {
+      client = await this.clientsService.findOne(targetClientId);
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        throw new ForbiddenException('Access denied');
+      }
+      throw err;
+    }
+
+    if (!client.isActive) {
+      throw new ForbiddenException('Access denied');
+    }
   }
 }

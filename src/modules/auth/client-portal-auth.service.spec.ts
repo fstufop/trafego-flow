@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import {
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -306,6 +307,122 @@ describe('ClientPortalAuthService', () => {
       await expect(
         service.forgotPassword({ email: 'known@x.com' }),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('assertAccess', () => {
+    it('passes through silently for a non-client-portal payload (admin token)', async () => {
+      await expect(
+        service.assertAccess(
+          { sub: 'admin', email: 'a', name: 'A' },
+          'any-client-id',
+        ),
+      ).resolves.toBeUndefined();
+    });
+
+    it('throws when targetClientId does not match the token clientId', async () => {
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          'c2',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws when targetClientId is undefined (no clientId resolvable on the request)', async () => {
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          undefined,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws when the portal user itself is inactive', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'u1', isActive: false });
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          'c1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws when the parent Client is inactive', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
+      mockClientsService.findOne.mockResolvedValue({
+        id: 'c1',
+        isActive: false,
+      });
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          'c1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('resolves when everything matches and is active', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
+      mockClientsService.findOne.mockResolvedValue({
+        id: 'c1',
+        isActive: true,
+      });
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          'c1',
+        ),
+      ).resolves.toBeUndefined();
+    });
+
+    it('throws ForbiddenException (not the underlying NotFoundException) when the parent Client was soft-deleted', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
+      mockClientsService.findOne.mockRejectedValue(
+        new NotFoundException('Client c1 not found'),
+      );
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          'c1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });
