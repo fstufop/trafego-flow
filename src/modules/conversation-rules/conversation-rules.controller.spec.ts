@@ -1,6 +1,52 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { ConversationRulesController } from './conversation-rules.controller.js';
+import { ConversationRulesService } from './conversation-rules.service.js';
 import { ClientPortalScopeGuard } from '../auth/guards/client-portal-scope.guard.js';
+
+const mockService = {
+  getRecentPosts: jest.fn(),
+  getRecentPostsForClient: jest.fn(),
+};
+
+describe('ConversationRulesController', () => {
+  let controller: ConversationRulesController;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    controller = new ConversationRulesController(
+      mockService as unknown as ConversationRulesService,
+    );
+  });
+
+  describe('getPosts', () => {
+    it('uses the query pageId for an admin/master-key request (no clientId resolution)', async () => {
+      await controller.getPosts({ pageId: 'ig-1', limit: 12 }, undefined);
+      expect(mockService.getRecentPosts).toHaveBeenCalledWith(
+        'ig-1',
+        12,
+        undefined,
+      );
+      expect(mockService.getRecentPostsForClient).not.toHaveBeenCalled();
+    });
+
+    it('ignores the query pageId and resolves it from the token for a client-portal request', async () => {
+      await controller.getPosts({ pageId: 'attacker-page', limit: 12 }, {
+        clientId: 'c1',
+        scope: 'client-portal',
+      } as any);
+      expect(mockService.getRecentPostsForClient).toHaveBeenCalledWith(
+        'c1',
+        12,
+        undefined,
+      );
+      expect(mockService.getRecentPosts).not.toHaveBeenCalledWith(
+        'attacker-page',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+  });
+});
 
 describe('ConversationRulesController guards', () => {
   it.each(['create', 'findAll', 'update', 'remove'] as const)(

@@ -21,6 +21,9 @@ import {
 } from '@nestjs/swagger';
 import { ClientPortalAuthGuard } from '../../common/guards/client-portal-auth.guard.js';
 import { ClientPortalScopeGuard } from '../auth/guards/client-portal-scope.guard.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../auth/interfaces/auth-service.interface.js';
+import { CLIENT_PORTAL_SCOPE } from '../auth/constants/client-portal.constant.js';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { CreateConversationRuleDto } from './dto/create-conversation-rule.dto.js';
 import { UpdateConversationRuleDto } from './dto/update-conversation-rule.dto.js';
@@ -39,12 +42,18 @@ export class ConversationRulesController {
     summary:
       'Listar posts recentes da página (para usar como triggerValue), paginado por cursor',
   })
-  getPosts(@Query() query: GetPostsQueryDto) {
-    return this.rulesService.getRecentPosts(
-      query.pageId,
-      query.limit,
-      query.after,
-    );
+  getPosts(@Query() query: GetPostsQueryDto, @CurrentUser() user?: JwtPayload) {
+    return user?.scope === CLIENT_PORTAL_SCOPE
+      ? this.rulesService.getRecentPostsForClient(
+          user.clientId!,
+          query.limit,
+          query.after,
+        )
+      : this.rulesService.getRecentPosts(
+          query.pageId,
+          query.limit,
+          query.after,
+        );
   }
 
   @Post()
