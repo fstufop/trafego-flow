@@ -1,4 +1,5 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConversationRulesController } from './conversation-rules.controller.js';
 import { ConversationRulesService } from './conversation-rules.service.js';
 import { ClientPortalScopeGuard } from '../auth/guards/client-portal-scope.guard.js';
@@ -39,11 +40,41 @@ describe('ConversationRulesController', () => {
         12,
         undefined,
       );
-      expect(mockService.getRecentPosts).not.toHaveBeenCalledWith(
-        'attacker-page',
-        expect.anything(),
-        expect.anything(),
+      expect(mockService.getRecentPosts).not.toHaveBeenCalled();
+    });
+
+    it('succeeds for a client-portal request that omits pageId entirely', async () => {
+      await controller.getPosts({ limit: 12 }, {
+        clientId: 'c1',
+        scope: 'client-portal',
+      } as any);
+      expect(mockService.getRecentPostsForClient).toHaveBeenCalledWith(
+        'c1',
+        12,
+        undefined,
       );
+      expect(mockService.getRecentPosts).not.toHaveBeenCalled();
+    });
+
+    it('rejects an admin/master-key request that omits pageId', () => {
+      expect(() =>
+        controller.getPosts({ limit: 12 } as any, undefined),
+      ).toThrow(BadRequestException);
+      expect(mockService.getRecentPosts).not.toHaveBeenCalled();
+      expect(mockService.getRecentPostsForClient).not.toHaveBeenCalled();
+    });
+
+    it('rejects a client-portal token with no clientId', () => {
+      expect(() =>
+        controller.getPosts(
+          { limit: 12 } as any,
+          {
+            scope: 'client-portal',
+          } as any,
+        ),
+      ).toThrow(UnauthorizedException);
+      expect(mockService.getRecentPosts).not.toHaveBeenCalled();
+      expect(mockService.getRecentPostsForClient).not.toHaveBeenCalled();
     });
   });
 });

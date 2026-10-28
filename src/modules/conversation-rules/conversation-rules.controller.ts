@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,6 +11,7 @@ import {
   Patch,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -43,17 +45,25 @@ export class ConversationRulesController {
       'Listar posts recentes da página (para usar como triggerValue), paginado por cursor',
   })
   getPosts(@Query() query: GetPostsQueryDto, @CurrentUser() user?: JwtPayload) {
-    return user?.scope === CLIENT_PORTAL_SCOPE
-      ? this.rulesService.getRecentPostsForClient(
-          user.clientId!,
-          query.limit,
-          query.after,
-        )
-      : this.rulesService.getRecentPosts(
-          query.pageId,
-          query.limit,
-          query.after,
-        );
+    if (user?.scope === CLIENT_PORTAL_SCOPE) {
+      if (!user.clientId) {
+        throw new UnauthorizedException('Token is missing clientId');
+      }
+      return this.rulesService.getRecentPostsForClient(
+        user.clientId,
+        query.limit,
+        query.after,
+      );
+    }
+
+    if (!query.pageId) {
+      throw new BadRequestException('pageId is required');
+    }
+    return this.rulesService.getRecentPosts(
+      query.pageId,
+      query.limit,
+      query.after,
+    );
   }
 
   @Post()
