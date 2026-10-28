@@ -9,6 +9,8 @@ import { RequestWithUser } from '../../modules/auth/guards/jwt-auth.guard.js';
 import { UserRole } from '../../modules/auth/constants/user-role.constant.js';
 import { ROLES_KEY } from '../decorators/roles.decorator.js';
 
+// Must run after a guard (e.g. AuthGuard) that sets `request.user` or
+// `request.authMethod` — never register this as a global APP_GUARD.
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -26,10 +28,15 @@ export class RolesGuard implements CanActivate {
     const request = ctx.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
 
-    // No authenticated user on the request means this came in via the
-    // master API key, which isn't subject to role checks.
+    // No authenticated user on the request is only safe to bypass when a
+    // prior guard explicitly marked it as authenticated via the master API
+    // key. Any other "no user" case (e.g. no auth guard ran at all) fails
+    // closed instead of silently opening the route up.
     if (!user) {
-      return true;
+      if (request.authMethod === 'api-key') {
+        return true;
+      }
+      throw new ForbiddenException('Insufficient role for this action');
     }
 
     if (user.role && requiredRoles.includes(user.role)) {

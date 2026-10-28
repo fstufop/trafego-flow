@@ -11,9 +11,12 @@ describe('RolesGuard', () => {
 
   const guard = new RolesGuard(mockReflector);
 
-  const makeContext = (user?: { role: UserRole }): ExecutionContext =>
+  const makeContext = (
+    user?: { role?: UserRole },
+    authMethod?: 'api-key',
+  ): ExecutionContext =>
     ({
-      switchToHttp: () => ({ getRequest: () => ({ user }) }),
+      switchToHttp: () => ({ getRequest: () => ({ user, authMethod }) }),
       getHandler: () => jest.fn(),
       getClass: () => jest.fn(),
     }) as unknown as ExecutionContext;
@@ -28,10 +31,26 @@ describe('RolesGuard', () => {
     );
   });
 
-  it('allows when request.user is undefined (master API key path)', () => {
+  it('allows when request.user is undefined and authMethod is api-key (master API key path)', () => {
     getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
 
-    expect(guard.canActivate(makeContext(undefined))).toBe(true);
+    expect(guard.canActivate(makeContext(undefined, 'api-key'))).toBe(true);
+  });
+
+  it('throws ForbiddenException when request.user is undefined and there is no api-key marker (fail closed)', () => {
+    getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
+
+    expect(() => guard.canActivate(makeContext(undefined))).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('throws ForbiddenException when request.user is set but its role is undefined', () => {
+    getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
+
+    expect(() => guard.canActivate(makeContext({ role: undefined }))).toThrow(
+      ForbiddenException,
+    );
   });
 
   it('allows when request.user.role is in the required roles', () => {

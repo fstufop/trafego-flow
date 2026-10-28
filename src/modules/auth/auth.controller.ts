@@ -65,7 +65,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiSecurity('x-api-key')
   @ApiOperation({
-    summary: 'Create a new user (master API key or JWT required)',
+    summary: 'Create a new user (master API key or admin JWT required)',
   })
   createUser(@Body() dto: CreateUserDto) {
     return this.authService.createUser(dto);

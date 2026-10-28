@@ -146,3 +146,5 @@ exemplo() { ... }
 ```
 
 O `RolesGuard` responde `403` quando o usuário autenticado não tem um dos papéis exigidos. Requisições autenticadas pela master API key não passam por essa checagem.
+
+> ⚠️ O `RolesGuard` só é seguro quando executa **depois** de um guard (como o `AuthGuard`) que marque a requisição com `authMethod`/`user`; sem um usuário e sem esse marcador, ele nega por padrão. Nunca registre o `RolesGuard` como `APP_GUARD` global.

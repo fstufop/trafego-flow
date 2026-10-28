@@ -27,6 +27,7 @@ export class AuthGuard implements CanActivate {
 
     const apiKey = request.headers['x-api-key'];
     if (apiKey && apiKey === this.config.get<string>('app.masterApiKey')) {
+      request.authMethod = 'api-key';
       return true;
     }
 
