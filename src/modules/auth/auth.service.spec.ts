@@ -7,6 +7,7 @@ import { QueryFailedError } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service.js';
 import { UserEntity } from './entities/user.entity.js';
+import { UserRole } from './constants/user-role.constant.js';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -23,13 +24,16 @@ describe('AuthService', () => {
     get: jest.fn().mockReturnValue('1d'),
   };
 
-  const makeUser = async (): Promise<UserEntity> =>
+  const makeUser = async (
+    role: UserRole = UserRole.MEMBER,
+  ): Promise<UserEntity> =>
     Object.assign(new UserEntity(), {
       id: 'user-uuid',
       name: 'Test User',
       email: 'user@test.com',
       passwordHash: await bcrypt.hash('correct-password', 4),
       isActive: true,
+      role,
     });
 
   beforeEach(async () => {
@@ -66,7 +70,22 @@ describe('AuthService', () => {
         sub: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
       });
+    });
+
+    it('login() includes the user role in the JWT payload', async () => {
+      const user = await makeUser(UserRole.MEMBER);
+      mockRepo.findOne.mockResolvedValue(user);
+
+      await service.login({
+        email: user.email,
+        password: 'correct-password',
+      });
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ role: UserRole.MEMBER }),
+      );
     });
 
     it('throws UnauthorizedException for wrong password', async () => {
@@ -97,6 +116,7 @@ describe('AuthService', () => {
         name: 'New User',
         email: 'new@test.com',
         password: 'plain-password',
+        role: UserRole.MEMBER,
       });
 
       expect(result.passwordHash).toBeDefined();
@@ -104,6 +124,24 @@ describe('AuthService', () => {
       await expect(
         bcrypt.compare('plain-password', result.passwordHash),
       ).resolves.toBe(true);
+    });
+
+    it('createUser() persists the role from the DTO', async () => {
+      mockRepo.create.mockImplementation((data: Partial<UserEntity>) => data);
+      mockRepo.save.mockImplementation((data: UserEntity) =>
+        Promise.resolve(data),
+      );
+
+      await service.createUser({
+        name: 'New Admin',
+        email: 'admin@test.com',
+        password: 'plain-password',
+        role: UserRole.ADMIN,
+      });
+
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ role: UserRole.ADMIN }),
+      );
     });
 
     it('throws ConflictException on duplicate email', async () => {
@@ -117,6 +155,7 @@ describe('AuthService', () => {
           name: 'Dup',
           email: 'dup@test.com',
           password: 'plain-password',
+          role: UserRole.MEMBER,
         }),
       ).rejects.toThrow(ConflictException);
     });

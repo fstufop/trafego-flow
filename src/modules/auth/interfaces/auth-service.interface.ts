@@ -1,11 +1,15 @@
 import { UserEntity } from '../entities/user.entity.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { CreateUserDto } from '../dto/create-user.dto.js';
+import { UserRole } from '../constants/user-role.constant.js';
 
 export interface JwtPayload {
   sub: string;
   email: string;
   name: string;
+  // Present only on normal session tokens — absent on narrowly-scoped,
+  // short-lived tokens (e.g. direct-upload tokens), alongside `scope` below.
+  role?: UserRole;
   // Present only on narrowly-scoped, short-lived tokens (e.g. direct-upload
   // tokens) — absent on normal session tokens. Guards that protect general
   // endpoints must reject any token carrying a scope they don't expect.
