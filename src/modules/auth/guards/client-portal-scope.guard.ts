@@ -23,11 +23,21 @@ export class ClientPortalScopeGuard implements CanActivate {
     const request = ctx.switchToHttp().getRequest<RequestWithClientId>();
     const user = request.user;
 
+    // No `request.user` means this request was authenticated via the
+    // master API key (a fully-trusted machine credential) — neither
+    // AuthGuard nor ClientPortalAuthGuard populate `request.user` on that
+    // path. Per the plan's global constraint, master-key behavior must
+    // stay unrestricted, so skip the ownership check entirely rather than
+    // calling assertAccess with an undefined payload.
+    if (!user) {
+      return true;
+    }
+
     const clientId =
       (request.query?.clientId as string | undefined) ??
       (request.body?.clientId as string | undefined);
 
-    await this.clientPortalAuthService.assertAccess(user!, clientId);
+    await this.clientPortalAuthService.assertAccess(user, clientId);
 
     return true;
   }

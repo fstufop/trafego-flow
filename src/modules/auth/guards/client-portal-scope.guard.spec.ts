@@ -51,4 +51,11 @@ describe('ClientPortalScopeGuard', () => {
       guard.canActivate(makeContext({ scope: 'client-portal' }, {})),
     ).rejects.toThrow(ForbiddenException);
   });
+
+  it('allows the request through without calling assertAccess when request.user is undefined (master API key)', async () => {
+    await expect(
+      guard.canActivate(makeContext(undefined, { clientId: 'c1' })),
+    ).resolves.toBe(true);
+    expect(assertAccess).not.toHaveBeenCalled();
+  });
 });
