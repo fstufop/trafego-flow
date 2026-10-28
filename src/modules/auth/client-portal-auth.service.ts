@@ -1,16 +1,34 @@
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { ClientPortalUserEntity } from './entities/client-portal-user.entity.js';
 import { CreateClientPortalUserDto } from './dto/create-client-portal-user.dto.js';
+import { ClientLoginDto } from './dto/client-login.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { MailService } from '../mail/mail.service.js';
-import { CLIENT_PORTAL_RESET_TOKEN_TTL_MS } from './constants/client-portal.constant.js';
+import { ClientsService } from '../clients/clients.service.js';
+import {
+  CLIENT_PORTAL_RESET_TOKEN_TTL_MS,
+  CLIENT_PORTAL_SCOPE,
+} from './constants/client-portal.constant.js';
+
+const BCRYPT_ROUNDS = 12;
+
+interface ClientPortalLoginResult {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: string;
+}
 
 @Injectable()
 export class ClientPortalAuthService {
@@ -19,6 +37,8 @@ export class ClientPortalAuthService {
     private readonly repo: Repository<ClientPortalUserEntity>,
     private readonly mailService: MailService,
     private readonly config: ConfigService,
+    private readonly clientsService: ClientsService,
+    private readonly jwtService: JwtService,
   ) {}
 
   private async generateAndStoreToken(
@@ -103,5 +123,80 @@ export class ClientPortalAuthService {
 
     user.isActive = isActive;
     return this.repo.save(user);
+  }
+
+  async login(dto: ClientLoginDto): Promise<ClientPortalLoginResult> {
+    const user = await this.repo.findOne({
+      where: { email: dto.email, isActive: true },
+    });
+
+    if (!user || user.passwordHash === null) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const client = await this.clientsService.findOne(user.clientId);
+    if (!client.isActive) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = {
+      sub: user.id,
+      clientId: user.clientId,
+      scope: CLIENT_PORTAL_SCOPE,
+    };
+
+    return {
+      accessToken: await this.jwtService.signAsync(payload),
+      tokenType: 'Bearer',
+      expiresIn: this.config.get<string>('auth.jwtExpiresIn')!,
+    };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+    const user = await this.repo.findOne({ where: { email: dto.email } });
+    if (!user) {
+      return;
+    }
+
+    const token = await this.generateAndStoreToken(user);
+    const portalUrl = this.config.get<string>('mailgun.portalUrl');
+    const link = `${portalUrl}/redefinir-senha?token=${token}`;
+    await this.mailService.send({
+      to: user.email,
+      subject: 'Redefinição de senha do portal do cliente',
+      html: `<p>Recebemos uma solicitação para redefinir sua senha. Clique no link para continuar: <a href="${link}">${link}</a></p>`,
+    });
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
+
+    const user = await this.repo.findOne({
+      where: { passwordResetTokenHash: tokenHash },
+    });
+
+    if (
+      !user ||
+      !user.passwordResetExpiresAt ||
+      user.passwordResetExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    user.passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await this.repo.save(user);
   }
 }

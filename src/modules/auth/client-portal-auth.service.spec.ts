@@ -1,11 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { ClientPortalAuthService } from './client-portal-auth.service.js';
 import { ClientPortalUserEntity } from './entities/client-portal-user.entity.js';
 import { MailService } from '../mail/mail.service.js';
+import { ClientsService } from '../clients/clients.service.js';
+import { JwtService } from '@nestjs/jwt';
 
 describe('ClientPortalAuthService', () => {
   let service: ClientPortalAuthService;
@@ -21,11 +29,18 @@ describe('ClientPortalAuthService', () => {
   const mockConfig = {
     get: jest.fn().mockReturnValue('https://portal.example.com'),
   };
+  const mockClientsService = {
+    findOne: jest.fn(),
+  };
+  const mockJwtService = {
+    signAsync: jest.fn().mockResolvedValue('signed-token'),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     mockMailService.send.mockResolvedValue(undefined);
     mockConfig.get.mockReturnValue('https://portal.example.com');
+    mockJwtService.signAsync.mockResolvedValue('signed-token');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -36,6 +51,8 @@ describe('ClientPortalAuthService', () => {
         },
         { provide: MailService, useValue: mockMailService },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: ClientsService, useValue: mockClientsService },
+        { provide: JwtService, useValue: mockJwtService },
       ],
     }).compile();
 
@@ -133,6 +150,124 @@ describe('ClientPortalAuthService', () => {
       await expect(service.setActive('missing', false)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('login', () => {
+    it('rejects when passwordHash is null (invite never accepted)', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'a@b.com',
+        passwordHash: null,
+        isActive: true,
+        clientId: 'c1',
+      });
+      await expect(
+        service.login({ email: 'a@b.com', password: 'x' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects when the parent Client is inactive', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'a@b.com',
+        passwordHash: await bcrypt.hash('pw', 4),
+        isActive: true,
+        clientId: 'c1',
+      });
+      mockClientsService.findOne.mockResolvedValue({
+        id: 'c1',
+        isActive: false,
+      });
+      await expect(
+        service.login({ email: 'a@b.com', password: 'pw' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('returns a client-portal-scoped token for valid, active credentials', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'a@b.com',
+        passwordHash: await bcrypt.hash('pw', 4),
+        isActive: true,
+        clientId: 'c1',
+      });
+      mockClientsService.findOne.mockResolvedValue({
+        id: 'c1',
+        isActive: true,
+      });
+
+      const result = await service.login({ email: 'a@b.com', password: 'pw' });
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: 'u1',
+          clientId: 'c1',
+          scope: 'client-portal',
+        }),
+      );
+      expect(result.accessToken).toBe('signed-token');
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('sets the password and clears the token when the token is valid and unexpired', async () => {
+      const tokenHash = crypto
+        .createHash('sha256')
+        .update('plain-token')
+        .digest('hex');
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        passwordResetTokenHash: tokenHash,
+        passwordResetExpiresAt: new Date(Date.now() + 1000),
+      });
+
+      await service.resetPassword({
+        token: 'plain-token',
+        password: 'new-password',
+      });
+
+      expect(mockRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          passwordResetTokenHash: null,
+          passwordResetExpiresAt: null,
+        }),
+      );
+    });
+
+    it('rejects an expired token', async () => {
+      const tokenHash = crypto
+        .createHash('sha256')
+        .update('plain-token')
+        .digest('hex');
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        passwordResetTokenHash: tokenHash,
+        passwordResetExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(
+        service.resetPassword({
+          token: 'plain-token',
+          password: 'new-password',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an unknown token', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.resetPassword({ token: 'nope', password: 'new-password' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('resolves silently (no email sent) when the address is unknown', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.forgotPassword({ email: 'unknown@x.com' }),
+      ).resolves.toBeUndefined();
+      expect(mockMailService.send).not.toHaveBeenCalled();
     });
   });
 });
