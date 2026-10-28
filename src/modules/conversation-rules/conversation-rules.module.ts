@@ -8,6 +8,7 @@ import { IcebreakerSyncService } from './icebreaker-sync.service.js';
 import { IntegrationsModule } from '../integrations/integrations.module.js';
 import { CryptoModule } from '../../common/crypto/crypto.module.js';
 import { InstagramGraphService } from '../webhook/instagram/instagram-graph.service.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [
@@ -15,9 +16,14 @@ import { InstagramGraphService } from '../webhook/instagram/instagram-graph.serv
     IntegrationsModule,
     CryptoModule,
     HttpModule,
+    AuthModule,
   ],
   controllers: [ConversationRulesController],
-  providers: [ConversationRulesService, IcebreakerSyncService, InstagramGraphService],
+  providers: [
+    ConversationRulesService,
+    IcebreakerSyncService,
+    InstagramGraphService,
+  ],
   exports: [ConversationRulesService],
 })
 export class ConversationRulesModule {}
