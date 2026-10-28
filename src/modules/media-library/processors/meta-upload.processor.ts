@@ -12,8 +12,9 @@ import { MetaUploadJobPayload } from '../types/meta-upload-job.type.js';
 import { MetaMediaService } from '../services/meta-media.service.js';
 import { GoogleDriveService } from '../../google-drive/google-drive.service.js';
 import { AesCryptoService } from '../../../common/crypto/aes.service.js';
+import { lowTrafficWorkerOptions } from '../../../config/bull-worker-options.util.js';
 
-@Processor('media-upload')
+@Processor('media-upload', lowTrafficWorkerOptions)
 export class MetaUploadProcessor extends WorkerHost {
   constructor(
     @InjectRepository(MediaUploadLog)
@@ -26,13 +27,26 @@ export class MetaUploadProcessor extends WorkerHost {
   }
 
   async process(job: Job<MetaUploadJobPayload>): Promise<void> {
-    const { logId, driveFileId, adAccountId, encryptedAccessToken, mimeType, mediaName } = job.data;
+    const {
+      logId,
+      driveFileId,
+      adAccountId,
+      encryptedAccessToken,
+      mimeType,
+      mediaName,
+    } = job.data;
     const accessToken = this.crypto.decrypt(encryptedAccessToken);
     const tempPath = path.join(os.tmpdir(), `meta-upload-${job.id}`);
 
     try {
       await this.drive.download(driveFileId, tempPath);
-      const metaAssetId = await this.meta.upload(adAccountId, accessToken, tempPath, mediaName, mimeType);
+      const metaAssetId = await this.meta.upload(
+        adAccountId,
+        accessToken,
+        tempPath,
+        mediaName,
+        mimeType,
+      );
       await this.logsRepo.update(logId, {
         status: MediaUploadStatus.SUCCESS,
         metaAssetId,
@@ -51,10 +65,13 @@ export class MetaUploadProcessor extends WorkerHost {
 
 function extractMetaErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err) && err.response) {
-    const data = err.response.data as { error?: { message?: string; type?: string; code?: number } };
+    const data = err.response.data as {
+      error?: { message?: string; type?: string; code?: number };
+    };
     const metaMessage = data?.error?.message;
     if (metaMessage) {
-      const code = data.error!.code != null ? ` (code: ${data.error!.code})` : '';
+      const code =
+        data.error!.code != null ? ` (code: ${data.error!.code})` : '';
       return `Meta API: ${metaMessage}${code}`;
     }
     return `HTTP ${err.response.status}: ${JSON.stringify(data)}`;

@@ -6,8 +6,9 @@ import {
   InstagramDmJobPayload,
   InstagramPostbackJobPayload,
 } from '../types/instagram-webhook-job.type.js';
+import { lowTrafficWorkerOptions } from '../../../../config/bull-worker-options.util.js';
 
-@Processor('instagram-webhook')
+@Processor('instagram-webhook', lowTrafficWorkerOptions)
 export class InstagramWebhookProcessor extends WorkerHost {
   constructor(private readonly botService: ConversationBotService) {
     super();
