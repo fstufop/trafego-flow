@@ -206,5 +206,5 @@ Um token do portal só alcança o que o `ClientPortalScopeGuard` permite: ele co
 
 Para o detalhamento completo, ver:
 
-- Frontend: repositório [`trafegoflow-client-portal`](https://github.com/fstufop/trafegoflow-client-portal)
+- Frontend: `trafegoflow-client-portal` (repositório ainda não criado)
 - Spec: [`docs/superpowers/specs/2026-10-27-client-portal-auto-reply-design.md`](docs/superpowers/specs/2026-10-27-client-portal-auto-reply-design.md)

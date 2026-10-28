@@ -99,6 +99,18 @@ describe('ClientPortalAuthService', () => {
         service.createAccount({ clientId: 'c1', email: 'dup@x.com' }),
       ).rejects.toThrow(ConflictException);
     });
+
+    it('throws ConflictException when the client already has a portal account (unique on client_id)', async () => {
+      mockRepo.save.mockRejectedValue(
+        Object.assign(new QueryFailedError('', [], new Error()), {
+          code: '23505',
+          constraint: 'UQ_client_portal_users_client_id',
+        }),
+      );
+      await expect(
+        service.createAccount({ clientId: 'c1', email: 'second@x.com' }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('resendInvite', () => {

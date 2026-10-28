@@ -4,7 +4,7 @@ import { BaseEntity } from '../../../common/database/base.entity.js';
 
 @Entity('client_portal_users')
 export class ClientPortalUserEntity extends BaseEntity {
-  @Column({ name: 'client_id', type: 'uuid' })
+  @Column({ name: 'client_id', type: 'uuid', unique: true })
   clientId: string;
 
   @Column({ unique: true })

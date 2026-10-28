@@ -17,7 +17,8 @@ export class CreateClientPortalUsersTable1788000000000 implements MigrationInter
         "password_reset_token_hash" character varying,
         "password_reset_expires_at" TIMESTAMP,
         CONSTRAINT "PK_client_portal_users" PRIMARY KEY ("id"),
-        CONSTRAINT "UQ_client_portal_users_email" UNIQUE ("email")
+        CONSTRAINT "UQ_client_portal_users_email" UNIQUE ("email"),
+        CONSTRAINT "UQ_client_portal_users_client_id" UNIQUE ("client_id")
       )
     `);
 
