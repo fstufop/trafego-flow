@@ -518,10 +518,10 @@ git commit -m "feat(auth): reusable ClientPortalScopeGuard for per-client owners
 - Modify: `src/modules/auth/auth.module.ts`
 
 **Interfaces:**
-- Consumes: todos os métodos de `ClientPortalAuthService` (Tasks 4–6); `UserRole`, `Roles` e `RolesGuard` (`docs/superpowers/plans/2026-10-28-admin-user-roles.md`, Task 1).
+- Consumes: todos os métodos de `ClientPortalAuthService` (Tasks 4–6); `UserRole`, `Roles` e `RolesGuard` (`docs/superpowers/plans/2026-10-28-admin-user-roles.md`, Task 1); `ClientPortalAuthGuard` (Task 3 — corrigido durante a revisão: é um guard **separado** de `AuthGuard`, mesmo padrão de `MediaUploadAuthGuard`, que aceita master key / sem `scope` / `scope: CLIENT_PORTAL_SCOPE` — `AuthGuard` em si voltou a rejeitar qualquer `scope`, igual ao comportamento original, pra não abrir as outras 12+ controllers que usam `@UseGuards(AuthGuard)` pra tokens de client).
 - Produces: `POST /auth/client-portal-users` (admin), `GET /auth/client-portal-users?clientId=` (admin), `PATCH /auth/client-portal-users/:id` (admin, `{ isActive: boolean }`), `POST /auth/client-portal-users/:id/resend-invite` (admin), `POST /auth/client-login` (público), `POST /auth/client-forgot-password` (público), `POST /auth/client-reset-password` (público), `GET /auth/client-portal/me` (token `client-portal`, retorna `{ clientId, email }` — é assim que o portal novo descobre o próprio `clientId` pra montar as chamadas a `/conversation-rules`, já que o JWT fica num cookie `httpOnly` e nunca é lido no browser). `ClientPortalScopeGuard` exportado por `AuthModule`.
 
-- [ ] **Step 1: Implementar `ClientPortalAuthController`** espelhando `AuthController` (DTOs + `HttpCode`/`ApiOperation` por rota; as quatro rotas admin levam `@UseGuards(AuthGuard, RolesGuard)` + `@Roles(UserRole.ADMIN)` + `@ApiBearerAuth()` + `@ApiSecurity('x-api-key')` — só conta `admin` pode provisionar/revogar acesso de client ao portal; as três públicas não levam guard; `GET /auth/client-portal/me` leva `@UseGuards(AuthGuard)` + `@CurrentUser()`, sem `@Roles(...)` — qualquer token `client-portal` pode chamar a própria `/me`, busca `ClientPortalUserEntity` por `payload.sub` e retorna `{ clientId: user.clientId, email: user.email }` — mesmo espírito do `AuthController.me()` já existente). O `PATCH` usa um DTO simples `SetClientPortalUserActiveDto { isActive: boolean }`.
+- [ ] **Step 1: Implementar `ClientPortalAuthController`** espelhando `AuthController` (DTOs + `HttpCode`/`ApiOperation` por rota; as quatro rotas admin levam `@UseGuards(AuthGuard, RolesGuard)` + `@Roles(UserRole.ADMIN)` + `@ApiBearerAuth()` + `@ApiSecurity('x-api-key')` — só conta `admin` pode provisionar/revogar acesso de client ao portal, e um token `client-portal` já é rejeitado por `AuthGuard` antes mesmo de chegar no `RolesGuard`; as três públicas não levam guard; `GET /auth/client-portal/me` leva `@UseGuards(ClientPortalAuthGuard)` (não `AuthGuard` — é a única forma de uma rota aceitar o token `client-portal`) + `@CurrentUser()`, busca `ClientPortalUserEntity` por `payload.sub` e retorna `{ clientId: user.clientId, email: user.email }` — mesmo espírito do `AuthController.me()` já existente). O `PATCH` usa um DTO simples `SetClientPortalUserActiveDto { isActive: boolean }`.
 
 - [ ] **Step 2: Registrar em `AuthModule`**: `TypeOrmModule.forFeature([UserEntity, ClientPortalUserEntity])`, importar `MailModule` e `ClientsModule`, adicionar `ClientPortalAuthController` a `controllers`, `ClientPortalAuthService` e `ClientPortalScopeGuard` a `providers`, exportar `ClientPortalScopeGuard` (pra uso em `ConversationRulesModule`).
 
@@ -547,7 +547,9 @@ git commit -m "feat(auth): wire up client portal auth endpoints"
 - Create: `src/modules/conversation-rules/conversation-rules.controller.spec.ts`
 
 **Interfaces:**
-- Consumes: `ClientPortalScopeGuard` (Task 6/7, exportado por `AuthModule`).
+- Consumes: `ClientPortalScopeGuard` (Task 6/7, exportado por `AuthModule`); `ClientPortalAuthGuard` (Task 3).
+
+- [ ] **Step 0: Trocar o guard de classe do controller** de `@UseGuards(AuthGuard)` para `@UseGuards(ClientPortalAuthGuard)` em `ConversationRulesController` — toda a controller (CRUD + `getPosts`, Task 9) precisa aceitar tanto um JWT normal de admin quanto um token `client-portal` (hoje só `AuthGuard` está lá, que passou a rejeitar `client-portal` de novo depois da correção da Task 3). Isso não muda nada pro admin/master-key — `ClientPortalAuthGuard` aceita exatamente os mesmos dois casos que `AuthGuard` aceita hoje, mais o `client-portal`.
 
 - [ ] **Step 1: Escrever o teste falhando** em `conversation-rules.controller.spec.ts` (módulo de teste Nest com `ConversationRulesService` mockado, sem precisar montar o guard de verdade — foco é confirmar que o guard está anotado nos 4 métodos):
 
@@ -579,7 +581,7 @@ describe('ConversationRulesController guards', () => {
 Run: `npx jest conversation-rules.controller.spec.ts`
 Expected: FAIL — nenhum método tem o guard ainda.
 
-- [ ] **Step 3: Adicionar `@UseGuards(ClientPortalScopeGuard)` em `create`, `findAll`, `update`, `remove`** no controller (mantendo o `@UseGuards(AuthGuard)` de classe); importar `AuthModule` em `ConversationRulesModule` pra ter `ClientPortalScopeGuard` disponível para injeção.
+- [ ] **Step 3: Adicionar `@UseGuards(ClientPortalScopeGuard)` em `create`, `findAll`, `update`, `remove`** no controller (em cima do `@UseGuards(ClientPortalAuthGuard)` de classe já trocado no Step 0); importar `AuthModule` em `ConversationRulesModule` pra ter `ClientPortalScopeGuard` e `ClientPortalAuthGuard` disponíveis para injeção.
 
 - [ ] **Step 4: Rodar e confirmar que passa**
 
