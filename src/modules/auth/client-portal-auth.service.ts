@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { MailService } from '../mail/mail.service.js';
 import { ClientsService } from '../clients/clients.service.js';
+import { ClientEntity } from '../clients/entities/client.entity.js';
 import {
   CLIENT_PORTAL_RESET_TOKEN_TTL_MS,
   CLIENT_PORTAL_SCOPE,
@@ -32,6 +34,8 @@ interface ClientPortalLoginResult {
 
 @Injectable()
 export class ClientPortalAuthService {
+  private readonly logger = new Logger(ClientPortalAuthService.name);
+
   constructor(
     @InjectRepository(ClientPortalUserEntity)
     private readonly repo: Repository<ClientPortalUserEntity>,
@@ -142,7 +146,15 @@ export class ClientPortalAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const client = await this.clientsService.findOne(user.clientId);
+    let client: ClientEntity;
+    try {
+      client = await this.clientsService.findOne(user.clientId);
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      throw err;
+    }
     if (!client.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -166,6 +178,23 @@ export class ClientPortalAuthService {
       return;
     }
 
+    // Deliberately not awaited: forgotPassword must resolve identically
+    // (same control flow, same latency) whether the email exists or not,
+    // per the binding "resolve silently" constraint. Awaiting the token
+    // generation + Mailgun round-trip here would make an existing email
+    // both slower and able to reject (propagating a 500) compared to the
+    // not-found path above, which leaks account existence via timing and
+    // via errors. Failures are logged, never surfaced to the caller.
+    this.sendResetPasswordEmail(user).catch((err: Error) => {
+      this.logger.error(
+        `Failed to complete forgot-password request for ${user.email}: ${err.message}`,
+      );
+    });
+  }
+
+  private async sendResetPasswordEmail(
+    user: ClientPortalUserEntity,
+  ): Promise<void> {
     const token = await this.generateAndStoreToken(user);
     const portalUrl = this.config.get<string>('mailgun.portalUrl');
     const link = `${portalUrl}/redefinir-senha?token=${token}`;

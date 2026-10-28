@@ -208,6 +208,23 @@ describe('ClientPortalAuthService', () => {
       );
       expect(result.accessToken).toBe('signed-token');
     });
+
+    it('rejects with UnauthorizedException (not the underlying NotFoundException) when the parent Client was soft-deleted', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'a@b.com',
+        passwordHash: await bcrypt.hash('pw', 4),
+        isActive: true,
+        clientId: 'c1',
+      });
+      mockClientsService.findOne.mockRejectedValue(
+        new NotFoundException('Client c1 not found'),
+      );
+
+      await expect(
+        service.login({ email: 'a@b.com', password: 'pw' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 
   describe('resetPassword', () => {
@@ -268,6 +285,27 @@ describe('ClientPortalAuthService', () => {
         service.forgotPassword({ email: 'unknown@x.com' }),
       ).resolves.toBeUndefined();
       expect(mockMailService.send).not.toHaveBeenCalled();
+    });
+
+    it('resolves silently even when the reset email fails to send for a known address', async () => {
+      const user = { id: 'u1', email: 'known@x.com', clientId: 'c1' };
+      mockRepo.findOne.mockResolvedValue(user);
+      mockRepo.save.mockResolvedValue(user);
+      mockMailService.send.mockRejectedValue(new Error('mailgun down'));
+
+      await expect(
+        service.forgotPassword({ email: 'known@x.com' }),
+      ).resolves.toBeUndefined();
+    });
+
+    it('resolves silently even when persisting the reset token fails for a known address', async () => {
+      const user = { id: 'u1', email: 'known@x.com', clientId: 'c1' };
+      mockRepo.findOne.mockResolvedValue(user);
+      mockRepo.save.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.forgotPassword({ email: 'known@x.com' }),
+      ).resolves.toBeUndefined();
     });
   });
 });
