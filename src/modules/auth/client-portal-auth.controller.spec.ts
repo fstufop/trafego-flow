@@ -4,6 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { ClientPortalAuthController } from './client-portal-auth.controller.js';
+import { ClientPortalAuthService } from './client-portal-auth.service.js';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ClientPortalAuthGuard } from '../../common/guards/client-portal-auth.guard.js';
@@ -85,5 +86,50 @@ describe('ClientPortalAuthController wiring', () => {
     } as unknown as ExecutionContext;
 
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+  });
+
+  describe('me()', () => {
+    const findById = jest.fn();
+    const mockService = {
+      findById,
+    } as unknown as ClientPortalAuthService;
+    const controller = new ClientPortalAuthController(mockService);
+
+    beforeEach(() => jest.clearAllMocks());
+
+    // ClientPortalAuthGuard accepts the master API key without ever setting
+    // request.user, so @CurrentUser() yields undefined in that case.
+    it('rejects a master-API-key request (no payload) instead of throwing a TypeError', async () => {
+      await expect(controller.me(undefined)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(findById).not.toHaveBeenCalled();
+    });
+
+    // ClientPortalAuthGuard also accepts a plain no-scope admin session JWT.
+    it('rejects a plain admin JWT (no scope) instead of doing a misleading lookup', async () => {
+      await expect(
+        controller.me({ sub: 'admin-id', email: 'a@b.com', name: 'Admin' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(findById).not.toHaveBeenCalled();
+    });
+
+    it('returns clientId/email for a genuine client-portal token', async () => {
+      findById.mockResolvedValue({
+        clientId: 'c1',
+        email: 'client@x.com',
+      });
+
+      await expect(
+        controller.me({
+          sub: 'u1',
+          email: 'ignored',
+          name: 'ignored',
+          clientId: 'c1',
+          scope: CLIENT_PORTAL_SCOPE,
+        }),
+      ).resolves.toEqual({ clientId: 'c1', email: 'client@x.com' });
+      expect(findById).toHaveBeenCalledWith('u1');
+    });
   });
 });

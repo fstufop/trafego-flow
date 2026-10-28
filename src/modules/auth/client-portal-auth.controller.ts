@@ -4,12 +4,12 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -19,14 +19,11 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ClientPortalAuthGuard } from '../../common/guards/client-portal-auth.guard.js';
 import { ClientPortalAuthService } from './client-portal-auth.service.js';
-import { ClientPortalUserEntity } from './entities/client-portal-user.entity.js';
 import { CreateClientPortalUserDto } from './dto/create-client-portal-user.dto.js';
 import { SetClientPortalUserActiveDto } from './dto/set-client-portal-user-active.dto.js';
 import { ClientLoginDto } from './dto/client-login.dto.js';
@@ -35,14 +32,13 @@ import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import type { JwtPayload } from './interfaces/auth-service.interface.js';
 import { UserRole } from './constants/user-role.constant.js';
+import { CLIENT_PORTAL_SCOPE } from './constants/client-portal.constant.js';
 
 @ApiTags('auth')
 @Controller('auth')
 export class ClientPortalAuthController {
   constructor(
     private readonly clientPortalAuthService: ClientPortalAuthService,
-    @InjectRepository(ClientPortalUserEntity)
-    private readonly clientPortalUserRepo: Repository<ClientPortalUserEntity>,
   ) {}
 
   @Post('client-portal-users')
@@ -130,13 +126,20 @@ export class ClientPortalAuthController {
     summary:
       "Get the authenticated client portal user's own clientId/email (the portal reads this to discover its clientId, since the JWT lives in an httpOnly cookie and is never read in the browser)",
   })
-  async me(@CurrentUser() payload: JwtPayload) {
-    const user = await this.clientPortalUserRepo.findOne({
-      where: { id: payload.sub },
-    });
-    if (!user) {
-      throw new NotFoundException('Client portal account not found');
+  async me(@CurrentUser() payload: JwtPayload | undefined) {
+    // ClientPortalAuthGuard also accepts the master API key and plain
+    // no-scope admin JWTs (it does not set request.user for the former, and
+    // sets a payload with no `scope` for the latter) — neither has a
+    // sensible meaning for "my own client-portal account", so reject both
+    // explicitly instead of letting them 500 (no payload) or 404 (wrong
+    // principal) their way through the lookup below.
+    if (!payload || payload.scope !== CLIENT_PORTAL_SCOPE) {
+      throw new UnauthorizedException(
+        'This endpoint requires a client-portal session',
+      );
     }
+
+    const user = await this.clientPortalAuthService.findById(payload.sub);
 
     return { clientId: user.clientId, email: user.email };
   }

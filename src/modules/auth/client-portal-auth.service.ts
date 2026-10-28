@@ -118,6 +118,14 @@ export class ClientPortalAuthService {
     return this.repo.findOne({ where: { clientId } });
   }
 
+  async findById(id: string): Promise<ClientPortalUserEntity> {
+    const user = await this.repo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Client portal account not found');
+    }
+    return user;
+  }
+
   async setActive(
     id: string,
     isActive: boolean,

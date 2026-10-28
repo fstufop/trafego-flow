@@ -138,6 +138,26 @@ describe('ClientPortalAuthService', () => {
     });
   });
 
+  describe('findById', () => {
+    it('returns the portal user for a known id', async () => {
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'client@x.com',
+        clientId: 'c1',
+      });
+      const result = await service.findById('u1');
+      expect(result.email).toBe('client@x.com');
+      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { id: 'u1' } });
+    });
+
+    it('throws NotFoundException for an unknown id', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(service.findById('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('setActive', () => {
     it('flips isActive and persists it', async () => {
       mockRepo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
