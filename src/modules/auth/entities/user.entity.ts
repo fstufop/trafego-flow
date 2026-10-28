@@ -1,6 +1,7 @@
 import { Column, Entity } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { BaseEntity } from '../../../common/database/base.entity.js';
+import { UserRole } from '../constants/user-role.constant.js';
 
 @Entity('users')
 export class UserEntity extends BaseEntity {
@@ -16,4 +17,7 @@ export class UserEntity extends BaseEntity {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
+  role: UserRole;
 }
