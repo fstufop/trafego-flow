@@ -28,7 +28,7 @@ import { JwtPayload } from './interfaces/auth-service.interface.js';
 
 const BCRYPT_ROUNDS = 12;
 
-interface ClientPortalLoginResult {
+export interface ClientPortalLoginResult {
   accessToken: string;
   tokenType: 'Bearer';
   expiresIn: string;

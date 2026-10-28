@@ -1,0 +1,89 @@
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { ClientPortalAuthController } from './client-portal-auth.controller.js';
+import { AuthGuard } from '../../common/guards/auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { ClientPortalAuthGuard } from '../../common/guards/client-portal-auth.guard.js';
+import { ROLES_KEY } from '../../common/decorators/roles.decorator.js';
+import { UserRole } from './constants/user-role.constant.js';
+import { CLIENT_PORTAL_SCOPE } from './constants/client-portal.constant.js';
+
+describe('ClientPortalAuthController wiring', () => {
+  const reflector = new Reflector();
+
+  const adminRoutes = [
+    'createAccount',
+    'findByClient',
+    'setActive',
+    'resendInvite',
+  ] as const;
+
+  it.each(adminRoutes)(
+    '%s runs AuthGuard then RolesGuard and requires ADMIN role',
+    (methodName) => {
+      const handler = ClientPortalAuthController.prototype[methodName];
+
+      const guards = Reflect.getMetadata(GUARDS_METADATA, handler) as
+        | unknown[]
+        | undefined;
+      expect(guards).toEqual([AuthGuard, RolesGuard]);
+
+      const roles = reflector.get<UserRole[]>(ROLES_KEY, handler);
+      expect(roles).toEqual([UserRole.ADMIN]);
+    },
+  );
+
+  it('the public client-portal routes carry no guards', () => {
+    for (const methodName of [
+      'login',
+      'forgotPassword',
+      'resetPassword',
+    ] as const) {
+      const handler = ClientPortalAuthController.prototype[methodName];
+      const guards = Reflect.getMetadata(GUARDS_METADATA, handler) as
+        | unknown[]
+        | undefined;
+      expect(guards ?? []).toEqual([]);
+    }
+  });
+
+  it('me runs ClientPortalAuthGuard (not AuthGuard)', () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- not invoked, only used as a reflection target
+    const handler = ClientPortalAuthController.prototype.me;
+    const guards = Reflect.getMetadata(GUARDS_METADATA, handler) as
+      | unknown[]
+      | undefined;
+    expect(guards).toEqual([ClientPortalAuthGuard]);
+  });
+
+  // Closes a gap flagged by the plan's pre-flight review: a client-portal
+  // scoped token must not be able to reach the admin client-portal-users
+  // routes. Structurally this already holds because every admin route above
+  // runs the shared AuthGuard first, and AuthGuard rejects ANY `scope`
+  // claim (not just unknown ones) with a 401 before RolesGuard ever runs.
+  it('rejects a client-portal-scoped token on an admin client-portal-users route via AuthGuard', async () => {
+    const mockConfig = {
+      get: jest.fn().mockReturnValue('master-key'),
+    } as unknown as ConfigService;
+    const verifyAsync = jest.fn().mockResolvedValue({
+      sub: 'user-id',
+      clientId: 'client-id',
+      scope: CLIENT_PORTAL_SCOPE,
+    });
+    const mockJwtService = { verifyAsync } as unknown as JwtService;
+
+    const guard = new AuthGuard(mockConfig, mockJwtService);
+    const ctx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: { authorization: 'Bearer client-portal-token' },
+        }),
+      }),
+    } as unknown as ExecutionContext;
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+  });
+});
