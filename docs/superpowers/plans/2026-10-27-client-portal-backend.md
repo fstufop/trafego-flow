@@ -33,7 +33,7 @@
 
 **Files:**
 - Create: `src/modules/auth/entities/client-portal-user.entity.ts`
-- Create: `src/database/migrations/1786000000000-CreateClientPortalUsersTable.ts`
+- Create: `src/database/migrations/1788000000000-CreateClientPortalUsersTable.ts`
 
 **Interfaces:**
 - Produces: `ClientPortalUserEntity extends BaseEntity` com `clientId: string`, `email: string`, `passwordHash: string | null`, `isActive: boolean` (default `true`), `passwordResetTokenHash: string | null`, `passwordResetExpiresAt: Date | null`, e um getter serializado `hasPassword: boolean` (`passwordHash !== null`) — é assim que a tela admin (plano separado, `trafegoflow-dashboard`) distingue "convite pendente" de "ativo" sem a API nunca expor o hash.
@@ -72,7 +72,7 @@ Expected: compila sem erro (entidade é pega automaticamente por `entities: [__d
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/modules/auth/entities/client-portal-user.entity.ts src/database/migrations/1786000000000-CreateClientPortalUsersTable.ts
+git add src/modules/auth/entities/client-portal-user.entity.ts src/database/migrations/1788000000000-CreateClientPortalUsersTable.ts
 git commit -m "feat(auth): add ClientPortalUserEntity and migration"
 ```
 
