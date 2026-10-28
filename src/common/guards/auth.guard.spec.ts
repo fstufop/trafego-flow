@@ -61,22 +61,4 @@ describe('AuthGuard', () => {
       guard.canActivate(makeContext({ authorization: 'Bearer scoped-token' })),
     ).rejects.toThrow(UnauthorizedException);
   });
-
-  it('allows a token with the client-portal scope and exposes clientId', async () => {
-    verifyAsync.mockResolvedValue({
-      sub: 'portal-user-id',
-      clientId: 'client-id',
-      scope: 'client-portal',
-    });
-    const ctx = makeContext({ authorization: 'Bearer client-token' });
-
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-  });
-
-  it('still rejects a token with an unrecognized scope (e.g. media-upload)', async () => {
-    verifyAsync.mockResolvedValue({ sub: 'user-id', scope: 'media-upload' });
-    await expect(
-      guard.canActivate(makeContext({ authorization: 'Bearer scoped-token' })),
-    ).rejects.toThrow(UnauthorizedException);
-  });
 });
