@@ -58,4 +58,17 @@ describe('ClientPortalScopeGuard', () => {
     ).resolves.toBe(true);
     expect(assertAccess).not.toHaveBeenCalled();
   });
+
+  it('rejects with ForbiddenException when query and body clientId disagree, without calling assertAccess', async () => {
+    await expect(
+      guard.canActivate(
+        makeContext(
+          { scope: 'client-portal', clientId: 'c1' },
+          { clientId: 'c1' },
+          { clientId: 'c2' },
+        ),
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(assertAccess).not.toHaveBeenCalled();
+  });
 });

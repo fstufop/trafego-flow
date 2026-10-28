@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { ClientPortalAuthService } from '../client-portal-auth.service.js';
 import { RequestWithUser } from './jwt-auth.guard.js';
 
@@ -33,9 +38,22 @@ export class ClientPortalScopeGuard implements CanActivate {
       return true;
     }
 
-    const clientId =
-      (request.query?.clientId as string | undefined) ??
-      (request.body?.clientId as string | undefined);
+    const queryClientId = request.query?.clientId as string | undefined;
+    const bodyClientId = request.body?.clientId as string | undefined;
+
+    // If both the query string and the body carry a clientId and they
+    // disagree, never silently prefer one — that would let a request pass
+    // ownership validation against one client while actually operating on
+    // another. Reject outright instead.
+    if (
+      queryClientId !== undefined &&
+      bodyClientId !== undefined &&
+      queryClientId !== bodyClientId
+    ) {
+      throw new ForbiddenException('clientId in query and body must match');
+    }
+
+    const clientId = queryClientId ?? bodyClientId;
 
     await this.clientPortalAuthService.assertAccess(user, clientId);
 

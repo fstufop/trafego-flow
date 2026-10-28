@@ -32,6 +32,6 @@ import { ClientsModule } from '../clients/clients.module.js';
   ],
   controllers: [AuthController, ClientPortalAuthController],
   providers: [AuthService, ClientPortalAuthService, ClientPortalScopeGuard],
-  exports: [AuthService, ClientPortalScopeGuard],
+  exports: [AuthService, ClientPortalAuthService, ClientPortalScopeGuard],
 })
 export class AuthModule {}
