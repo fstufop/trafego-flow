@@ -76,7 +76,7 @@ export class ConversationRulesController {
 
   @Get()
   @UseGuards(ClientPortalScopeGuard)
-  @ApiOperation({ summary: 'Listar regras ativas de um cliente' })
+  @ApiOperation({ summary: 'Listar regras (ativas e inativas) de um cliente' })
   @ApiQuery({ name: 'clientId', required: true, type: String })
   findAll(@Query('clientId', ParseUUIDPipe) clientId: string) {
     return this.rulesService.findAll(clientId);

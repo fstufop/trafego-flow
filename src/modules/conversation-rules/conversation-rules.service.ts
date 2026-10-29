@@ -89,7 +89,7 @@ export class ConversationRulesService {
 
   findAll(clientId: string): Promise<ConversationRuleEntity[]> {
     return this.repo.find({
-      where: { clientId, isActive: true },
+      where: { clientId },
       order: { type: 'ASC', triggerValue: 'ASC' },
     });
   }

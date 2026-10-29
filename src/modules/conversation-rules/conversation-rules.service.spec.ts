@@ -352,6 +352,17 @@ describe('ConversationRulesService', () => {
     });
   });
 
+  describe('findAll', () => {
+    it('returns both active and inactive rules for the client, so a deactivated rule stays visible and can be reactivated', async () => {
+      mockRepo.find.mockResolvedValue([]);
+      await service.findAll('c1');
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        where: { clientId: 'c1' },
+        order: { type: 'ASC', triggerValue: 'ASC' },
+      });
+    });
+  });
+
   describe('update', () => {
     it('should throw NotFoundException when rule does not belong to client', async () => {
       mockRepo.findOne.mockResolvedValue(null);
