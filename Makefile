@@ -114,7 +114,11 @@ deploy: ## Deploy do serviço no Cloud Run com todas as env vars e secrets
 	  --set-secrets META_APP_SECRET=META_APP_SECRET:latest \
 	  --set-secrets META_VERIFY_TOKEN=META_VERIFY_TOKEN:latest \
 	  --set-secrets JWT_SECRET=JWT_SECRET:latest \
-	  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest
+	  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
+	  --set-secrets MAILGUN_API_KEY=MAILGUN_API_KEY:latest \
+	  --set-secrets MAILGUN_DOMAIN=MAILGUN_DOMAIN:latest \
+	  --set-secrets MAILGUN_FROM=MAILGUN_FROM:latest \
+	  --set-secrets CLIENT_PORTAL_URL=CLIENT_PORTAL_URL:latest
 
 # ── Migrations ────────────────────────────────────────────────────────────────
 
