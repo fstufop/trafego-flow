@@ -7,6 +7,7 @@ import metaAdsConfig from './meta-ads.config';
 import whatsappConfig from './whatsapp.config';
 import authConfig from './auth.config';
 import googleConfig from './google.config';
+import mailgunConfig from './mailgun.config';
 
 export const configLoads = [
   appConfig,
@@ -17,6 +18,7 @@ export const configLoads = [
   whatsappConfig,
   authConfig,
   googleConfig,
+  mailgunConfig,
 ];
 
 export const validationSchema = Joi.object({
@@ -50,4 +52,8 @@ export const validationSchema = Joi.object({
   GOOGLE_REFRESH_TOKEN: Joi.string().allow('').optional(),
   GOOGLE_DRIVE_ROOT_FOLDER_ID: Joi.string().allow('').optional(),
   MAX_FILE_SIZE_MB: Joi.number().default(500),
+  MAILGUN_API_KEY: Joi.string().required(),
+  MAILGUN_DOMAIN: Joi.string().required(),
+  MAILGUN_FROM: Joi.string().required(),
+  CLIENT_PORTAL_URL: Joi.string().required(),
 });
