@@ -18,6 +18,7 @@ import { UpdateConversationRuleDto } from './dto/update-conversation-rule.dto.js
 import { ConversationReply } from './interfaces/conversation-reply.interface.js';
 import { InstagramPostsResult } from './interfaces/instagram-post.interface.js';
 import { IntegrationsService } from '../integrations/integrations.service.js';
+import { MetaPlatform } from '../integrations/entities/integration.entity.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { IcebreakerSyncService } from './icebreaker-sync.service.js';
 
@@ -279,6 +280,21 @@ export class ConversationRulesService {
           ? { cursors: body.paging.cursors }
           : null,
     };
+  }
+
+  async getRecentPostsForClient(
+    clientId: string,
+    limit = 12,
+    after?: string,
+  ): Promise<InstagramPostsResult> {
+    const integrations = await this.integrationsService.findAll(clientId);
+    const integration = integrations.find(
+      (i) => i.platform === MetaPlatform.INSTAGRAM && i.isActive,
+    );
+    if (!integration) {
+      throw new NotFoundException('Client has no active Instagram integration');
+    }
+    return this.getRecentPosts(integration.pageId, limit, after);
   }
 
   private assertReplyNotEmpty(reply: ConversationReply): void {

@@ -48,6 +48,7 @@ export class AuthService implements IAuthService {
       sub: user.id,
       email: user.email,
       name: user.name,
+      role: user.role,
     };
     return {
       accessToken: await this.jwtService.signAsync(payload),
@@ -61,7 +62,12 @@ export class AuthService implements IAuthService {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     try {
       return await this.repo.save(
-        this.repo.create({ name: dto.name, email: dto.email, passwordHash }),
+        this.repo.create({
+          name: dto.name,
+          email: dto.email,
+          passwordHash,
+          role: dto.role,
+        }),
       );
     } catch (err) {
       if (

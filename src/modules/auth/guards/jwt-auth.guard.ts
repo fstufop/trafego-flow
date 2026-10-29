@@ -10,6 +10,11 @@ import { JwtPayload } from '../interfaces/auth-service.interface.js';
 export interface RequestWithUser {
   headers: Record<string, string | undefined>;
   user?: JwtPayload;
+  /**
+   * Set by AuthGuard when the request was authenticated via the master
+   * API key (no user attached). RolesGuard relies on this marker.
+   */
+  authMethod?: 'api-key';
 }
 
 export function extractBearerToken(request: {

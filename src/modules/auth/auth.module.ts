@@ -3,12 +3,21 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
 import { UserEntity } from './entities/user.entity.js';
+import { ClientPortalUserEntity } from './entities/client-portal-user.entity.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { ClientPortalAuthController } from './client-portal-auth.controller.js';
+import { ClientPortalAuthService } from './client-portal-auth.service.js';
+import { ClientPortalScopeGuard } from './guards/client-portal-scope.guard.js';
+import { ClientPortalAuthGuard } from '../../common/guards/client-portal-auth.guard.js';
+import { MailModule } from '../mail/mail.module.js';
+import { ClientsModule } from '../clients/clients.module.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity]),
+    TypeOrmModule.forFeature([UserEntity, ClientPortalUserEntity]),
+    MailModule,
+    ClientsModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],
@@ -22,8 +31,18 @@ import { AuthService } from './auth.service.js';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
-  exports: [AuthService],
+  controllers: [AuthController, ClientPortalAuthController],
+  providers: [
+    AuthService,
+    ClientPortalAuthService,
+    ClientPortalScopeGuard,
+    ClientPortalAuthGuard,
+  ],
+  exports: [
+    AuthService,
+    ClientPortalAuthService,
+    ClientPortalScopeGuard,
+    ClientPortalAuthGuard,
+  ],
 })
 export class AuthModule {}

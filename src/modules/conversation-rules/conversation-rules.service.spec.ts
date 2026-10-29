@@ -28,6 +28,7 @@ const mockIcebreakerSync = { sync: jest.fn() };
 
 const mockIntegrationsService = {
   findByPageId: jest.fn(),
+  findAll: jest.fn(),
 };
 
 const mockCrypto = {
@@ -799,6 +800,29 @@ describe('ConversationRulesService', () => {
         expect.stringContaining('Unsupported get request.'),
       );
       errorSpy.mockRestore();
+    });
+  });
+
+  describe('getRecentPostsForClient', () => {
+    it("resolves the pageId from the client's active Instagram integration", async () => {
+      mockIntegrationsService.findAll.mockResolvedValue([
+        { platform: 'whatsapp', isActive: true, pageId: 'wrong' },
+        { platform: 'instagram', isActive: true, pageId: 'ig-page-1' },
+      ]);
+      const spy = jest
+        .spyOn(service, 'getRecentPosts')
+        .mockResolvedValue({ data: [], paging: null });
+
+      await service.getRecentPostsForClient('client-1', 12);
+
+      expect(spy).toHaveBeenCalledWith('ig-page-1', 12, undefined);
+    });
+
+    it('throws NotFoundException when the client has no active Instagram integration', async () => {
+      mockIntegrationsService.findAll.mockResolvedValue([]);
+      await expect(service.getRecentPostsForClient('client-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
