@@ -23,6 +23,7 @@ describe('ClientPortalAuthService', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    delete: jest.fn(),
   };
   const mockMailService = {
     send: jest.fn().mockResolvedValue(undefined),
@@ -195,6 +196,25 @@ describe('ClientPortalAuthService', () => {
       await expect(service.findById('missing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('remove', () => {
+    it('hard-deletes the account so the email can be reused immediately', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'u1', email: 'a@b.com' });
+      mockRepo.delete.mockResolvedValue({ affected: 1 });
+
+      await service.remove('u1');
+
+      expect(mockRepo.delete).toHaveBeenCalledWith('u1');
+    });
+
+    it('throws NotFoundException for an unknown id', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(service.remove('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockRepo.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -423,6 +443,22 @@ describe('ClientPortalAuthService', () => {
             scope: 'client-portal',
           },
           undefined,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws when the portal user record no longer exists (e.g. access was removed)', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.assertAccess(
+          {
+            sub: 'u1',
+            email: 'a',
+            name: 'A',
+            clientId: 'c1',
+            scope: 'client-portal',
+          },
+          'c1',
         ),
       ).rejects.toThrow(ForbiddenException);
     });

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -78,6 +79,20 @@ export class ClientPortalAuthController {
     @Body() dto: SetClientPortalUserActiveDto,
   ) {
     return this.clientPortalAuthService.setActive(id, dto.isActive);
+  }
+
+  @Delete('client-portal-users/:id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiSecurity('x-api-key')
+  @ApiOperation({
+    summary:
+      'Permanently remove a client portal account (frees the email for a new invite — e.g. to correct a typo or change the email)',
+  })
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.clientPortalAuthService.remove(id);
   }
 
   @Post('client-portal-users/:id/resend-invite')

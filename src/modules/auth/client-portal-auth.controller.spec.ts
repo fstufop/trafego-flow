@@ -24,6 +24,7 @@ describe('ClientPortalAuthController wiring', () => {
     'findByClient',
     'setActive',
     'resendInvite',
+    'remove',
   ] as const;
 
   it.each(adminRoutes)(

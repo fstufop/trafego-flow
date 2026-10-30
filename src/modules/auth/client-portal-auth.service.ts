@@ -139,6 +139,20 @@ export class ClientPortalAuthService {
     return user;
   }
 
+  async remove(id: string): Promise<void> {
+    const user = await this.repo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Client portal account not found');
+    }
+
+    // Hard delete, not softDelete: the email column has a plain UNIQUE
+    // constraint that a soft-deleted row would keep occupying, so
+    // re-inviting the same (corrected) email would still 409. This is only
+    // reachable by an admin correcting a mistake (wrong email, email
+    // change) — never automatic.
+    await this.repo.delete(id);
+  }
+
   async setActive(
     id: string,
     isActive: boolean,
