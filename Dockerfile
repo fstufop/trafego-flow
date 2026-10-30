@@ -7,6 +7,9 @@ COPY package*.json .npmrc ./
 RUN npm ci
 
 COPY . .
+# nest build hits V8's default ~2GB old-space ceiling on this codebase's
+# size regardless of the build machine's actual RAM — raise it explicitly.
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 # Production stage
