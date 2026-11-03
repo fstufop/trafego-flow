@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -64,12 +65,11 @@ describe('ClientPortalAuthService', () => {
   it('should be defined', () => expect(service).toBeDefined());
 
   describe('createAccount', () => {
-    it('creates the account with a null passwordHash and sends an invite email', async () => {
-      mockRepo.create.mockReturnValue({
-        id: 'new-id',
-        email: 'client@x.com',
-        clientId: 'c1',
-      });
+    it('creates the account with the default password hashed and mustChangePassword true, without sending any email', async () => {
+      mockConfig.get.mockReturnValue('Trafego@2026');
+      mockRepo.create.mockImplementation(
+        (e: Partial<ClientPortalUserEntity>) => e,
+      );
       mockRepo.save.mockImplementation((e) => Promise.resolve(e));
 
       const result = await service.createAccount({
@@ -81,12 +81,13 @@ describe('ClientPortalAuthService', () => {
         expect.objectContaining({
           clientId: 'c1',
           email: 'client@x.com',
-          passwordHash: null,
+          mustChangePassword: true,
         }),
       );
-      expect(mockMailService.send).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'client@x.com' }),
-      );
+      await expect(
+        bcrypt.compare('Trafego@2026', result.passwordHash as string),
+      ).resolves.toBe(true);
+      expect(mockMailService.send).not.toHaveBeenCalled();
       expect(result.email).toBe('client@x.com');
     });
 
@@ -142,28 +143,39 @@ describe('ClientPortalAuthService', () => {
     });
   });
 
-  describe('resendInvite', () => {
-    it('generates a new token and resends the invite email', async () => {
+  describe('resetToDefaultPassword', () => {
+    it('resets the password to the default password, marks mustChangePassword and clears any pending reset token', async () => {
+      mockConfig.get.mockReturnValue('Trafego@2026');
       mockRepo.findOne.mockResolvedValue({
         id: 'u1',
         email: 'client@x.com',
         isActive: true,
+        passwordResetTokenHash: 'stale-hash',
+        passwordResetExpiresAt: new Date(),
       });
       mockRepo.save.mockImplementation((e) => Promise.resolve(e));
 
-      await service.resendInvite('u1');
+      await service.resetToDefaultPassword('u1');
 
       expect(mockRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          passwordResetTokenHash: expect.any(String) as unknown,
+          mustChangePassword: true,
+          passwordResetTokenHash: null,
+          passwordResetExpiresAt: null,
         }),
       );
-      expect(mockMailService.send).toHaveBeenCalled();
+      const [savedArg] = mockRepo.save.mock.calls[0] as [
+        { passwordHash: string },
+      ];
+      await expect(
+        bcrypt.compare('Trafego@2026', savedArg.passwordHash),
+      ).resolves.toBe(true);
+      expect(mockMailService.send).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException for an unknown id', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.resendInvite('missing')).rejects.toThrow(
+      await expect(service.resetToDefaultPassword('missing')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -265,13 +277,14 @@ describe('ClientPortalAuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('returns a client-portal-scoped token for valid, active credentials', async () => {
+    it('returns a client-portal-scoped token for valid, active credentials, including mustChangePassword', async () => {
       mockRepo.findOne.mockResolvedValue({
         id: 'u1',
         email: 'a@b.com',
         passwordHash: await bcrypt.hash('pw', 4),
         isActive: true,
         clientId: 'c1',
+        mustChangePassword: true,
       });
       mockClientsService.findOne.mockResolvedValue({
         id: 'c1',
@@ -288,6 +301,7 @@ describe('ClientPortalAuthService', () => {
         }),
       );
       expect(result.accessToken).toBe('signed-token');
+      expect(result.mustChangePassword).toBe(true);
     });
 
     it('rejects with UnauthorizedException (not the underlying NotFoundException) when the parent Client was soft-deleted', async () => {
@@ -305,6 +319,70 @@ describe('ClientPortalAuthService', () => {
       await expect(
         service.login({ email: 'a@b.com', password: 'pw' }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('changePassword', () => {
+    it('sets the new password and clears mustChangePassword when the old password matches', async () => {
+      const oldHash = await bcrypt.hash('old-pass', 4);
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        passwordHash: oldHash,
+        mustChangePassword: true,
+      });
+      mockRepo.save.mockImplementation((e) => Promise.resolve(e));
+
+      await service.changePassword('u1', {
+        oldPassword: 'old-pass',
+        newPassword: 'new-password',
+      });
+
+      const [savedArg] = mockRepo.save.mock.calls[0] as [
+        { passwordHash: string; mustChangePassword: boolean },
+      ];
+      expect(savedArg.mustChangePassword).toBe(false);
+      await expect(
+        bcrypt.compare('new-password', savedArg.passwordHash),
+      ).resolves.toBe(true);
+    });
+
+    it('rejects when the old password does not match', async () => {
+      const oldHash = await bcrypt.hash('old-pass', 4);
+      mockRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        passwordHash: oldHash,
+        mustChangePassword: true,
+      });
+
+      await expect(
+        service.changePassword('u1', {
+          oldPassword: 'wrong',
+          newPassword: 'new-password',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the account has no password set', async () => {
+      mockRepo.findOne.mockResolvedValue({ id: 'u1', passwordHash: null });
+
+      await expect(
+        service.changePassword('u1', {
+          oldPassword: 'anything',
+          newPassword: 'new-password',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when the account does not exist', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.changePassword('missing', {
+          oldPassword: 'anything',
+          newPassword: 'new-password',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

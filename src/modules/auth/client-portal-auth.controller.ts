@@ -30,6 +30,7 @@ import { SetClientPortalUserActiveDto } from './dto/set-client-portal-user-activ
 import { ClientLoginDto } from './dto/client-login.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import type { JwtPayload } from './interfaces/auth-service.interface.js';
 import { UserRole } from './constants/user-role.constant.js';
@@ -49,7 +50,8 @@ export class ClientPortalAuthController {
   @ApiBearerAuth()
   @ApiSecurity('x-api-key')
   @ApiOperation({
-    summary: 'Provision a client portal account and send the invite email',
+    summary:
+      'Provision a client portal account with the default password (no email is sent)',
   })
   createAccount(@Body() dto: CreateClientPortalUserDto) {
     return this.clientPortalAuthService.createAccount(dto);
@@ -95,17 +97,18 @@ export class ClientPortalAuthController {
     return this.clientPortalAuthService.remove(id);
   }
 
-  @Post('client-portal-users/:id/resend-invite')
+  @Post('client-portal-users/:id/reset-password')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiSecurity('x-api-key')
   @ApiOperation({
-    summary: 'Resend the client portal invite/reset email',
+    summary:
+      'Reset a client portal account password to the default password (no email is sent)',
   })
-  resendInvite(@Param('id', ParseUUIDPipe) id: string) {
-    return this.clientPortalAuthService.resendInvite(id);
+  resetToDefaultPassword(@Param('id', ParseUUIDPipe) id: string) {
+    return this.clientPortalAuthService.resetToDefaultPassword(id);
   }
 
   @Post('client-login')
@@ -134,6 +137,30 @@ export class ClientPortalAuthController {
     return this.clientPortalAuthService.resetPassword(dto);
   }
 
+  @Post('client-change-password')
+  @UseGuards(ClientPortalAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Change the authenticated client portal user password using the current password',
+  })
+  async changePassword(
+    @CurrentUser() payload: JwtPayload | undefined,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    // Same reasoning as me(): ClientPortalAuthGuard also accepts the master
+    // API key (no payload) and plain no-scope admin JWTs, neither of which
+    // has a sensible "current password" to compare against.
+    if (!payload || payload.scope !== CLIENT_PORTAL_SCOPE) {
+      throw new UnauthorizedException(
+        'This endpoint requires a client-portal session',
+      );
+    }
+
+    return this.clientPortalAuthService.changePassword(payload.sub, dto);
+  }
+
   @Get('client-portal/me')
   @UseGuards(ClientPortalAuthGuard)
   @ApiBearerAuth()
@@ -156,6 +183,10 @@ export class ClientPortalAuthController {
 
     const user = await this.clientPortalAuthService.findById(payload.sub);
 
-    return { clientId: user.clientId, email: user.email };
+    return {
+      clientId: user.clientId,
+      email: user.email,
+      mustChangePassword: user.mustChangePassword,
+    };
   }
 }

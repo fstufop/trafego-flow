@@ -8,6 +8,7 @@ import whatsappConfig from './whatsapp.config';
 import authConfig from './auth.config';
 import googleConfig from './google.config';
 import mailgunConfig from './mailgun.config';
+import clientPortalConfig from './client-portal.config';
 
 export const configLoads = [
   appConfig,
@@ -19,6 +20,7 @@ export const configLoads = [
   authConfig,
   googleConfig,
   mailgunConfig,
+  clientPortalConfig,
 ];
 
 export const validationSchema = Joi.object({
@@ -56,4 +58,5 @@ export const validationSchema = Joi.object({
   MAILGUN_DOMAIN: Joi.string().required(),
   MAILGUN_FROM: Joi.string().required(),
   CLIENT_PORTAL_URL: Joi.string().required(),
+  CLIENT_PORTAL_DEFAULT_PASSWORD: Joi.string().default('Trafego@2026'),
 });

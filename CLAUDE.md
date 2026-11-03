@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## About the trafegoFlow environment
+
+- This project is part of a ecosystem composed by this project, a backend that provides an admin dashboard called trafegoflow-dashboard (/Users/filipesteodoro/Github/trafegoflow-dashboard) and a client interface that consume called trafegoflow-client-portal (/Users/filipesteodoro/Github/trafegoflow-client-portal). 
+
 ## Commands
 
 ```bash

@@ -23,7 +23,7 @@ describe('ClientPortalAuthController wiring', () => {
     'createAccount',
     'findByClient',
     'setActive',
-    'resendInvite',
+    'resetToDefaultPassword',
     'remove',
   ] as const;
 
@@ -59,6 +59,15 @@ describe('ClientPortalAuthController wiring', () => {
   it('me runs ClientPortalAuthGuard (not AuthGuard)', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method -- not invoked, only used as a reflection target
     const handler = ClientPortalAuthController.prototype.me;
+    const guards = Reflect.getMetadata(GUARDS_METADATA, handler) as
+      | unknown[]
+      | undefined;
+    expect(guards).toEqual([ClientPortalAuthGuard]);
+  });
+
+  it('changePassword runs ClientPortalAuthGuard (not AuthGuard)', () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- not invoked, only used as a reflection target
+    const handler = ClientPortalAuthController.prototype.changePassword;
     const guards = Reflect.getMetadata(GUARDS_METADATA, handler) as
       | unknown[]
       | undefined;
@@ -160,10 +169,11 @@ describe('ClientPortalAuthController wiring', () => {
       expect(findById).not.toHaveBeenCalled();
     });
 
-    it('returns clientId/email for a genuine client-portal token', async () => {
+    it('returns clientId/email/mustChangePassword for a genuine client-portal token', async () => {
       findById.mockResolvedValue({
         clientId: 'c1',
         email: 'client@x.com',
+        mustChangePassword: true,
       });
 
       await expect(
@@ -174,8 +184,60 @@ describe('ClientPortalAuthController wiring', () => {
           clientId: 'c1',
           scope: CLIENT_PORTAL_SCOPE,
         }),
-      ).resolves.toEqual({ clientId: 'c1', email: 'client@x.com' });
+      ).resolves.toEqual({
+        clientId: 'c1',
+        email: 'client@x.com',
+        mustChangePassword: true,
+      });
       expect(findById).toHaveBeenCalledWith('u1');
+    });
+  });
+
+  describe('changePassword()', () => {
+    const changePassword = jest.fn();
+    const mockService = {
+      changePassword,
+    } as unknown as ClientPortalAuthService;
+    const controller = new ClientPortalAuthController(mockService);
+
+    beforeEach(() => jest.clearAllMocks());
+
+    it('rejects a master-API-key request (no payload) instead of throwing a TypeError', async () => {
+      await expect(
+        controller.changePassword(undefined, {
+          oldPassword: 'a',
+          newPassword: 'new-password',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(changePassword).not.toHaveBeenCalled();
+    });
+
+    it('rejects a plain admin JWT (no scope) instead of a misleading password change', async () => {
+      await expect(
+        controller.changePassword(
+          { sub: 'admin-id', email: 'a@b.com', name: 'Admin' },
+          { oldPassword: 'a', newPassword: 'new-password' },
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(changePassword).not.toHaveBeenCalled();
+    });
+
+    it('delegates to the service with the authenticated user id', async () => {
+      changePassword.mockResolvedValue(undefined);
+      const dto = { oldPassword: 'old-pass', newPassword: 'new-password' };
+
+      await controller.changePassword(
+        {
+          sub: 'u1',
+          email: 'ignored',
+          name: 'ignored',
+          clientId: 'c1',
+          scope: CLIENT_PORTAL_SCOPE,
+        },
+        dto,
+      );
+
+      expect(changePassword).toHaveBeenCalledWith('u1', dto);
     });
   });
 });

@@ -17,6 +17,9 @@ export class ClientPortalUserEntity extends BaseEntity {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({ name: 'must_change_password', default: false })
+  mustChangePassword: boolean;
+
   @Exclude()
   @Column({
     name: 'password_reset_token_hash',

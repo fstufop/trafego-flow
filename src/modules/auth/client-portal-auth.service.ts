@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -17,6 +18,7 @@ import { CreateClientPortalUserDto } from './dto/create-client-portal-user.dto.j
 import { ClientLoginDto } from './dto/client-login.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { MailService } from '../mail/mail.service.js';
 import { ClientsService } from '../clients/clients.service.js';
 import { ClientEntity } from '../clients/entities/client.entity.js';
@@ -32,6 +34,7 @@ export interface ClientPortalLoginResult {
   accessToken: string;
   tokenType: 'Bearer';
   expiresIn: string;
+  mustChangePassword: boolean;
 }
 
 @Injectable()
@@ -62,26 +65,17 @@ export class ClientPortalAuthService {
     return token;
   }
 
-  private async sendInviteEmail(
-    user: ClientPortalUserEntity,
-    token: string,
-  ): Promise<void> {
-    const portalUrl = this.config.get<string>('mailgun.portalUrl');
-    const link = `${portalUrl}/definir-senha?token=${token}`;
-    await this.mailService.send({
-      to: user.email,
-      subject: 'Convite para o portal do cliente',
-      html: `<p>Você foi convidado para acessar o portal do cliente. Clique no link para definir sua senha: <a href="${link}">${link}</a></p>`,
-    });
-  }
-
   async createAccount(
     dto: CreateClientPortalUserDto,
   ): Promise<ClientPortalUserEntity> {
+    const defaultPassword = this.config.get<string>(
+      'clientPortal.defaultPassword',
+    )!;
     const user = this.repo.create({
       clientId: dto.clientId,
       email: dto.email,
-      passwordHash: null,
+      passwordHash: await bcrypt.hash(defaultPassword, BCRYPT_ROUNDS),
+      mustChangePassword: true,
     });
 
     try {
@@ -111,20 +105,23 @@ export class ClientPortalAuthService {
       throw err;
     }
 
-    const token = await this.generateAndStoreToken(user);
-    await this.sendInviteEmail(user, token);
-
     return user;
   }
 
-  async resendInvite(id: string): Promise<void> {
+  async resetToDefaultPassword(id: string): Promise<void> {
     const user = await this.repo.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('Client portal account not found');
     }
 
-    const token = await this.generateAndStoreToken(user);
-    await this.sendInviteEmail(user, token);
+    const defaultPassword = this.config.get<string>(
+      'clientPortal.defaultPassword',
+    )!;
+    user.passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_ROUNDS);
+    user.mustChangePassword = true;
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await this.repo.save(user);
   }
 
   async findByClient(clientId: string): Promise<ClientPortalUserEntity | null> {
@@ -206,7 +203,33 @@ export class ClientPortalAuthService {
       accessToken: await this.jwtService.signAsync(payload),
       tokenType: 'Bearer',
       expiresIn: this.config.get<string>('auth.jwtExpiresIn')!,
+      mustChangePassword: user.mustChangePassword,
     };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    // BadRequestException (not UnauthorizedException): the caller already
+    // holds a valid client-portal JWT at this point (ClientPortalAuthGuard
+    // ran first) — a wrong current password is a validation failure of this
+    // request's own body, not a dead/invalid session. Conflating the two
+    // would make the client portal's shared "401 ⇒ session expired, log out"
+    // handling kick the user back to /login just for a typo.
+    const user = await this.repo.findOne({ where: { id: userId } });
+    if (!user || user.passwordHash === null) {
+      throw new BadRequestException('Invalid current password');
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      dto.oldPassword,
+      user.passwordHash,
+    );
+    if (!passwordMatches) {
+      throw new BadRequestException('Invalid current password');
+    }
+
+    user.passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    user.mustChangePassword = false;
+    await this.repo.save(user);
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
