@@ -106,7 +106,7 @@ deploy: ## Deploy do serviço no Cloud Run com todas as env vars e secrets
 	  --memory 512Mi \
 	  --min-instances 0 \
 	  --max-instances 2 \
-	  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600,AI_PROVIDER=gemini,AI_MODEL=gemini-3.6-flash,WHATSAPP_DEDICATED_PHONE=$(WHATSAPP_PHONE),GOOGLE_CLIENT_ID=347462891215-57odjsuomss675lprumaolf7npbqrie5.apps.googleusercontent.com,GOOGLE_DRIVE_ROOT_FOLDER_ID=1OL-Y2uLn6jGdedsYRp7mMqu8N1dcAcY6 \
+	  --set-env-vars NODE_ENV=production,META_GRAPH_API_VERSION=v21.0,META_ADS_API_VERSION=v21.0,INSIGHTS_CACHE_TTL_SECONDS=300,CACHE_TTL_SECONDS=3600,AI_PROVIDER=gemini,AI_MODEL=gemini-3.6-flash,WHATSAPP_DEDICATED_PHONE=$(WHATSAPP_PHONE),GOOGLE_CLIENT_ID=347462891215-57odjsuomss675lprumaolf7npbqrie5.apps.googleusercontent.com,GOOGLE_DRIVE_ROOT_FOLDER_ID=1OL-Y2uLn6jGdedsYRp7mMqu8N1dcAcY6,DASHBOARD_ORIGIN=https://trafegoflow-dashboard.vercel.app \
 	  --set-secrets DATABASE_URL=DATABASE_URL:latest \
 	  --set-secrets REDIS_URL=REDIS_URL:latest \
 	  --set-secrets MASTER_API_KEY=MASTER_API_KEY:latest \

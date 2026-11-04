@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, Logger } from '@nestjs/common';
+import { ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bullmq';
 import { createHmac } from 'crypto';
 import { InstagramWebhookService } from './instagram-webhook.service.js';
 import { InstagramWebhookPayload } from './interfaces/instagram-webhook-event.interface.js';
+import { IntegrationsService } from '../../integrations/integrations.service.js';
+import { AesCryptoService } from '../../../common/crypto/aes.service.js';
 
 const APP_SECRET = 'test-app-secret';
 const VERIFY_TOKEN = 'test-verify-token';
@@ -12,7 +14,6 @@ const VERIFY_TOKEN = 'test-verify-token';
 const mockConfig = {
   get: jest.fn((key: string) => {
     if (key === 'meta.verifyToken') return VERIFY_TOKEN;
-    if (key === 'meta.appSecret') return APP_SECRET;
     return undefined;
   }),
 };
@@ -20,6 +21,9 @@ const mockConfig = {
 const mockQueue = {
   add: jest.fn().mockResolvedValue(undefined),
 };
+
+const mockIntegrationsService = { findByPageId: jest.fn() };
+const mockCrypto = { decrypt: jest.fn() };
 
 function makeSignature(rawBody: Buffer): string {
   return `sha256=${createHmac('sha256', APP_SECRET).update(rawBody).digest('hex')}`;
@@ -35,11 +39,21 @@ describe('InstagramWebhookService', () => {
       .spyOn(Logger.prototype, 'log')
       .mockImplementation(() => undefined);
 
+    mockIntegrationsService.findByPageId.mockResolvedValue({
+      appSecret: 'encrypted-app-secret',
+    });
+    mockCrypto.decrypt.mockImplementation((value: string | null) => {
+      if (!value) throw new Error('no app secret configured');
+      return APP_SECRET;
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InstagramWebhookService,
         { provide: ConfigService, useValue: mockConfig },
         { provide: getQueueToken('instagram-webhook'), useValue: mockQueue },
+        { provide: IntegrationsService, useValue: mockIntegrationsService },
+        { provide: AesCryptoService, useValue: mockCrypto },
       ],
     }).compile();
 
@@ -93,6 +107,55 @@ describe('InstagramWebhookService', () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
       await expect(
         service.handleEvent(dmPayload, rawBody, 'sha256=invalidsig'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should validate the signature against the app secret of the integration owning the page', async () => {
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+      await service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
+
+      expect(mockIntegrationsService.findByPageId).toHaveBeenCalledWith(
+        'PAGE123',
+      );
+      expect(mockCrypto.decrypt).toHaveBeenCalledWith('encrypted-app-secret');
+    });
+
+    it('should reject a valid-looking signature computed with another tenant app secret', async () => {
+      const otherTenantSignature = `sha256=${createHmac(
+        'sha256',
+        'someone-elses-secret',
+      )
+        .update(Buffer.from(JSON.stringify(dmPayload)))
+        .digest('hex')}`;
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+
+      await expect(
+        service.handleEvent(dmPayload, rawBody, otherTenantSignature),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when no integration is registered for the page', async () => {
+      mockIntegrationsService.findByPageId.mockRejectedValueOnce(
+        new NotFoundException('Integration for pageId PAGE123 not found'),
+      );
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+
+      await expect(
+        service.handleEvent(dmPayload, rawBody, makeSignature(rawBody)),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when the integration has no app secret configured', async () => {
+      mockIntegrationsService.findByPageId.mockResolvedValueOnce({
+        appSecret: null,
+      });
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+
+      await expect(
+        service.handleEvent(dmPayload, rawBody, makeSignature(rawBody)),
       ).rejects.toThrow(ForbiddenException);
       expect(mockQueue.add).not.toHaveBeenCalled();
     });

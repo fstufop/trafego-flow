@@ -27,6 +27,10 @@ export class IntegrationEntity extends BaseEntity {
   @Column({ name: 'access_token', type: 'text' })
   accessToken: string;
 
+  @Exclude()
+  @Column({ name: 'app_secret', type: 'text', nullable: true })
+  appSecret: string | null;
+
   @Column({ name: 'token_expires_at', type: 'timestamptz', nullable: true })
   tokenExpiresAt: Date | null;
 

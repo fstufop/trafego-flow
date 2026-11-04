@@ -7,6 +7,8 @@ import {
   InstagramEntry,
   InstagramWebhookPayload,
 } from './interfaces/instagram-webhook-event.interface.js';
+import { IntegrationsService } from '../../integrations/integrations.service.js';
+import { AesCryptoService } from '../../../common/crypto/aes.service.js';
 
 @Injectable()
 export class InstagramWebhookService {
@@ -16,6 +18,8 @@ export class InstagramWebhookService {
     private readonly config: ConfigService,
     @InjectQueue('instagram-webhook')
     private readonly queue: Queue,
+    private readonly integrationsService: IntegrationsService,
+    private readonly crypto: AesCryptoService,
   ) {}
 
   verifyWebhook(mode: string, token: string, challenge: string): string {
@@ -38,8 +42,24 @@ export class InstagramWebhookService {
     this.logger.log(
       `Instagram webhook payload received: ${JSON.stringify(payload)}`,
     );
-    this.validateSignature(rawBody, signature);
+    const appSecret = await this.resolveAppSecret(payload);
+    this.validateSignature(rawBody, signature, appSecret);
     await this.enqueueEvents(payload);
+  }
+
+  private async resolveAppSecret(
+    payload: InstagramWebhookPayload,
+  ): Promise<string> {
+    const pageId = payload.entry?.[0]?.id;
+    if (!pageId) {
+      throw new ForbiddenException('Webhook validation failed');
+    }
+    try {
+      const integration = await this.integrationsService.findByPageId(pageId);
+      return this.crypto.decrypt(integration.appSecret ?? '');
+    } catch {
+      throw new ForbiddenException('Webhook validation failed');
+    }
   }
 
   private async enqueueEvents(payload: InstagramWebhookPayload): Promise<void> {
@@ -107,8 +127,11 @@ export class InstagramWebhookService {
     }
   }
 
-  private validateSignature(rawBody: Buffer, signature: string): void {
-    const appSecret = this.config.get<string>('meta.appSecret') ?? '';
+  private validateSignature(
+    rawBody: Buffer,
+    signature: string,
+    appSecret: string,
+  ): void {
     const expected = createHmac('sha256', appSecret)
       .update(rawBody)
       .digest('hex');

@@ -4,7 +4,10 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { IntegrationsService } from './integrations.service.js';
-import { IntegrationEntity, MetaPlatform } from './entities/integration.entity.js';
+import {
+  IntegrationEntity,
+  MetaPlatform,
+} from './entities/integration.entity.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 
 const mockIntegration: IntegrationEntity = {
@@ -14,6 +17,7 @@ const mockIntegration: IntegrationEntity = {
   platform: MetaPlatform.INSTAGRAM,
   pageId: 'PAGE123',
   accessToken: 'encrypted-token',
+  appSecret: 'encrypted-app-secret',
   tokenExpiresAt: null,
   isActive: true,
   createdAt: new Date(),
@@ -72,8 +76,45 @@ describe('IntegrationsService', () => {
 
       expect(mockCrypto.encrypt).toHaveBeenCalledWith('plaintext-token');
       expect(result).toEqual(mockIntegration);
-      expect(mockCache.set).toHaveBeenCalledWith('integration:id:uuid-int-1', mockIntegration);
-      expect(mockCache.set).toHaveBeenCalledWith('integration:page:PAGE123', mockIntegration);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'integration:id:uuid-int-1',
+        mockIntegration,
+      );
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'integration:page:PAGE123',
+        mockIntegration,
+      );
+    });
+
+    it('should encrypt appSecret when provided', async () => {
+      mockRepo.create.mockReturnValue({ ...mockIntegration });
+      mockRepo.save.mockResolvedValue(mockIntegration);
+
+      await service.create({
+        clientId: 'uuid-client-1',
+        platform: MetaPlatform.INSTAGRAM,
+        pageId: 'PAGE123',
+        accessToken: 'plaintext-token',
+        appSecret: 'plaintext-app-secret',
+      });
+
+      expect(mockCrypto.encrypt).toHaveBeenCalledWith('plaintext-app-secret');
+    });
+
+    it('should store a null appSecret when not provided', async () => {
+      mockRepo.create.mockReturnValue({ ...mockIntegration });
+      mockRepo.save.mockResolvedValue(mockIntegration);
+
+      await service.create({
+        clientId: 'uuid-client-1',
+        platform: MetaPlatform.INSTAGRAM,
+        pageId: 'PAGE123',
+        accessToken: 'plaintext-token',
+      });
+
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ appSecret: null }),
+      );
     });
 
     it('should throw ConflictException on duplicate pageId', async () => {
@@ -83,7 +124,12 @@ describe('IntegrationsService', () => {
       mockRepo.save.mockRejectedValue(dbError);
 
       await expect(
-        service.create({ clientId: 'c', platform: MetaPlatform.INSTAGRAM, pageId: 'PAGE123', accessToken: 'tok' }),
+        service.create({
+          clientId: 'c',
+          platform: MetaPlatform.INSTAGRAM,
+          pageId: 'PAGE123',
+          accessToken: 'tok',
+        }),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -93,7 +139,9 @@ describe('IntegrationsService', () => {
       mockRepo.find.mockResolvedValue([mockIntegration]);
       const result = await service.findAll('uuid-client-1');
       expect(result).toEqual([mockIntegration]);
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { clientId: 'uuid-client-1', isActive: true } });
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        where: { clientId: 'uuid-client-1', isActive: true },
+      });
     });
   });
 
@@ -111,13 +159,18 @@ describe('IntegrationsService', () => {
 
       const result = await service.findOne('uuid-int-1');
       expect(result).toEqual(mockIntegration);
-      expect(mockCache.set).toHaveBeenCalledWith('integration:id:uuid-int-1', mockIntegration);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'integration:id:uuid-int-1',
+        mockIntegration,
+      );
     });
 
     it('should throw NotFoundException when integration does not exist', async () => {
       mockCache.get.mockResolvedValue(null);
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -135,17 +188,28 @@ describe('IntegrationsService', () => {
 
       await service.findByPageId('PAGE123');
 
-      expect(mockCache.set).toHaveBeenCalledWith('integration:id:uuid-int-1', mockIntegration);
-      expect(mockCache.set).toHaveBeenCalledWith('integration:page:PAGE123', mockIntegration);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'integration:id:uuid-int-1',
+        mockIntegration,
+      );
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'integration:page:PAGE123',
+        mockIntegration,
+      );
     });
   });
 
   describe('update', () => {
     it('should encrypt new accessToken and invalidate both cache keys', async () => {
       mockCache.get.mockResolvedValue(mockIntegration);
-      mockRepo.save.mockResolvedValue({ ...mockIntegration, accessToken: 'new-encrypted' });
+      mockRepo.save.mockResolvedValue({
+        ...mockIntegration,
+        accessToken: 'new-encrypted',
+      });
 
-      await service.update('uuid-int-1', { accessToken: 'new-plaintext-token' });
+      await service.update('uuid-int-1', {
+        accessToken: 'new-plaintext-token',
+      });
 
       expect(mockCrypto.encrypt).toHaveBeenCalledWith('new-plaintext-token');
       expect(mockCache.del).toHaveBeenCalledWith('integration:id:uuid-int-1');
@@ -159,6 +223,35 @@ describe('IntegrationsService', () => {
       await service.update('uuid-int-1', { isActive: false });
 
       expect(mockCrypto.encrypt).not.toHaveBeenCalled();
+    });
+
+    it('should encrypt new appSecret and invalidate both cache keys', async () => {
+      mockCache.get.mockResolvedValue(mockIntegration);
+      mockRepo.save.mockResolvedValue({
+        ...mockIntegration,
+        appSecret: 'new-encrypted',
+      });
+
+      await service.update('uuid-int-1', {
+        appSecret: 'new-plaintext-app-secret',
+      });
+
+      expect(mockCrypto.encrypt).toHaveBeenCalledWith(
+        'new-plaintext-app-secret',
+      );
+      expect(mockCache.del).toHaveBeenCalledWith('integration:id:uuid-int-1');
+      expect(mockCache.del).toHaveBeenCalledWith('integration:page:PAGE123');
+    });
+
+    it('should not touch appSecret if not in dto', async () => {
+      mockCache.get.mockResolvedValue(mockIntegration);
+      mockRepo.save.mockResolvedValue({ ...mockIntegration, isActive: false });
+
+      await service.update('uuid-int-1', { isActive: false });
+
+      expect(mockRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ appSecret: mockIntegration.appSecret }),
+      );
     });
   });
 

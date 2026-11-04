@@ -1,9 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { MetaPlatform } from '../entities/integration.entity.js';
 
 export class CreateIntegrationDto {
-  @ApiProperty({ example: 'uuid-do-client', description: 'ID do client (tenant)' })
+  @ApiProperty({
+    example: 'uuid-do-client',
+    description: 'ID do client (tenant)',
+  })
   @IsUUID()
   clientId: string;
 
@@ -11,17 +21,33 @@ export class CreateIntegrationDto {
   @IsEnum(MetaPlatform)
   platform: MetaPlatform;
 
-  @ApiProperty({ example: '123456789', description: 'Instagram Page ID ou WhatsApp Phone Number ID' })
+  @ApiProperty({
+    example: '123456789',
+    description: 'Instagram Page ID ou WhatsApp Phone Number ID',
+  })
   @IsString()
   @IsNotEmpty()
   pageId: string;
 
-  @ApiProperty({ description: 'Token de acesso de longa duração (será criptografado)' })
+  @ApiProperty({
+    description: 'Token de acesso de longa duração (será criptografado)',
+  })
   @IsString()
   @IsNotEmpty()
   accessToken: string;
 
-  @ApiPropertyOptional({ example: '2027-01-01T00:00:00Z', description: 'Expiração do token (null = permanente)' })
+  @ApiPropertyOptional({
+    description:
+      'App Secret do app Meta deste cliente, usado para validar a assinatura dos webhooks recebidos (será criptografado)',
+  })
+  @IsOptional()
+  @IsString()
+  appSecret?: string;
+
+  @ApiPropertyOptional({
+    example: '2027-01-01T00:00:00Z',
+    description: 'Expiração do token (null = permanente)',
+  })
   @IsOptional()
   @IsDateString()
   tokenExpiresAt?: string;

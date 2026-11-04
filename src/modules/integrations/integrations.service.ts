@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
@@ -26,15 +31,23 @@ export class IntegrationsService implements IIntegrationsService {
       const entity = this.repo.create({
         ...dto,
         accessToken: this.crypto.encrypt(dto.accessToken),
-        tokenExpiresAt: dto.tokenExpiresAt ? new Date(dto.tokenExpiresAt) : null,
+        appSecret: dto.appSecret ? this.crypto.encrypt(dto.appSecret) : null,
+        tokenExpiresAt: dto.tokenExpiresAt
+          ? new Date(dto.tokenExpiresAt)
+          : null,
       });
       const saved = await this.repo.save(entity);
       await this.cache.set(cacheById(saved.id), saved);
       await this.cache.set(cacheByPage(saved.pageId), saved);
       return saved;
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as QueryFailedError & { code: string }).code === '23505') {
-        throw new ConflictException('An integration with this pageId already exists');
+      if (
+        err instanceof QueryFailedError &&
+        (err as QueryFailedError & { code: string }).code === '23505'
+      ) {
+        throw new ConflictException(
+          'An integration with this pageId already exists',
+        );
       }
       throw err;
     }
@@ -49,7 +62,8 @@ export class IntegrationsService implements IIntegrationsService {
     if (cached) return cached;
 
     const integration = await this.repo.findOne({ where: { id } });
-    if (!integration) throw new NotFoundException(`Integration ${id} not found`);
+    if (!integration)
+      throw new NotFoundException(`Integration ${id} not found`);
 
     await this.cache.set(cacheById(id), integration);
     return integration;
@@ -60,22 +74,31 @@ export class IntegrationsService implements IIntegrationsService {
     if (cached) return cached;
 
     const integration = await this.repo.findOne({ where: { pageId } });
-    if (!integration) throw new NotFoundException(`Integration for pageId ${pageId} not found`);
+    if (!integration)
+      throw new NotFoundException(`Integration for pageId ${pageId} not found`);
 
     await this.cache.set(cacheById(integration.id), integration);
     await this.cache.set(cacheByPage(pageId), integration);
     return integration;
   }
 
-  async update(id: string, dto: UpdateIntegrationDto): Promise<IntegrationEntity> {
+  async update(
+    id: string,
+    dto: UpdateIntegrationDto,
+  ): Promise<IntegrationEntity> {
     const integration = await this.findOne(id);
 
     const patch: Partial<IntegrationEntity> = {
       isActive: dto.isActive,
-      tokenExpiresAt: dto.tokenExpiresAt ? new Date(dto.tokenExpiresAt) : integration.tokenExpiresAt,
+      tokenExpiresAt: dto.tokenExpiresAt
+        ? new Date(dto.tokenExpiresAt)
+        : integration.tokenExpiresAt,
     };
     if (dto.accessToken) {
       patch.accessToken = this.crypto.encrypt(dto.accessToken);
+    }
+    if (dto.appSecret) {
+      patch.appSecret = this.crypto.encrypt(dto.appSecret);
     }
 
     const updated = await this.repo.save({ ...integration, ...patch });

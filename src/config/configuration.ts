@@ -53,6 +53,7 @@ export const validationSchema = Joi.object({
   GOOGLE_CLIENT_SECRET: Joi.string().allow('').optional(),
   GOOGLE_REFRESH_TOKEN: Joi.string().allow('').optional(),
   GOOGLE_DRIVE_ROOT_FOLDER_ID: Joi.string().allow('').optional(),
+  DASHBOARD_ORIGIN: Joi.string().uri().allow('').optional(),
   MAX_FILE_SIZE_MB: Joi.number().default(500),
   MAILGUN_API_KEY: Joi.string().required(),
   MAILGUN_DOMAIN: Joi.string().required(),
