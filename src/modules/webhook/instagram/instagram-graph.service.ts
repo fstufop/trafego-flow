@@ -97,6 +97,46 @@ export class InstagramGraphService implements IInstagramGraphService {
     return response.data;
   }
 
+  async subscribeAccountToWebhooks(
+    pageId: string,
+    fields: string[],
+  ): Promise<{ success: boolean }> {
+    const token = await this.getDecryptedToken(pageId);
+    const url = `${this.baseUrl}/${pageId}/subscribed_apps`;
+
+    this.logger.log(
+      `[subscribe] Subscribing pageId=${pageId} to fields=${fields.join(',')}`,
+    );
+
+    const response = await firstValueFrom(
+      this.httpService.post<{ success: boolean }>(
+        url,
+        {},
+        {
+          params: {
+            access_token: token,
+            subscribed_fields: fields.join(','),
+          },
+        },
+      ),
+    ).catch(
+      (err: {
+        response?: { status?: number; data?: { error?: { code?: number } } };
+      }) => {
+        this.logger.warn(
+          `[subscribe] Graph API error for pageId=${pageId}: ${JSON.stringify(err?.response?.data)}`,
+        );
+        return this.handleCommonGraphError(pageId, err);
+      },
+    );
+
+    this.logger.log(
+      `[subscribe] Result for pageId=${pageId}: ${JSON.stringify(response.data)}`,
+    );
+
+    return response.data;
+  }
+
   async sendCommentPrivateReply(
     pageId: string,
     commentId: string,

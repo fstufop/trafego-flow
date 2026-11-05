@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -30,5 +30,24 @@ export class InstagramGraphController {
     @Query('igsid') igsid: string,
   ): Promise<InstagramFollowStatus> {
     return this.graphService.getFollowStatus(pageId, igsid);
+  }
+
+  @Post('subscribe')
+  @ApiOperation({
+    summary:
+      '[Setup] Subscribe an Instagram professional account to webhook fields (required per account, in addition to the app-level field toggles in the Meta dashboard)',
+  })
+  @ApiQuery({ name: 'pageId', required: true })
+  @ApiQuery({
+    name: 'fields',
+    required: false,
+    description: 'Comma-separated webhook fields (default: comments)',
+  })
+  subscribeAccountToWebhooks(
+    @Query('pageId') pageId: string,
+    @Query('fields') fields?: string,
+  ): Promise<{ success: boolean }> {
+    const fieldList = fields ? fields.split(',') : ['comments'];
+    return this.graphService.subscribeAccountToWebhooks(pageId, fieldList);
   }
 }

@@ -186,6 +186,39 @@ describe('InstagramGraphService', () => {
     });
   });
 
+  describe('subscribeAccountToWebhooks', () => {
+    it('should POST to /{pageId}/subscribed_apps with comma-separated subscribed_fields', async () => {
+      mockHttpService.post.mockReturnValue(of({ data: { success: true } }));
+
+      const result = await service.subscribeAccountToWebhooks('PAGE123', [
+        'comments',
+        'live_comments',
+      ]);
+
+      expect(mockHttpService.post).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/PAGE123/subscribed_apps',
+        {},
+        {
+          params: {
+            access_token: 'plaintext-token',
+            subscribed_fields: 'comments,live_comments',
+          },
+        },
+      );
+      expect(result).toEqual({ success: true });
+    });
+
+    it('should throw OAuthTokenExpiredException when Graph API returns error 190', async () => {
+      mockHttpService.post.mockReturnValue(
+        throwError(() => ({ response: { data: { error: { code: 190 } } } })),
+      );
+
+      await expect(
+        service.subscribeAccountToWebhooks('PAGE123', ['comments']),
+      ).rejects.toThrow(OAuthTokenExpiredException);
+    });
+  });
+
   describe('sendCommentPrivateReply', () => {
     it('should call Graph API with recipient.comment_id instead of an IGSID', async () => {
       mockHttpService.post.mockReturnValue(

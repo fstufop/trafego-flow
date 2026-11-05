@@ -12,6 +12,10 @@ export interface IInstagramGraphService {
     pageId: string,
     igsid: string,
   ): Promise<InstagramFollowStatus>;
+  subscribeAccountToWebhooks(
+    pageId: string,
+    fields: string[],
+  ): Promise<{ success: boolean }>;
   sendTextMessage(
     pageId: string,
     recipientIgsid: string,
