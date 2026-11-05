@@ -20,7 +20,7 @@ JOB_NAME     = $(PROJECT_ID)-migrate
         deploy migrate-create migrate \
         update full-deploy \
         pause resume \
-        logs open
+        logs open deploys
 
 # ── App build and config ──────────────────────────────────────────────────────
 docker-down: ## Para docker em execução
@@ -166,3 +166,13 @@ open: ## Abre a URL pública do serviço no navegador
 	@URL=$$(gcloud run services describe $(SERVICE_NAME) --region $(REGION) --format="value(status.url)"); \
 	echo "Abrindo $$URL"; \
 	open "$$URL" 2>/dev/null || xdg-open "$$URL"
+
+deploys: ## Mostra as últimas revisões do Cloud Run e qual está recebendo tráfego
+	@echo "Revisão recebendo tráfego:"
+	@gcloud run services describe $(SERVICE_NAME) --region $(REGION) \
+	  --format="value(status.traffic)"
+	@echo ""
+	@echo "Últimas revisões:"
+	@gcloud run revisions list --service $(SERVICE_NAME) --region $(REGION) \
+	  --limit 5 \
+	  --format="table(metadata.name,status.conditions[0].lastTransitionTime,status.conditions[0].status)"
