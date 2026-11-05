@@ -12,7 +12,11 @@ import { CsvFormatterService } from '../../common/csv/csv-formatter.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { MetaAdsService } from './meta-ads.service.js';
 import { ICampaignReportsService } from './interfaces/campaign-reports-service.interface.js';
-import { AdsetMessageRow, LiveReportData, AdReachRow } from '../ai/interfaces/ai-provider.interface.js';
+import {
+  AdsetMessageRow,
+  LiveReportData,
+  AdReachRow,
+} from '../ai/interfaces/ai-provider.interface.js';
 import {
   parseLiveCampaigns,
   getLatestLiveDates,
@@ -71,7 +75,11 @@ export class CampaignReportsService implements ICampaignReportsService {
     let key = base;
     if (timeIncrement) key += `:ti:${timeIncrement}`;
     if (breakdowns) {
-      const sorted = breakdowns.split(',').map(s => s.trim()).sort().join(',');
+      const sorted = breakdowns
+        .split(',')
+        .map((s) => s.trim())
+        .sort()
+        .join(',');
       key += `:bd:${sorted}`;
     }
     if (includeThumbnails) key += ':thumbs';
@@ -79,7 +87,10 @@ export class CampaignReportsService implements ICampaignReportsService {
     return key;
   }
 
-  private assertThumbnailsLevel(includeThumbnails: boolean, level: MetaInsightsLevel): void {
+  private assertThumbnailsLevel(
+    includeThumbnails: boolean,
+    level: MetaInsightsLevel,
+  ): void {
     if (includeThumbnails && level !== MetaInsightsLevel.AD) {
       throw new BadRequestException('includeThumbnails requer level=ad');
     }
@@ -89,13 +100,21 @@ export class CampaignReportsService implements ICampaignReportsService {
    * Busca os creatives dos anúncios e anexa thumbnail_url/image_url às linhas.
    * Best-effort: falha na busca de creatives não derruba o relatório.
    */
-  private async enrichWithThumbnails(rows: MetaInsights[], accessToken: string): Promise<MetaInsights[]> {
-    const adIds = [...new Set(rows.map(r => r.ad_id).filter((id): id is string => !!id))];
+  private async enrichWithThumbnails(
+    rows: MetaInsights[],
+    accessToken: string,
+  ): Promise<MetaInsights[]> {
+    const adIds = [
+      ...new Set(rows.map((r) => r.ad_id).filter((id): id is string => !!id)),
+    ];
     if (!adIds.length) return rows;
 
     try {
-      const creatives = await this.metaAdsService.fetchAdCreatives(adIds, accessToken);
-      return rows.map(row => {
+      const creatives = await this.metaAdsService.fetchAdCreatives(
+        adIds,
+        accessToken,
+      );
+      return rows.map((row) => {
         const creative = row.ad_id ? creatives[row.ad_id] : undefined;
         return creative
           ? {
@@ -107,26 +126,38 @@ export class CampaignReportsService implements ICampaignReportsService {
           : row;
       });
     } catch (err) {
-      this.logger.warn(`Falha ao buscar thumbnails dos anúncios: ${(err as Error)?.message ?? err}`);
+      this.logger.warn(
+        `Falha ao buscar thumbnails dos anúncios: ${(err as Error)?.message ?? err}`,
+      );
       return rows;
     }
   }
 
-  async listCampaigns(adAccountId: string, cursor?: string): Promise<PaginatedResult<MetaCampaign>> {
+  async listCampaigns(
+    adAccountId: string,
+    cursor?: string,
+  ): Promise<PaginatedResult<MetaCampaign>> {
     const cacheKey = cursor
       ? `meta:campaigns:${adAccountId}:cursor:${cursor}`
       : `meta:campaigns:${adAccountId}`;
 
-    const cached = await this.cache.get<PaginatedResult<MetaCampaign>>(cacheKey);
+    const cached =
+      await this.cache.get<PaginatedResult<MetaCampaign>>(cacheKey);
     if (cached) return cached;
 
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
 
     const token = this.crypto.decrypt(account.accessToken);
-    const result = await this.metaAdsService.fetchCampaigns(adAccountId, token, cursor);
+    const result = await this.metaAdsService.fetchCampaigns(
+      adAccountId,
+      token,
+      cursor,
+    );
     const paginated: PaginatedResult<MetaCampaign> = {
       data: result.data,
       paging: { next: result.paging?.cursors?.after },
@@ -135,12 +166,19 @@ export class CampaignReportsService implements ICampaignReportsService {
     return paginated;
   }
 
-  async getInsights(adAccountId: string, query: GetInsightsQueryDto): Promise<PaginatedResult<MetaInsights>> {
+  async getInsights(
+    adAccountId: string,
+    query: GetInsightsQueryDto,
+  ): Promise<PaginatedResult<MetaInsights>> {
     if (query.datePreset && (query.since || query.until)) {
-      throw new BadRequestException('Informe datePreset OU since+until, não ambos');
+      throw new BadRequestException(
+        'Informe datePreset OU since+until, não ambos',
+      );
     }
     if (!!query.since !== !!query.until) {
-      throw new BadRequestException('since e until devem ser informados juntos');
+      throw new BadRequestException(
+        'since e until devem ser informados juntos',
+      );
     }
 
     const level = query.level ?? MetaInsightsLevel.CAMPAIGN;
@@ -159,19 +197,27 @@ export class CampaignReportsService implements ICampaignReportsService {
       includeThumbnails,
     );
 
-    const cached = await this.cache.get<PaginatedResult<MetaInsights>>(cacheKey);
+    const cached =
+      await this.cache.get<PaginatedResult<MetaInsights>>(cacheKey);
     if (cached) return cached;
 
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
 
     const token = this.crypto.decrypt(account.accessToken);
     const result = await this.metaAdsService.fetchInsights(
       adAccountId,
       token,
-      { ...period, level, timeIncrement: query.timeIncrement, breakdowns: query.breakdowns },
+      {
+        ...period,
+        level,
+        timeIncrement: query.timeIncrement,
+        breakdowns: query.breakdowns,
+      },
       query.cursor,
     );
     const rows = includeThumbnails
@@ -188,7 +234,8 @@ export class CampaignReportsService implements ICampaignReportsService {
   private resolveInsightsPeriod(
     query: Pick<GetInsightsQueryDto, 'since' | 'until' | 'datePreset'>,
   ): Pick<MetaInsightsParams, 'datePreset' | 'since' | 'until'> {
-    if (query.since && query.until) return { since: query.since, until: query.until };
+    if (query.since && query.until)
+      return { since: query.since, until: query.until };
     return { datePreset: query.datePreset ?? MetaDatePreset.LAST_30D };
   }
 
@@ -206,12 +253,16 @@ export class CampaignReportsService implements ICampaignReportsService {
       breakdowns,
     );
 
-    const cached = await this.cache.get<MetaInsights | PaginatedResult<MetaInsights>>(cacheKey);
+    const cached = await this.cache.get<
+      MetaInsights | PaginatedResult<MetaInsights>
+    >(cacheKey);
     if (cached) return cached;
 
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
 
     const token = this.crypto.decrypt(account.accessToken);
@@ -238,22 +289,34 @@ export class CampaignReportsService implements ICampaignReportsService {
 
   async exportInsightsCsv(dto: ExportInsightsCsvDto): Promise<string> {
     if (dto.datePreset && (dto.since || dto.until)) {
-      throw new BadRequestException('Informe datePreset OU since+until, não ambos');
+      throw new BadRequestException(
+        'Informe datePreset OU since+until, não ambos',
+      );
     }
     if (!!dto.since !== !!dto.until) {
-      throw new BadRequestException('since e until devem ser informados juntos');
+      throw new BadRequestException(
+        'since e until devem ser informados juntos',
+      );
     }
 
     const level = dto.level ?? MetaInsightsLevel.CAMPAIGN;
     const includeThumbnails = dto.includeThumbnails ?? false;
     this.assertThumbnailsLevel(includeThumbnails, level);
 
-    const columns = this.resolveColumns(dto.columns, dto.breakdowns, includeThumbnails);
+    const columns = this.resolveColumns(
+      dto.columns,
+      dto.breakdowns,
+      includeThumbnails,
+    );
     const period = this.resolvePeriod(dto);
 
-    const account = await this.adAccountsService.findByAdAccountId(dto.adAccountId);
+    const account = await this.adAccountsService.findByAdAccountId(
+      dto.adAccountId,
+    );
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${dto.adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${dto.adAccountId} is inactive`,
+      );
     }
     const token = this.crypto.decrypt(account.accessToken);
 
@@ -262,17 +325,32 @@ export class CampaignReportsService implements ICampaignReportsService {
     let pageCount = 0;
 
     do {
-      const cacheKey = this.buildExportCacheKey(dto.adAccountId, period, level, dto.timeIncrement, dto.breakdowns, cursor);
+      const cacheKey = this.buildExportCacheKey(
+        dto.adAccountId,
+        period,
+        level,
+        dto.timeIncrement,
+        dto.breakdowns,
+        cursor,
+      );
       let page = await this.cache.get<PaginatedResult<MetaInsights>>(cacheKey);
 
       if (!page) {
         const result = await this.metaAdsService.fetchInsights(
           dto.adAccountId,
           token,
-          { ...period, level, timeIncrement: dto.timeIncrement, breakdowns: dto.breakdowns },
+          {
+            ...period,
+            level,
+            timeIncrement: dto.timeIncrement,
+            breakdowns: dto.breakdowns,
+          },
           cursor,
         );
-        page = { data: result.data, paging: { next: result.paging?.cursors?.after } };
+        page = {
+          data: result.data,
+          paging: { next: result.paging?.cursors?.after },
+        };
         await this.cache.set(cacheKey, page, this.insightsTtlMs);
       }
 
@@ -281,7 +359,9 @@ export class CampaignReportsService implements ICampaignReportsService {
       pageCount++;
 
       if (pageCount >= MAX_EXPORT_PAGES) {
-        this.logger.warn(`exportInsightsCsv: MAX_EXPORT_PAGES (${MAX_EXPORT_PAGES}) reached for ${dto.adAccountId}`);
+        this.logger.warn(
+          `exportInsightsCsv: MAX_EXPORT_PAGES (${MAX_EXPORT_PAGES}) reached for ${dto.adAccountId}`,
+        );
         break;
       }
     } while (cursor);
@@ -301,16 +381,18 @@ export class CampaignReportsService implements ICampaignReportsService {
   ): MetaInsightsColumn[] {
     if (columns?.length) return columns;
     const activeBreakdowns = breakdowns
-      ? breakdowns.split(',').map(s => s.trim())
+      ? breakdowns.split(',').map((s) => s.trim())
       : [];
     return Object.values(MetaInsightsColumn).filter(
-      col =>
+      (col) =>
         (!CREATIVE_ENRICHMENT_COLUMNS.includes(col) || includeThumbnails) &&
         (!BREAKDOWN_COLUMNS.includes(col) || activeBreakdowns.includes(col)),
     );
   }
 
-  private resolvePeriod(dto: ExportInsightsCsvDto): Pick<MetaInsightsParams, 'datePreset' | 'since' | 'until'> {
+  private resolvePeriod(
+    dto: ExportInsightsCsvDto,
+  ): Pick<MetaInsightsParams, 'datePreset' | 'since' | 'until'> {
     if (dto.since && dto.until) return { since: dto.since, until: dto.until };
     return { datePreset: dto.datePreset ?? MetaDatePreset.LAST_30D };
   }
@@ -337,7 +419,9 @@ export class CampaignReportsService implements ICampaignReportsService {
   async listAdsets(adAccountId: string): Promise<MetaAdset[]> {
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
     const token = this.crypto.decrypt(account.accessToken);
     return this.metaAdsService.fetchAdsets(adAccountId, token);
@@ -351,7 +435,9 @@ export class CampaignReportsService implements ICampaignReportsService {
   ): Promise<MetaInsights | null> {
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
     const token = this.crypto.decrypt(account.accessToken);
     return this.metaAdsService.fetchAdsetInsights(adsetId, token, since, until);
@@ -364,12 +450,19 @@ export class CampaignReportsService implements ICampaignReportsService {
   ): Promise<AdsetMessageRow[]> {
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
     const token = this.crypto.decrypt(account.accessToken);
 
     const [insightRows, adsets] = await Promise.all([
-      this.metaAdsService.fetchAdsetMessageInsights(adAccountId, token, since, until),
+      this.metaAdsService.fetchAdsetMessageInsights(
+        adAccountId,
+        token,
+        since,
+        until,
+      ),
       this.metaAdsService.fetchAdsets(adAccountId, token),
     ]);
 
@@ -377,11 +470,14 @@ export class CampaignReportsService implements ICampaignReportsService {
 
     const rows: AdsetMessageRow[] = insightRows.map((row) => {
       const messagesStarted = parseInt(
-        row.actions?.find((a) => a.action_type === 'messaging_conversation_started_7d')?.value ?? '0',
+        row.actions?.find(
+          (a) => a.action_type === 'messaging_conversation_started_7d',
+        )?.value ?? '0',
         10,
       );
       const spend = parseFloat(row.spend ?? '0');
-      const costPerMessage = messagesStarted > 0 ? spend / messagesStarted : null;
+      const costPerMessage =
+        messagesStarted > 0 ? spend / messagesStarted : null;
       const rawStart = startTimeById.get(row.adset_id ?? '') ?? null;
       const startDate = rawStart ? this.formatAdsetDate(rawStart) : '–';
       return {
@@ -405,7 +501,9 @@ export class CampaignReportsService implements ICampaignReportsService {
   async getLiveReportData(adAccountId: string): Promise<LiveReportData[]> {
     const account = await this.adAccountsService.findByAdAccountId(adAccountId);
     if (!account.isActive) {
-      throw new UnprocessableEntityException(`Ad account ${adAccountId} is inactive`);
+      throw new UnprocessableEntityException(
+        `Ad account ${adAccountId} is inactive`,
+      );
     }
     const token = this.crypto.decrypt(account.accessToken);
 
@@ -416,11 +514,15 @@ export class CampaignReportsService implements ICampaignReportsService {
     const todayStr = formatIsoDate(today);
 
     // Discovery fetch: 60-day window — only used to identify which live dates exist
-    const discoveryResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
-      since: since60,
-      until: todayStr,
-      level: MetaInsightsLevel.CAMPAIGN,
-    });
+    const discoveryResult = await this.metaAdsService.fetchInsights(
+      adAccountId,
+      token,
+      {
+        since: since60,
+        until: todayStr,
+        level: MetaInsightsLevel.CAMPAIGN,
+      },
+    );
 
     const campaigns = discoveryResult.data
       .map((r) => ({ id: r.campaign_id ?? '', name: r.campaign_name ?? '' }))
@@ -442,11 +544,15 @@ export class CampaignReportsService implements ICampaignReportsService {
       const liveDateStr = `${dd}_${mm}_${yy}`;
 
       // Per-live metrics fetch: live-date→today window, same as the ad-level fetch below
-      const liveInsightResult = await this.metaAdsService.fetchInsights(adAccountId, token, {
-        since: liveDateIso,
-        until: todayStr,
-        level: MetaInsightsLevel.CAMPAIGN,
-      });
+      const liveInsightResult = await this.metaAdsService.fetchInsights(
+        adAccountId,
+        token,
+        {
+          since: liveDateIso,
+          until: todayStr,
+          level: MetaInsightsLevel.CAMPAIGN,
+        },
+      );
 
       const captationRows = liveInsightResult.data.filter((r) => {
         const name = r.campaign_name ?? '';
@@ -481,7 +587,13 @@ export class CampaignReportsService implements ICampaignReportsService {
         .filter((r) => r.adName && r.reach > 0)
         .sort((a, b) => b.reach - a.reach);
 
-      results.push({ liveDate: liveDateDisplay, captationSpend, captationReach, captationClicks, adReaches });
+      results.push({
+        liveDate: liveDateDisplay,
+        captationSpend,
+        captationReach,
+        captationClicks,
+        adReaches,
+      });
     }
 
     return results;

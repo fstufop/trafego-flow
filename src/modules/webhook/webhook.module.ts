@@ -5,6 +5,7 @@ import { IntegrationsModule } from '../integrations/integrations.module.js';
 import { CryptoModule } from '../../common/crypto/crypto.module.js';
 import { ConversationRulesModule } from '../conversation-rules/conversation-rules.module.js';
 import { InstagramWebhookController } from './instagram/instagram-webhook.controller.js';
+import { InstagramGraphController } from './instagram/instagram-graph.controller.js';
 import { InstagramWebhookService } from './instagram/instagram-webhook.service.js';
 import { InstagramGraphService } from './instagram/instagram-graph.service.js';
 import { ReplyBuilderService } from './instagram/reply-builder.service.js';
@@ -19,7 +20,7 @@ import { InstagramWebhookProcessor } from './instagram/processors/instagram-webh
     ConversationRulesModule,
     BullModule.registerQueue({ name: 'instagram-webhook' }),
   ],
-  controllers: [InstagramWebhookController],
+  controllers: [InstagramWebhookController, InstagramGraphController],
   providers: [
     InstagramWebhookService,
     InstagramGraphService,

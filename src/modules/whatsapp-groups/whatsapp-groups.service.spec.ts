@@ -6,7 +6,9 @@ import { QueryFailedError } from 'typeorm';
 import { WhatsAppGroupsService } from './whatsapp-groups.service.js';
 import { WhatsAppGroupEntity } from './entities/whatsapp-group.entity.js';
 
-const makeGroup = (overrides: Partial<WhatsAppGroupEntity> = {}): WhatsAppGroupEntity =>
+const makeGroup = (
+  overrides: Partial<WhatsAppGroupEntity> = {},
+): WhatsAppGroupEntity =>
   Object.assign(new WhatsAppGroupEntity(), {
     id: 'group-uuid',
     clientId: 'client-uuid',
@@ -42,7 +44,10 @@ describe('WhatsAppGroupsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WhatsAppGroupsService,
-        { provide: getRepositoryToken(WhatsAppGroupEntity), useValue: mockRepo },
+        {
+          provide: getRepositoryToken(WhatsAppGroupEntity),
+          useValue: mockRepo,
+        },
         { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
@@ -58,21 +63,28 @@ describe('WhatsAppGroupsService', () => {
       mockCache.del.mockResolvedValue(undefined);
       mockCache.set.mockResolvedValue(undefined);
 
-      const result = await service.create({ clientId: group.clientId, groupJid: group.groupJid });
+      const result = await service.create({
+        clientId: group.clientId,
+        groupJid: group.groupJid,
+      });
 
       expect(mockRepo.save).toHaveBeenCalledWith(group);
-      expect(mockCache.del).toHaveBeenCalledWith(`whatsapp:groups:client:${group.clientId}`);
+      expect(mockCache.del).toHaveBeenCalledWith(
+        `whatsapp:groups:client:${group.clientId}`,
+      );
       expect(result).toBe(group);
     });
 
     it('lança ConflictException para JID duplicado (código 23505)', async () => {
       mockRepo.create.mockReturnValue({});
-      const err = Object.assign(new QueryFailedError('', [], new Error()), { code: '23505' });
+      const err = Object.assign(new QueryFailedError('', [], new Error()), {
+        code: '23505',
+      });
       mockRepo.save.mockRejectedValue(err);
 
-      await expect(service.create({ clientId: 'c', groupJid: '1@g.us' })).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.create({ clientId: 'c', groupJid: '1@g.us' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -85,7 +97,9 @@ describe('WhatsAppGroupsService', () => {
 
       const result = await service.findAll('client-uuid');
 
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { clientId: 'client-uuid', isActive: true } });
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        where: { clientId: 'client-uuid', isActive: true },
+      });
       expect(result).toEqual([group]);
     });
 
@@ -115,7 +129,9 @@ describe('WhatsAppGroupsService', () => {
       mockCache.get.mockResolvedValue(null);
       mockRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -129,8 +145,12 @@ describe('WhatsAppGroupsService', () => {
       await service.remove('group-uuid');
 
       expect(mockRepo.softRemove).toHaveBeenCalledWith(group);
-      expect(mockCache.del).toHaveBeenCalledWith(`whatsapp:group:id:${group.id}`);
-      expect(mockCache.del).toHaveBeenCalledWith(`whatsapp:groups:client:${group.clientId}`);
+      expect(mockCache.del).toHaveBeenCalledWith(
+        `whatsapp:group:id:${group.id}`,
+      );
+      expect(mockCache.del).toHaveBeenCalledWith(
+        `whatsapp:groups:client:${group.clientId}`,
+      );
     });
   });
 });

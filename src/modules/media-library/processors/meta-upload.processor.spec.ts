@@ -7,8 +7,14 @@ import * as fs from 'fs';
 // Mock googleapis to prevent module-load errors when google-drive.service.ts is imported
 jest.mock('googleapis', () => ({
   google: {
-    auth: { OAuth2: jest.fn().mockImplementation(() => ({ setCredentials: jest.fn() })) },
-    drive: jest.fn().mockReturnValue({ files: { create: jest.fn(), get: jest.fn() } }),
+    auth: {
+      OAuth2: jest
+        .fn()
+        .mockImplementation(() => ({ setCredentials: jest.fn() })),
+    },
+    drive: jest
+      .fn()
+      .mockReturnValue({ files: { create: jest.fn(), get: jest.fn() } }),
   },
 }));
 
@@ -23,7 +29,11 @@ import { MetaUploadJobPayload } from '../types/meta-upload-job.type.js';
 jest.mock('fs', () => ({ unlink: jest.fn((_path, cb) => cb(null)) }));
 
 function makeJob(data: MetaUploadJobPayload): Job<MetaUploadJobPayload> {
-  return { data, id: 'job-1', opts: {} } as unknown as Job<MetaUploadJobPayload>;
+  return {
+    data,
+    id: 'job-1',
+    opts: {},
+  } as unknown as Job<MetaUploadJobPayload>;
 }
 
 const PAYLOAD: MetaUploadJobPayload = {
@@ -50,14 +60,17 @@ describe('MetaUploadProcessor', () => {
         { provide: getRepositoryToken(MediaUploadLog), useValue: logsRepo },
         { provide: MetaMediaService, useValue: { upload: jest.fn() } },
         { provide: GoogleDriveService, useValue: { download: jest.fn() } },
-        { provide: AesCryptoService, useValue: { decrypt: jest.fn().mockReturnValue('plain_token') } },
+        {
+          provide: AesCryptoService,
+          useValue: { decrypt: jest.fn().mockReturnValue('plain_token') },
+        },
       ],
     }).compile();
 
     processor = module.get(MetaUploadProcessor);
-    meta = module.get(MetaMediaService) as jest.Mocked<MetaMediaService>;
-    drive = module.get(GoogleDriveService) as jest.Mocked<GoogleDriveService>;
-    crypto = module.get(AesCryptoService) as jest.Mocked<AesCryptoService>;
+    meta = module.get(MetaMediaService);
+    drive = module.get(GoogleDriveService);
+    crypto = module.get(AesCryptoService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -69,7 +82,10 @@ describe('MetaUploadProcessor', () => {
     await processor.process(makeJob(PAYLOAD));
 
     expect(crypto.decrypt).toHaveBeenCalledWith('enc_token');
-    expect(drive.download).toHaveBeenCalledWith('drive-file-id', expect.stringContaining(os.tmpdir()));
+    expect(drive.download).toHaveBeenCalledWith(
+      'drive-file-id',
+      expect.stringContaining(os.tmpdir()),
+    );
     expect(meta.upload).toHaveBeenCalledWith(
       'act_123',
       'plain_token',
@@ -109,19 +125,22 @@ describe('MetaUploadProcessor', () => {
 
   it('saves Meta API error body when Axios returns a non-2xx response', async () => {
     drive.download.mockResolvedValue(undefined);
-    const axiosError = Object.assign(new Error('Request failed with status code 403'), {
-      isAxiosError: true,
-      response: {
-        status: 403,
-        data: {
-          error: {
-            message: 'Invalid OAuth access token',
-            type: 'OAuthException',
-            code: 190,
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 403'),
+      {
+        isAxiosError: true,
+        response: {
+          status: 403,
+          data: {
+            error: {
+              message: 'Invalid OAuth access token',
+              type: 'OAuthException',
+              code: 190,
+            },
           },
         },
       },
-    });
+    );
     meta.upload.mockRejectedValue(axiosError);
 
     await processor.process(makeJob(PAYLOAD));

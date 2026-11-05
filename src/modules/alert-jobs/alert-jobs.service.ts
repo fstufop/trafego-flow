@@ -15,7 +15,10 @@ export class AlertJobsService implements IAlertJobsService {
     private readonly repo: Repository<AlertJobEntity>,
   ) {}
 
-  findAll(filters?: { status?: AlertJobStatus; type?: AlertJobType }): Promise<AlertJobEntity[]> {
+  findAll(filters?: {
+    status?: AlertJobStatus;
+    type?: AlertJobType;
+  }): Promise<AlertJobEntity[]> {
     return this.repo.find({
       where: {
         ...(filters?.status !== undefined && { status: filters.status }),

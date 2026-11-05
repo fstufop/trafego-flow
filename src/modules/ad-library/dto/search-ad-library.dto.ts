@@ -1,4 +1,14 @@
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -31,19 +41,28 @@ export enum MediaType {
 export class SearchAdLibraryDto {
   // ── Filtros Meta API ──────────────────────────────────────────────────────
 
-  @ApiPropertyOptional({ example: 'moda', description: 'Palavras-chave nos criativos (máx 100 chars). Espaço = AND' })
+  @ApiPropertyOptional({
+    example: 'moda',
+    description: 'Palavras-chave nos criativos (máx 100 chars). Espaço = AND',
+  })
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(100)
   terms?: string = 'moda';
 
-  @ApiPropertyOptional({ enum: SearchType, default: SearchType.KEYWORD_UNORDERED })
+  @ApiPropertyOptional({
+    enum: SearchType,
+    default: SearchType.KEYWORD_UNORDERED,
+  })
   @IsOptional()
   @IsEnum(SearchType)
   searchType?: SearchType = SearchType.KEYWORD_UNORDERED;
 
-  @ApiPropertyOptional({ example: 'BR', description: 'Código ISO-2 do país. Múltiplos separados por vírgula: BR,AR' })
+  @ApiPropertyOptional({
+    example: 'BR',
+    description: 'Código ISO-2 do país. Múltiplos separados por vírgula: BR,AR',
+  })
   @IsOptional()
   @IsString()
   country?: string = 'BR';
@@ -58,12 +77,18 @@ export class SearchAdLibraryDto {
   @IsEnum(AdActiveStatus)
   activeStatus?: AdActiveStatus = AdActiveStatus.ACTIVE;
 
-  @ApiPropertyOptional({ example: 'INSTAGRAM,FACEBOOK', description: 'Plataformas separadas por vírgula' })
+  @ApiPropertyOptional({
+    example: 'INSTAGRAM,FACEBOOK',
+    description: 'Plataformas separadas por vírgula',
+  })
   @IsOptional()
   @IsString()
   platforms?: string;
 
-  @ApiPropertyOptional({ example: 'pt', description: 'Códigos ISO 639-1 separados por vírgula' })
+  @ApiPropertyOptional({
+    example: 'pt',
+    description: 'Códigos ISO 639-1 separados por vírgula',
+  })
   @IsOptional()
   @IsString()
   languages?: string;
@@ -73,24 +98,37 @@ export class SearchAdLibraryDto {
   @IsEnum(MediaType)
   mediaType?: MediaType;
 
-  @ApiPropertyOptional({ example: '2024-01-01', description: 'Data mínima de veiculação (YYYY-MM-DD)' })
+  @ApiPropertyOptional({
+    example: '2024-01-01',
+    description: 'Data mínima de veiculação (YYYY-MM-DD)',
+  })
   @IsOptional()
   @IsDateString()
   deliveryDateMin?: string;
 
-  @ApiPropertyOptional({ example: '2024-12-31', description: 'Data máxima de veiculação (YYYY-MM-DD)' })
+  @ApiPropertyOptional({
+    example: '2024-12-31',
+    description: 'Data máxima de veiculação (YYYY-MM-DD)',
+  })
   @IsOptional()
   @IsDateString()
   deliveryDateMax?: string;
 
-  @ApiPropertyOptional({ example: '123456,789012', description: 'Até 10 IDs de página separados por vírgula' })
+  @ApiPropertyOptional({
+    example: '123456,789012',
+    description: 'Até 10 IDs de página separados por vírgula',
+  })
   @IsOptional()
   @IsString()
   pageIds?: string;
 
   // ── Paginação ─────────────────────────────────────────────────────────────
 
-  @ApiPropertyOptional({ example: 50, description: 'Resultados únicos por página (máx 100)', default: 50 })
+  @ApiPropertyOptional({
+    example: 50,
+    description: 'Resultados únicos por página (máx 100)',
+    default: 50,
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -98,21 +136,30 @@ export class SearchAdLibraryDto {
   @Type(() => Number)
   limit?: number = 50;
 
-  @ApiPropertyOptional({ description: 'Cursor de paginação retornado em paging.cursors.after' })
+  @ApiPropertyOptional({
+    description: 'Cursor de paginação retornado em paging.cursors.after',
+  })
   @IsOptional()
   @IsString()
   after?: string;
 
   // ── Filtros pós-resposta (aplicados no service) ───────────────────────────
 
-  @ApiPropertyOptional({ example: 100, description: 'Descarta anunciantes com spend.lowerBound abaixo deste valor' })
+  @ApiPropertyOptional({
+    example: 100,
+    description: 'Descarta anunciantes com spend.lowerBound abaixo deste valor',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Type(() => Number)
   minSpend?: number;
 
-  @ApiPropertyOptional({ example: 1000, description: 'Descarta anunciantes com impressions.lowerBound abaixo deste valor' })
+  @ApiPropertyOptional({
+    example: 1000,
+    description:
+      'Descarta anunciantes com impressions.lowerBound abaixo deste valor',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

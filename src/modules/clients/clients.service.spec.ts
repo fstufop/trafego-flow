@@ -56,7 +56,10 @@ describe('ClientsService', () => {
       mockRepo.create.mockReturnValue(mockClient);
       mockRepo.save.mockResolvedValue(mockClient);
 
-      const result = await service.create({ name: 'Agência XYZ', email: 'contato@xyz.com' });
+      const result = await service.create({
+        name: 'Agência XYZ',
+        email: 'contato@xyz.com',
+      });
 
       expect(result).toEqual(mockClient);
     });
@@ -67,7 +70,9 @@ describe('ClientsService', () => {
       (dbError as QueryFailedError & { code: string }).code = '23505';
       mockRepo.save.mockRejectedValue(dbError);
 
-      await expect(service.create({ name: 'Agência XYZ', email: 'contato@xyz.com' })).rejects.toThrow(ConflictException);
+      await expect(
+        service.create({ name: 'Agência XYZ', email: 'contato@xyz.com' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -99,14 +104,18 @@ describe('ClientsService', () => {
       const result = await service.findOne('uuid-1');
 
       expect(result).toEqual(mockClient);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { id: 'uuid-1' } });
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'uuid-1' },
+      });
     });
 
     it('should throw NotFoundException when client does not exist', async () => {
       mockCache.get.mockResolvedValue(null);
       mockRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

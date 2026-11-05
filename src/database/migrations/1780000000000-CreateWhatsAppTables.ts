@@ -70,11 +70,15 @@ export class CreateWhatsAppTables1780000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "report_dispatch_logs" DROP CONSTRAINT "FK_report_dispatch_logs_client_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "report_dispatch_logs" DROP CONSTRAINT "FK_report_dispatch_logs_client_id"`,
+    );
     await queryRunner.query(`DROP TABLE "report_dispatch_logs"`);
     await queryRunner.query(`DROP TYPE "dispatch_status_enum"`);
     await queryRunner.query(`DROP TABLE "whatsapp_sessions"`);
-    await queryRunner.query(`ALTER TABLE "whatsapp_groups" DROP CONSTRAINT "FK_whatsapp_groups_client_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "whatsapp_groups" DROP CONSTRAINT "FK_whatsapp_groups_client_id"`,
+    );
     await queryRunner.query(`DROP TABLE "whatsapp_groups"`);
   }
 }

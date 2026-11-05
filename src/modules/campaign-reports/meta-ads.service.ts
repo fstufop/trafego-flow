@@ -97,7 +97,12 @@ export class MetaAdsService implements IMetaAdsService {
         params: {
           fields: this.buildInsightsFields(params.level),
           ...(params.since && params.until
-            ? { time_range: JSON.stringify({ since: params.since, until: params.until }) }
+            ? {
+                time_range: JSON.stringify({
+                  since: params.since,
+                  until: params.until,
+                }),
+              }
             : { date_preset: params.datePreset }),
           level: params.level,
           access_token: accessToken,
@@ -136,7 +141,9 @@ export class MetaAdsService implements IMetaAdsService {
 
     const insight = response.data.data[0];
     if (!insight) {
-      throw new NotFoundException(`No insights found for campaign ${campaignId} on preset ${params.datePreset}`);
+      throw new NotFoundException(
+        `No insights found for campaign ${campaignId} on preset ${params.datePreset}`,
+      );
     }
     return insight;
   }
@@ -150,14 +157,20 @@ export class MetaAdsService implements IMetaAdsService {
     for (let i = 0; i < adIds.length; i += ADS_BATCH_SIZE) {
       const chunk = adIds.slice(i, i + ADS_BATCH_SIZE);
       const response = await firstValueFrom(
-        this.httpService.get<Record<string, MetaAdWithCreative>>(`${this.baseUrl}/`, {
-          params: {
-            ids: chunk.join(','),
-            fields: 'creative{id,thumbnail_url,image_url,instagram_permalink_url}',
-            access_token: accessToken,
+        this.httpService.get<Record<string, MetaAdWithCreative>>(
+          `${this.baseUrl}/`,
+          {
+            params: {
+              ids: chunk.join(','),
+              fields:
+                'creative{id,thumbnail_url,image_url,instagram_permalink_url}',
+              access_token: accessToken,
+            },
           },
-        }),
-      ).catch((err: MetaErrorResponse) => this.handleError(err, `ads batch [${chunk[0]}...]`));
+        ),
+      ).catch((err: MetaErrorResponse) =>
+        this.handleError(err, `ads batch [${chunk[0]}...]`),
+      );
 
       for (const [adId, ad] of Object.entries(response.data)) {
         if (ad.creative) creativesByAdId[adId] = ad.creative;
@@ -245,7 +258,9 @@ export class MetaAdsService implements IMetaAdsService {
 
   private buildInsightsFields(level?: MetaInsightsLevel): string {
     const identityFields = level && LEVEL_IDENTITY_FIELDS[level];
-    return identityFields ? `${INSIGHTS_FIELDS},${identityFields}` : INSIGHTS_FIELDS;
+    return identityFields
+      ? `${INSIGHTS_FIELDS},${identityFields}`
+      : INSIGHTS_FIELDS;
   }
 
   private get baseUrl(): string {
@@ -258,7 +273,9 @@ export class MetaAdsService implements IMetaAdsService {
     const metaError = err?.response?.data?.error;
 
     if (!metaError) {
-      this.logger.error(`Meta Ads API unreachable for ${identifier}: ${err?.message}`);
+      this.logger.error(
+        `Meta Ads API unreachable for ${identifier}: ${err?.message}`,
+      );
       throw new ServiceUnavailableException(
         `Meta Ads API unreachable for ${identifier}: ${err?.message ?? 'unknown error'}`,
       );

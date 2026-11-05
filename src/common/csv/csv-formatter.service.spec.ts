@@ -40,7 +40,10 @@ describe('CsvFormatterService', () => {
   });
 
   it('generates PT-BR header labels in first line', () => {
-    const csv = service.format([baseRow], [MetaInsightsColumn.CAMPAIGN_NAME, MetaInsightsColumn.IMPRESSIONS]);
+    const csv = service.format(
+      [baseRow],
+      [MetaInsightsColumn.CAMPAIGN_NAME, MetaInsightsColumn.IMPRESSIONS],
+    );
     const lines = csv.replace(UTF8_BOM, '').split('\r\n');
     expect(lines[0]).toBe('Campanha,Impressões');
   });

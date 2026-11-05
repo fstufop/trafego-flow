@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, QueryFailedError, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
@@ -7,7 +12,10 @@ import { AdAccountEntity } from './entities/ad-account.entity.js';
 import { IAdAccountsService } from './interfaces/ad-accounts-service.interface.js';
 import { CreateAdAccountDto } from './dto/create-ad-account.dto.js';
 import { UpdateAdAccountDto } from './dto/update-ad-account.dto.js';
-import { MetaTokenService, TokenValidationResult } from './meta-token.service.js';
+import {
+  MetaTokenService,
+  TokenValidationResult,
+} from './meta-token.service.js';
 
 const cacheById = (id: string) => `ad-account:id:${id}`;
 const cacheByAct = (adAccountId: string) => `ad-account:act:${adAccountId}`;
@@ -28,15 +36,22 @@ export class AdAccountsService implements IAdAccountsService {
       const entity = this.repo.create({
         ...dto,
         accessToken: this.crypto.encrypt(dto.accessToken),
-        tokenExpiresAt: dto.tokenExpiresAt ? new Date(dto.tokenExpiresAt) : null,
+        tokenExpiresAt: dto.tokenExpiresAt
+          ? new Date(dto.tokenExpiresAt)
+          : null,
       });
       const saved = await this.repo.save(entity);
       await this.cache.set(cacheById(saved.id), saved);
       await this.cache.set(cacheByAct(saved.adAccountId), saved);
       return saved;
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as QueryFailedError & { code: string }).code === '23505') {
-        throw new ConflictException('An ad account with this adAccountId already exists');
+      if (
+        err instanceof QueryFailedError &&
+        (err as QueryFailedError & { code: string }).code === '23505'
+      ) {
+        throw new ConflictException(
+          'An ad account with this adAccountId already exists',
+        );
       }
       throw err;
     }
@@ -58,11 +73,14 @@ export class AdAccountsService implements IAdAccountsService {
   }
 
   async findByAdAccountId(adAccountId: string): Promise<AdAccountEntity> {
-    const cached = await this.cache.get<AdAccountEntity>(cacheByAct(adAccountId));
+    const cached = await this.cache.get<AdAccountEntity>(
+      cacheByAct(adAccountId),
+    );
     if (cached) return cached;
 
     const account = await this.repo.findOne({ where: { adAccountId } });
-    if (!account) throw new NotFoundException(`Ad account ${adAccountId} not found`);
+    if (!account)
+      throw new NotFoundException(`Ad account ${adAccountId} not found`);
 
     await this.cache.set(cacheById(account.id), account);
     await this.cache.set(cacheByAct(adAccountId), account);
@@ -75,7 +93,9 @@ export class AdAccountsService implements IAdAccountsService {
     const patch: Partial<AdAccountEntity> = {
       isActive: dto.isActive,
       accountName: dto.accountName ?? account.accountName,
-      tokenExpiresAt: dto.tokenExpiresAt ? new Date(dto.tokenExpiresAt) : account.tokenExpiresAt,
+      tokenExpiresAt: dto.tokenExpiresAt
+        ? new Date(dto.tokenExpiresAt)
+        : account.tokenExpiresAt,
     };
     if (dto.accessToken) {
       patch.accessToken = this.crypto.encrypt(dto.accessToken);
@@ -94,11 +114,18 @@ export class AdAccountsService implements IAdAccountsService {
     await this.cache.del(cacheByAct(account.adAccountId));
   }
 
-  findExpiring(clientId: string, daysAhead: number): Promise<AdAccountEntity[]> {
+  findExpiring(
+    clientId: string,
+    daysAhead: number,
+  ): Promise<AdAccountEntity[]> {
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + daysAhead);
     return this.repo.find({
-      where: { clientId, isActive: true, tokenExpiresAt: LessThanOrEqual(deadline) },
+      where: {
+        clientId,
+        isActive: true,
+        tokenExpiresAt: LessThanOrEqual(deadline),
+      },
     });
   }
 
@@ -113,7 +140,14 @@ export class AdAccountsService implements IAdAccountsService {
   async validateToken(id: string): Promise<TokenValidationResult> {
     const account = await this.findOne(id);
     if (!account.accessToken) {
-      return { valid: false, appId: null, type: null, expiresAt: null, scopes: [], userId: null };
+      return {
+        valid: false,
+        appId: null,
+        type: null,
+        expiresAt: null,
+        scopes: [],
+        userId: null,
+      };
     }
     const rawToken = this.crypto.decrypt(account.accessToken);
     return this.metaToken.validate(rawToken);

@@ -9,9 +9,17 @@ import { AdAccountsTokenMonitorService } from './ad-accounts-token-monitor.servi
 import { MetaTokenService } from './meta-token.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AdAccountEntity]), CryptoModule, ScheduleModule],
+  imports: [
+    TypeOrmModule.forFeature([AdAccountEntity]),
+    CryptoModule,
+    ScheduleModule,
+  ],
   controllers: [AdAccountsController],
-  providers: [AdAccountsService, AdAccountsTokenMonitorService, MetaTokenService],
+  providers: [
+    AdAccountsService,
+    AdAccountsTokenMonitorService,
+    MetaTokenService,
+  ],
   exports: [AdAccountsService],
 })
 export class AdAccountsModule {}

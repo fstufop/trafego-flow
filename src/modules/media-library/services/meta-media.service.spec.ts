@@ -9,15 +9,15 @@ jest.mock('fs', () => ({
   promises: {
     stat: jest.fn().mockResolvedValue({ size: 1024 }),
     open: jest.fn().mockResolvedValue({
-      read: jest.fn().mockImplementation((_buf: Buffer, _off: number, len: number) =>
-        Promise.resolve({ bytesRead: len }),
-      ),
+      read: jest
+        .fn()
+        .mockImplementation((_buf: Buffer, _off: number, len: number) =>
+          Promise.resolve({ bytesRead: len }),
+        ),
       close: jest.fn().mockResolvedValue(undefined),
     }),
   },
-  openAsBlob: jest
-    .fn()
-    .mockResolvedValue(new Blob(['fake-file-content'])),
+  openAsBlob: jest.fn().mockResolvedValue(new Blob(['fake-file-content'])),
 }));
 
 const mockedAxiosPost = axios.post as jest.Mock;
@@ -53,7 +53,13 @@ describe('MetaMediaService', () => {
     });
 
     const svc = await makeService();
-    const result = await svc.upload('act_123', 'token', '/tmp/photo.jpg', 'photo.jpg', 'image/jpeg');
+    const result = await svc.upload(
+      'act_123',
+      'token',
+      '/tmp/photo.jpg',
+      'photo.jpg',
+      'image/jpeg',
+    );
 
     expect(mockedAxiosPost).toHaveBeenCalledWith(
       expect.stringContaining('/act_123/adimages'),
@@ -69,7 +75,13 @@ describe('MetaMediaService', () => {
     });
 
     const svc = await makeService();
-    await svc.upload('act_123', 'token', '/tmp/photo.jpg', 'photo.jpg', 'image/jpeg');
+    await svc.upload(
+      'act_123',
+      'token',
+      '/tmp/photo.jpg',
+      'photo.jpg',
+      'image/jpeg',
+    );
 
     expect(mockedOpenAsBlob).toHaveBeenCalledWith('/tmp/photo.jpg', {
       type: 'image/jpeg',
@@ -81,7 +93,13 @@ describe('MetaMediaService', () => {
     mockedAxiosPost.mockResolvedValue({ data: { id: 'vid_456' } });
 
     const svc = await makeService();
-    const result = await svc.upload('act_123', 'token', '/tmp/clip.mp4', 'clip.mp4', 'video/mp4');
+    const result = await svc.upload(
+      'act_123',
+      'token',
+      '/tmp/clip.mp4',
+      'clip.mp4',
+      'video/mp4',
+    );
 
     expect(mockedAxiosPost).toHaveBeenCalledWith(
       expect.stringContaining('/act_123/advideos'),
@@ -95,7 +113,13 @@ describe('MetaMediaService', () => {
     mockedAxiosPost.mockResolvedValue({ data: { id: 'vid_456' } });
 
     const svc = await makeService();
-    await svc.upload('act_123', 'token', '/tmp/clip.mp4', 'clip.mp4', 'video/mp4');
+    await svc.upload(
+      'act_123',
+      'token',
+      '/tmp/clip.mp4',
+      'clip.mp4',
+      'video/mp4',
+    );
 
     expect(mockedOpenAsBlob).toHaveBeenCalledWith('/tmp/clip.mp4', {
       type: 'video/mp4',
@@ -106,12 +130,26 @@ describe('MetaMediaService', () => {
     mockedStat.mockResolvedValue({ size: 110 * 1024 * 1024 });
 
     mockedAxiosPost
-      .mockResolvedValueOnce({ data: { upload_session_id: 'sess1', video_id: 'vid_chunked', start_offset: '0' } })
-      .mockResolvedValueOnce({ data: { start_offset: String(110 * 1024 * 1024) } }) // single chunk covers all
+      .mockResolvedValueOnce({
+        data: {
+          upload_session_id: 'sess1',
+          video_id: 'vid_chunked',
+          start_offset: '0',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { start_offset: String(110 * 1024 * 1024) },
+      }) // single chunk covers all
       .mockResolvedValueOnce({ data: {} }); // finish
 
     const svc = await makeService();
-    const result = await svc.upload('act_123', 'token', '/tmp/big.mp4', 'big.mp4', 'video/mp4');
+    const result = await svc.upload(
+      'act_123',
+      'token',
+      '/tmp/big.mp4',
+      'big.mp4',
+      'video/mp4',
+    );
 
     expect(mockedAxiosPost).toHaveBeenCalledTimes(3); // start + transfer + finish
     expect(result).toBe('vid_chunked');

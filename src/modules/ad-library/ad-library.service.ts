@@ -43,7 +43,10 @@ export class AdLibraryService implements IAdLibraryService {
     const params = this.buildParams(dto);
 
     const response = await firstValueFrom(
-      this.httpService.get<MetaAdLibraryResponse>(`${this.baseUrl}/ads_archive`, { params }),
+      this.httpService.get<MetaAdLibraryResponse>(
+        `${this.baseUrl}/ads_archive`,
+        { params },
+      ),
     ).catch((err: unknown) => this.handleError(err));
 
     const raw = response.data.data ?? [];
@@ -54,7 +57,7 @@ export class AdLibraryService implements IAdLibraryService {
     const sliced = filtered.slice(0, dto.limit ?? 50);
 
     return {
-      data: sliced.map(ad => this.mapToAdvertiser(ad)),
+      data: sliced.map((ad) => this.mapToAdvertiser(ad)),
       paging: paging?.cursors ? { cursors: paging.cursors } : null,
       total: sliced.length,
     };
@@ -77,7 +80,7 @@ export class AdLibraryService implements IAdLibraryService {
 
   private buildParams(dto: SearchAdLibraryDto): Record<string, unknown> {
     const limit = dto.limit ?? 50;
-    const countries = (dto.country ?? 'BR').split(',').map(c => c.trim());
+    const countries = (dto.country ?? 'BR').split(',').map((c) => c.trim());
 
     return {
       access_token: this.accessToken,
@@ -88,12 +91,24 @@ export class AdLibraryService implements IAdLibraryService {
       ad_type: dto.adType ?? 'ALL',
       ad_active_status: dto.activeStatus ?? 'ACTIVE',
       limit: limit * 3,
-      ...(dto.platforms && { publisher_platforms: JSON.stringify(dto.platforms.split(',').map(p => p.trim())) }),
-      ...(dto.languages && { languages: JSON.stringify(dto.languages.split(',').map(l => l.trim())) }),
+      ...(dto.platforms && {
+        publisher_platforms: JSON.stringify(
+          dto.platforms.split(',').map((p) => p.trim()),
+        ),
+      }),
+      ...(dto.languages && {
+        languages: JSON.stringify(
+          dto.languages.split(',').map((l) => l.trim()),
+        ),
+      }),
       ...(dto.mediaType && { media_type: dto.mediaType }),
       ...(dto.deliveryDateMin && { ad_delivery_date_min: dto.deliveryDateMin }),
       ...(dto.deliveryDateMax && { ad_delivery_date_max: dto.deliveryDateMax }),
-      ...(dto.pageIds && { search_page_ids: JSON.stringify(dto.pageIds.split(',').map(id => id.trim())) }),
+      ...(dto.pageIds && {
+        search_page_ids: JSON.stringify(
+          dto.pageIds.split(',').map((id) => id.trim()),
+        ),
+      }),
       ...(dto.after && { after: dto.after }),
     };
   }
@@ -103,7 +118,10 @@ export class AdLibraryService implements IAdLibraryService {
 
     for (const ad of ads) {
       const existing = map.get(ad.page_id);
-      if (!existing || ad.ad_delivery_start_time > existing.ad_delivery_start_time) {
+      if (
+        !existing ||
+        ad.ad_delivery_start_time > existing.ad_delivery_start_time
+      ) {
         map.set(ad.page_id, ad);
       }
     }
@@ -111,13 +129,17 @@ export class AdLibraryService implements IAdLibraryService {
     return Array.from(map.values());
   }
 
-  private applyClientFilters(ads: RawMetaAd[], dto: SearchAdLibraryDto): RawMetaAd[] {
-    return ads.filter(ad => {
+  private applyClientFilters(
+    ads: RawMetaAd[],
+    dto: SearchAdLibraryDto,
+  ): RawMetaAd[] {
+    return ads.filter((ad) => {
       if (dto.minSpend !== undefined && ad.spend) {
         if (parseInt(ad.spend.lower_bound, 10) < dto.minSpend) return false;
       }
       if (dto.minImpressions !== undefined && ad.impressions) {
-        if (parseInt(ad.impressions.lower_bound, 10) < dto.minImpressions) return false;
+        if (parseInt(ad.impressions.lower_bound, 10) < dto.minImpressions)
+          return false;
       }
       return true;
     });
@@ -129,31 +151,42 @@ export class AdLibraryService implements IAdLibraryService {
       pageName: raw.page_name,
       fundingEntity: raw.bylines ?? null,
       spend: raw.spend
-        ? { lowerBound: raw.spend.lower_bound, upperBound: raw.spend.upper_bound }
+        ? {
+            lowerBound: raw.spend.lower_bound,
+            upperBound: raw.spend.upper_bound,
+          }
         : null,
       impressions: raw.impressions
-        ? { lowerBound: raw.impressions.lower_bound, upperBound: raw.impressions.upper_bound }
+        ? {
+            lowerBound: raw.impressions.lower_bound,
+            upperBound: raw.impressions.upper_bound,
+          }
         : null,
       estimatedAudienceSize: raw.estimated_audience_size
-        ? { lowerBound: raw.estimated_audience_size.lower_bound, upperBound: raw.estimated_audience_size.upper_bound }
+        ? {
+            lowerBound: raw.estimated_audience_size.lower_bound,
+            upperBound: raw.estimated_audience_size.upper_bound,
+          }
         : null,
       brTotalReach: raw.br_total_reach ?? null,
       adDeliveryStartTime: raw.ad_delivery_start_time,
       adDeliveryStopTime: raw.ad_delivery_stop_time ?? null,
       publisherPlatforms: raw.publisher_platforms ?? [],
       languages: raw.languages ?? [],
-      demographicDistribution: (raw.demographic_distribution ?? []).map(d => ({
-        age: d.age,
-        gender: d.gender,
-        percentage: d.percentage,
-      })),
-      deliveryByRegion: (raw.delivery_by_region ?? []).map(d => ({
+      demographicDistribution: (raw.demographic_distribution ?? []).map(
+        (d) => ({
+          age: d.age,
+          gender: d.gender,
+          percentage: d.percentage,
+        }),
+      ),
+      deliveryByRegion: (raw.delivery_by_region ?? []).map((d) => ({
         region: d.region,
         percentage: d.percentage,
       })),
       targetAges: raw.target_ages ?? [],
       targetGender: raw.target_gender ?? null,
-      targetLocations: (raw.target_locations ?? []).map(l => ({
+      targetLocations: (raw.target_locations ?? []).map((l) => ({
         name: l.name,
         type: l.type,
       })),
@@ -162,14 +195,20 @@ export class AdLibraryService implements IAdLibraryService {
   }
 
   private handleError(err: unknown): never {
-    const metaError = (err as { response?: { data?: { error?: { message?: string; code?: number; type?: string } } } })
-      ?.response?.data?.error;
+    const metaError = (
+      err as {
+        response?: {
+          data?: { error?: { message?: string; code?: number; type?: string } };
+        };
+      }
+    )?.response?.data?.error;
 
     this.logger.error(
       `Meta Ad Library API error — code: ${metaError?.code}, type: ${metaError?.type}, message: ${metaError?.message}`,
     );
 
-    const message = metaError?.message ?? 'Erro ao consultar a Meta Ad Library API';
+    const message =
+      metaError?.message ?? 'Erro ao consultar a Meta Ad Library API';
     throw new BadGatewayException(message);
   }
 }

@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ClientProfileType } from '../enums/client-profile-type.enum.js';
 
 export class CreateClientDto {
@@ -23,12 +30,17 @@ export class CreateClientDto {
   @IsString()
   whatsappGroupCode?: string;
 
-  @ApiPropertyOptional({ example: 'https://drive.google.com/drive/folders/xxx' })
+  @ApiPropertyOptional({
+    example: 'https://drive.google.com/drive/folders/xxx',
+  })
   @IsOptional()
   @IsString()
   googleDriveFolderUrl?: string;
 
-  @ApiPropertyOptional({ enum: ClientProfileType, example: ClientProfileType.SITE_SALES })
+  @ApiPropertyOptional({
+    enum: ClientProfileType,
+    example: ClientProfileType.SITE_SALES,
+  })
   @IsOptional()
   @IsEnum(ClientProfileType)
   profileType?: ClientProfileType;

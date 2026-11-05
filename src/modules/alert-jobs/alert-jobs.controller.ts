@@ -1,5 +1,20 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { AlertJobsService } from './alert-jobs.service.js';
 import { CreateAlertJobDto } from './dto/create-alert-job.dto.js';
@@ -19,7 +34,10 @@ export class AlertJobsController {
   @ApiOperation({ summary: 'Listar jobs de alerta' })
   @ApiQuery({ name: 'status', required: false, enum: AlertJobStatus })
   @ApiQuery({ name: 'type', required: false, enum: AlertJobType })
-  findAll(@Query('status') status?: AlertJobStatus, @Query('type') type?: AlertJobType) {
+  findAll(
+    @Query('status') status?: AlertJobStatus,
+    @Query('type') type?: AlertJobType,
+  ) {
     return this.alertJobsService.findAll({ status, type });
   }
 

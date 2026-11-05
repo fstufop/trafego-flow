@@ -16,7 +16,9 @@ describe('Clients (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     dataSource = app.get(DataSource);
@@ -29,7 +31,10 @@ describe('Clients (e2e)', () => {
 
   describe('POST /api/v1/clients', () => {
     it('401 when x-api-key is missing', () => {
-      return request(app.getHttpServer()).post('/api/v1/clients').send({ name: 'A', email: 'a@b.com' }).expect(401);
+      return request(app.getHttpServer())
+        .post('/api/v1/clients')
+        .send({ name: 'A', email: 'a@b.com' })
+        .expect(401);
     });
 
     it('400 when body is invalid', () => {
@@ -47,7 +52,11 @@ describe('Clients (e2e)', () => {
         .send({ name: 'Agência XYZ', email: 'contato@xyz.com' })
         .expect(201);
 
-      expect(res.body).toMatchObject({ name: 'Agência XYZ', email: 'contato@xyz.com', isActive: true });
+      expect(res.body).toMatchObject({
+        name: 'Agência XYZ',
+        email: 'contato@xyz.com',
+        isActive: true,
+      });
       expect(res.body.id).toBeDefined();
     });
 
@@ -62,7 +71,10 @@ describe('Clients (e2e)', () => {
 
   describe('GET /api/v1/clients', () => {
     it('200 returns array of active clients', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/clients').set('x-api-key', API_KEY).expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/clients')
+        .set('x-api-key', API_KEY)
+        .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.length).toBeGreaterThan(0);
@@ -140,7 +152,10 @@ describe('Clients (e2e)', () => {
     });
 
     it('deleted client does not appear in list', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/clients').set('x-api-key', API_KEY).expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/clients')
+        .set('x-api-key', API_KEY)
+        .expect(200);
 
       const found = res.body.find((c: { id: string }) => c.id === createdId);
       expect(found).toBeUndefined();

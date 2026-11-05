@@ -8,6 +8,7 @@ import {
   InstagramWebhookPayload,
 } from './interfaces/instagram-webhook-event.interface.js';
 import { IntegrationsService } from '../../integrations/integrations.service.js';
+import { IntegrationEntity } from '../../integrations/entities/integration.entity.js';
 import { AesCryptoService } from '../../../common/crypto/aes.service.js';
 
 @Injectable()
@@ -37,25 +38,33 @@ export class InstagramWebhookService {
     rawBody: Buffer,
     signature: string,
   ): Promise<void> {
+    const pageId = payload.entry?.[0]?.id;
+    const integration = pageId
+      ? await this.integrationsService.findByPageId(pageId).catch(() => null)
+      : null;
+
     // Logged before signature validation so a rejected payload still shows up
     // here — needed to debug mismatches between what Meta sent and what we expect.
     this.logger.log(
-      `Instagram webhook payload received: ${JSON.stringify(payload)}`,
+      `Instagram webhook payload received (account: ${this.resolveAccountName(integration, pageId)}): ${JSON.stringify(payload)}`,
     );
-    const appSecret = await this.resolveAppSecret(payload);
+    const appSecret = this.resolveAppSecret(integration);
     this.validateSignature(rawBody, signature, appSecret);
     await this.enqueueEvents(payload);
   }
 
-  private async resolveAppSecret(
-    payload: InstagramWebhookPayload,
-  ): Promise<string> {
-    const pageId = payload.entry?.[0]?.id;
-    if (!pageId) {
+  private resolveAccountName(
+    integration: IntegrationEntity | null,
+    pageId: string | undefined,
+  ): string {
+    return integration?.client?.name ?? pageId ?? 'unknown';
+  }
+
+  private resolveAppSecret(integration: IntegrationEntity | null): string {
+    if (!integration) {
       throw new ForbiddenException('Webhook validation failed');
     }
     try {
-      const integration = await this.integrationsService.findByPageId(pageId);
       return this.crypto.decrypt(integration.appSecret ?? '');
     } catch {
       throw new ForbiddenException('Webhook validation failed');

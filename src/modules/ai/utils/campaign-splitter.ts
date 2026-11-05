@@ -8,13 +8,24 @@ function isAcquisition(row: MetaInsights): boolean {
 }
 
 function findAction(actions: MetaInsights['actions'], type: string): number {
-  return parseInt(actions?.find(a => a.action_type === type)?.value ?? '0', 10);
+  return parseInt(
+    actions?.find((a) => a.action_type === type)?.value ?? '0',
+    10,
+  );
 }
 
 function aggregateRows(rows: MetaInsights[]): InsightsSummary {
-  let spend = 0, impressions = 0, clicks = 0, reach = 0;
-  let purchases = 0, addToCart = 0, pageViews = 0;
-  let messagesStarted = 0, contentViews = 0, checkoutInitiated = 0, liveViews = 0;
+  let spend = 0,
+    impressions = 0,
+    clicks = 0,
+    reach = 0;
+  let purchases = 0,
+    addToCart = 0,
+    pageViews = 0;
+  let messagesStarted = 0,
+    contentViews = 0,
+    checkoutInitiated = 0,
+    liveViews = 0;
 
   for (const row of rows) {
     spend += parseFloat(row.spend ?? '0');
@@ -26,7 +37,10 @@ function aggregateRows(rows: MetaInsights[]): InsightsSummary {
     pageViews += findAction(row.actions, 'landing_page_view');
     contentViews += findAction(row.actions, 'view_content');
     checkoutInitiated += findAction(row.actions, 'initiate_checkout');
-    messagesStarted += findAction(row.actions, 'messaging_conversation_started_7d');
+    messagesStarted += findAction(
+      row.actions,
+      'messaging_conversation_started_7d',
+    );
     liveViews += findAction(row.actions, 'video_play');
   }
 
@@ -34,11 +48,19 @@ function aggregateRows(rows: MetaInsights[]): InsightsSummary {
   const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
 
   return {
-    spend, reach, impressions, clicks,
+    spend,
+    reach,
+    impressions,
+    clicks,
     ctr: parseFloat(ctr.toFixed(2)),
     cpm: parseFloat(cpm.toFixed(2)),
-    purchases, addToCart, pageViews,
-    messagesStarted, contentViews, checkoutInitiated, liveViews,
+    purchases,
+    addToCart,
+    pageViews,
+    messagesStarted,
+    contentViews,
+    checkoutInitiated,
+    liveViews,
   };
 }
 
@@ -48,10 +70,11 @@ export function splitAndAggregateCampaigns(rows: MetaInsights[]): {
   total: InsightsSummary;
 } {
   const acquisitionRows = rows.filter(isAcquisition);
-  const salesRows = rows.filter(r => !isAcquisition(r));
+  const salesRows = rows.filter((r) => !isAcquisition(r));
 
   return {
-    acquisition: acquisitionRows.length > 0 ? aggregateRows(acquisitionRows) : null,
+    acquisition:
+      acquisitionRows.length > 0 ? aggregateRows(acquisitionRows) : null,
     sales: salesRows.length > 0 ? aggregateRows(salesRows) : null,
     total: aggregateRows(rows),
   };

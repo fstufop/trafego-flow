@@ -1,4 +1,17 @@
+export interface InstagramFollowStatus {
+  id: string;
+  name?: string;
+  username?: string;
+  follower_count?: number;
+  is_user_follow_business?: boolean;
+  is_business_follow_user?: boolean;
+}
+
 export interface IInstagramGraphService {
+  getFollowStatus(
+    pageId: string,
+    igsid: string,
+  ): Promise<InstagramFollowStatus>;
   sendTextMessage(
     pageId: string,
     recipientIgsid: string,

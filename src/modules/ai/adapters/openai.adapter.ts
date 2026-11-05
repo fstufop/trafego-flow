@@ -1,7 +1,13 @@
 import OpenAI from 'openai';
 import { ConfigService } from '@nestjs/config';
-import { IAiProvider, AiReportPayload } from '../interfaces/ai-provider.interface.js';
-import { buildSystemPrompt, buildUserMessage } from '../utils/prompt-builder.js';
+import {
+  IAiProvider,
+  AiReportPayload,
+} from '../interfaces/ai-provider.interface.js';
+import {
+  buildSystemPrompt,
+  buildUserMessage,
+} from '../utils/prompt-builder.js';
 
 export class OpenAiAdapter implements IAiProvider {
   private readonly client: OpenAI;
@@ -16,7 +22,13 @@ export class OpenAiAdapter implements IAiProvider {
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [
-        { role: 'system', content: buildSystemPrompt(payload.clientProfile, payload.clientContext) },
+        {
+          role: 'system',
+          content: buildSystemPrompt(
+            payload.clientProfile,
+            payload.clientContext,
+          ),
+        },
         { role: 'user', content: buildUserMessage(payload) },
       ],
     });

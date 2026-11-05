@@ -13,7 +13,9 @@ export class GoogleDriveController {
 
   @Post('folders')
   @ApiOperation({ summary: 'Cria uma pasta no Google Drive e retorna o link' })
-  async createFolder(@Body() dto: CreateDriveFolderDto): Promise<{ folderUrl: string }> {
+  async createFolder(
+    @Body() dto: CreateDriveFolderDto,
+  ): Promise<{ folderUrl: string }> {
     const folderUrl = await this.driveService.createFolder(dto.name);
     return { folderUrl };
   }

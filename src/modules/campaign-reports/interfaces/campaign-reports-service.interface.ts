@@ -1,11 +1,29 @@
-import { MetaAdset, MetaCampaign, MetaInsights, PaginatedResult } from './meta-campaign.interface.js';
-import { GetInsightsQueryDto, MetaDatePreset, MetaTimeIncrement } from '../dto/get-insights-query.dto.js';
+import {
+  MetaAdset,
+  MetaCampaign,
+  MetaInsights,
+  PaginatedResult,
+} from './meta-campaign.interface.js';
+import {
+  GetInsightsQueryDto,
+  MetaDatePreset,
+  MetaTimeIncrement,
+} from '../dto/get-insights-query.dto.js';
 import { ExportInsightsCsvDto } from '../dto/export-insights-csv.dto.js';
-import { AdsetMessageRow, LiveReportData } from '../../ai/interfaces/ai-provider.interface.js';
+import {
+  AdsetMessageRow,
+  LiveReportData,
+} from '../../ai/interfaces/ai-provider.interface.js';
 
 export interface ICampaignReportsService {
-  listCampaigns(adAccountId: string, cursor?: string): Promise<PaginatedResult<MetaCampaign>>;
-  getInsights(adAccountId: string, query: GetInsightsQueryDto): Promise<PaginatedResult<MetaInsights>>;
+  listCampaigns(
+    adAccountId: string,
+    cursor?: string,
+  ): Promise<PaginatedResult<MetaCampaign>>;
+  getInsights(
+    adAccountId: string,
+    query: GetInsightsQueryDto,
+  ): Promise<PaginatedResult<MetaInsights>>;
   getCampaignInsights(
     campaignId: string,
     adAccountId: string,
@@ -15,7 +33,16 @@ export interface ICampaignReportsService {
   ): Promise<MetaInsights | PaginatedResult<MetaInsights>>;
   exportInsightsCsv(dto: ExportInsightsCsvDto): Promise<string>;
   listAdsets(adAccountId: string): Promise<MetaAdset[]>;
-  getAdsetInsights(adsetId: string, adAccountId: string, since: string, until: string): Promise<MetaInsights | null>;
-  getAdsetMessageRows(adAccountId: string, since: string, until: string): Promise<AdsetMessageRow[]>;
+  getAdsetInsights(
+    adsetId: string,
+    adAccountId: string,
+    since: string,
+    until: string,
+  ): Promise<MetaInsights | null>;
+  getAdsetMessageRows(
+    adAccountId: string,
+    since: string,
+    until: string,
+  ): Promise<AdsetMessageRow[]>;
   getLiveReportData(adAccountId: string): Promise<LiveReportData[]>;
 }

@@ -1,4 +1,8 @@
-import { ContractStatus, DiscountType, PaymentMethod } from '../entities/client-billing.entity.js';
+import {
+  ContractStatus,
+  DiscountType,
+  PaymentMethod,
+} from '../entities/client-billing.entity.js';
 import { ClientBillingEntity } from '../entities/client-billing.entity.js';
 import { ClientBillingInstallmentEntity } from '../entities/client-billing-installment.entity.js';
 
@@ -26,14 +30,21 @@ export interface ClientBillingResponseDto {
   installments: InstallmentResponseDto[];
 }
 
-export function computeInstallmentStatus(installment: ClientBillingInstallmentEntity): InstallmentStatus {
+export function computeInstallmentStatus(
+  installment: ClientBillingInstallmentEntity,
+): InstallmentStatus {
   if (installment.paidAt) return 'paid';
-  const due = installment.dueDate instanceof Date ? installment.dueDate : new Date(installment.dueDate);
+  const due =
+    installment.dueDate instanceof Date
+      ? installment.dueDate
+      : new Date(installment.dueDate);
   if (due < new Date()) return 'overdue';
   return 'pending';
 }
 
-export function toInstallmentResponseDto(installment: ClientBillingInstallmentEntity): InstallmentResponseDto {
+export function toInstallmentResponseDto(
+  installment: ClientBillingInstallmentEntity,
+): InstallmentResponseDto {
   return {
     id: installment.id,
     installmentNumber: installment.installmentNumber,

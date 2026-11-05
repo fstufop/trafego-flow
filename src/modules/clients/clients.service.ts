@@ -1,5 +1,10 @@
 // src/modules/clients/clients.service.ts
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
@@ -23,7 +28,10 @@ export class ClientsService implements IClientsService {
     try {
       return await this.repo.save(this.repo.create(dto));
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as QueryFailedError & { code: string }).code === '23505') {
+      if (
+        err instanceof QueryFailedError &&
+        (err as QueryFailedError & { code: string }).code === '23505'
+      ) {
         throw new ConflictException('A client with this email already exists');
       }
       throw err;

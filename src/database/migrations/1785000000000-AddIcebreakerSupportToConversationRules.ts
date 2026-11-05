@@ -1,12 +1,12 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddIcebreakerSupportToConversationRules1785000000000
-  implements MigrationInterface
-{
+export class AddIcebreakerSupportToConversationRules1785000000000 implements MigrationInterface {
   name = 'AddIcebreakerSupportToConversationRules1785000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TYPE "rule_type_enum" ADD VALUE 'icebreaker'`);
+    await queryRunner.query(
+      `ALTER TYPE "rule_type_enum" ADD VALUE 'icebreaker'`,
+    );
     await queryRunner.query(`
       ALTER TABLE "conversation_rules" ADD COLUMN "icebreaker_question" character varying
     `);

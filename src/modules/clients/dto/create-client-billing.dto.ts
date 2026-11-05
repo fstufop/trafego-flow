@@ -1,7 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsEnum, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
-import { DiscountType, PaymentMethod } from '../entities/client-billing.entity.js';
+import {
+  IsDate,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  Max,
+  Min,
+} from 'class-validator';
+import {
+  DiscountType,
+  PaymentMethod,
+} from '../entities/client-billing.entity.js';
 
 export class CreateClientBillingDto {
   @ApiProperty({ example: '2026-01-15', description: 'Contract start date' })
@@ -9,7 +20,10 @@ export class CreateClientBillingDto {
   @IsDate()
   startDate: Date;
 
-  @ApiProperty({ example: 6, description: 'Contract duration in months (1–12)' })
+  @ApiProperty({
+    example: 6,
+    description: 'Contract duration in months (1–12)',
+  })
   @IsInt()
   @Min(1)
   @Max(12)

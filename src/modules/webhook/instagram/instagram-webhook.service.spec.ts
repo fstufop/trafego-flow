@@ -41,6 +41,7 @@ describe('InstagramWebhookService', () => {
 
     mockIntegrationsService.findByPageId.mockResolvedValue({
       appSecret: 'encrypted-app-secret',
+      client: { name: 'Acme Corp' },
     });
     mockCrypto.decrypt.mockImplementation((value: string | null) => {
       if (!value) throw new Error('no app secret configured');
@@ -160,23 +161,38 @@ describe('InstagramWebhookService', () => {
       expect(mockQueue.add).not.toHaveBeenCalled();
     });
 
-    it('should log the received payload even when the signature is invalid', async () => {
+    it('should log the received payload with the account name even when the signature is invalid', async () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
       await expect(
         service.handleEvent(dmPayload, rawBody, 'sha256=invalidsig'),
       ).rejects.toThrow(ForbiddenException);
 
       expect(logSpy).toHaveBeenCalledWith(
-        `Instagram webhook payload received: ${JSON.stringify(dmPayload)}`,
+        `Instagram webhook payload received (account: Acme Corp): ${JSON.stringify(dmPayload)}`,
       );
     });
 
-    it('should log the received payload when the signature is valid', async () => {
+    it('should log the received payload with the account name when the signature is valid', async () => {
       const rawBody = Buffer.from(JSON.stringify(dmPayload));
       await service.handleEvent(dmPayload, rawBody, makeSignature(rawBody));
 
       expect(logSpy).toHaveBeenCalledWith(
-        `Instagram webhook payload received: ${JSON.stringify(dmPayload)}`,
+        `Instagram webhook payload received (account: Acme Corp): ${JSON.stringify(dmPayload)}`,
+      );
+    });
+
+    it('should fall back to the pageId in the log when no integration is registered for the page', async () => {
+      mockIntegrationsService.findByPageId.mockRejectedValueOnce(
+        new NotFoundException('Integration for pageId PAGE123 not found'),
+      );
+      const rawBody = Buffer.from(JSON.stringify(dmPayload));
+
+      await expect(
+        service.handleEvent(dmPayload, rawBody, makeSignature(rawBody)),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        `Instagram webhook payload received (account: PAGE123): ${JSON.stringify(dmPayload)}`,
       );
     });
 

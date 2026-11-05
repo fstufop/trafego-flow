@@ -1,8 +1,14 @@
-import { AiReportPayload, InsightsSummary } from '../interfaces/ai-provider.interface.js';
+import {
+  AiReportPayload,
+  InsightsSummary,
+} from '../interfaces/ai-provider.interface.js';
 import { ClientProfileType } from '../../clients/enums/client-profile-type.enum.js';
 
 function fmtBRL(value: number): string {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function fmtInt(value: number): string {
@@ -65,12 +71,18 @@ function header(weekNumber: number, since: string, until: string): string[] {
   ];
 }
 
-function footer(deltas: Record<string, number | null>, clientContext: string | null, previous: InsightsSummary | null): string[] {
+function footer(
+  deltas: Record<string, number | null>,
+  clientContext: string | null,
+  previous: InsightsSummary | null,
+): string[] {
   const hasDeltas = Object.keys(deltas).length > 0;
   const lines: string[] = [];
 
   if (hasDeltas) {
-    lines.push('[PREENCHER: 1 frase destacando o comparativo mais relevante com a semana anterior. Foque no positivo.]');
+    lines.push(
+      '[PREENCHER: 1 frase destacando o comparativo mais relevante com a semana anterior. Foque no positivo.]',
+    );
     lines.push('');
   }
 
@@ -88,7 +100,9 @@ function footer(deltas: Record<string, number | null>, clientContext: string | n
   if (hasDeltas) {
     lines.push(`Variações semana anterior: ${JSON.stringify(deltas)}`);
     if (previous) {
-      lines.push(`Principais métricas semana anterior: alcance ${fmtInt(previous.reach)}, investimento R$ ${fmtBRL(previous.spend)}`);
+      lines.push(
+        `Principais métricas semana anterior: alcance ${fmtInt(previous.reach)}, investimento R$ ${fmtBRL(previous.spend)}`,
+      );
     }
   }
 
@@ -96,13 +110,15 @@ function footer(deltas: Record<string, number | null>, clientContext: string | n
 }
 
 function buildSiteSalesMessage(payload: AiReportPayload): string {
-  const { period, acquisition, sales, deltas, clientContext, previous } = payload;
+  const { period, acquisition, sales, deltas, clientContext, previous } =
+    payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
   if (acquisition) {
     lines.push('Campanha de Captação:');
     lines.push(`Investimento: R$ ${fmtBRL(acquisition.spend)}`);
-    if (acquisition.clicks > 0) lines.push(`Cliques: ${fmtInt(acquisition.clicks)}`);
+    if (acquisition.clicks > 0)
+      lines.push(`Cliques: ${fmtInt(acquisition.clicks)}`);
     lines.push('');
   }
 
@@ -132,7 +148,9 @@ function buildSiteSalesMessage(payload: AiReportPayload): string {
       lines.push(`↓ ${fmtPct(sales.purchases, sales.checkoutInitiated)}`);
       lines.push(`Compras: ${fmtInt(sales.purchases)}`);
       lines.push('');
-      lines.push(`Conversão geral (clique → compra): ${fmtPct(sales.purchases, sales.clicks)}`);
+      lines.push(
+        `Conversão geral (clique → compra): ${fmtPct(sales.purchases, sales.clicks)}`,
+      );
     }
     lines.push('');
   }
@@ -142,21 +160,30 @@ function buildSiteSalesMessage(payload: AiReportPayload): string {
 }
 
 function buildMessageSalesMessage(payload: AiReportPayload): string {
-  const { period, current, deltas, clientContext, previous, adsetRows } = payload;
+  const { period, current, deltas, clientContext, previous, adsetRows } =
+    payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
   if (adsetRows && adsetRows.length > 0) {
     lines.push('Resultados por conjunto de anúncios:');
     for (const row of adsetRows) {
-      const cpm = row.costPerMessage !== null ? `R$ ${fmtBRL(row.costPerMessage)}` : '–';
-      lines.push(`${row.adsetName} | Desde: ${row.startDate} | Conversas: ${fmtInt(row.messagesStarted)} | Custo por conversa: ${cpm}`);
+      const cpm =
+        row.costPerMessage !== null ? `R$ ${fmtBRL(row.costPerMessage)}` : '–';
+      lines.push(
+        `${row.adsetName} | Desde: ${row.startDate} | Conversas: ${fmtInt(row.messagesStarted)} | Custo por conversa: ${cpm}`,
+      );
     }
     lines.push('');
   } else {
     lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
-    if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
-    if (current.messagesStarted > 0) lines.push(`Conversas iniciadas: ${fmtInt(current.messagesStarted)} novos contatos no direct`);
-    if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
+    if (current.reach > 0)
+      lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
+    if (current.messagesStarted > 0)
+      lines.push(
+        `Conversas iniciadas: ${fmtInt(current.messagesStarted)} novos contatos no direct`,
+      );
+    if (current.clicks > 0)
+      lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
     lines.push('');
   }
 
@@ -165,7 +192,8 @@ function buildMessageSalesMessage(payload: AiReportPayload): string {
 }
 
 function buildLiveSalesMessage(payload: AiReportPayload): string {
-  const { period, current, deltas, clientContext, previous, liveData } = payload;
+  const { period, current, deltas, clientContext, previous, liveData } =
+    payload;
   const lines: string[] = header(period.weekNumber, period.since, period.until);
 
   if (liveData && liveData.length > 0) {
@@ -173,7 +201,8 @@ function buildLiveSalesMessage(payload: AiReportPayload): string {
       lines.push(`Live: ${live.liveDate}`);
       lines.push(`Investimento captação: R$ ${fmtBRL(live.captationSpend)}`);
       lines.push(`Alcance captação: ${fmtInt(live.captationReach)} pessoas`);
-      if (live.captationClicks > 0) lines.push(`Cliques captação: ${fmtInt(live.captationClicks)}`);
+      if (live.captationClicks > 0)
+        lines.push(`Cliques captação: ${fmtInt(live.captationClicks)}`);
       if (live.adReaches.length > 0) {
         lines.push('Alcance por anuncio:');
         for (const ad of live.adReaches) {
@@ -184,10 +213,14 @@ function buildLiveSalesMessage(payload: AiReportPayload): string {
     }
   } else {
     lines.push(`Investimento: R$ ${fmtBRL(current.spend)}`);
-    if (current.reach > 0) lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
-    if (current.liveViews > 0) lines.push(`Visualizações da live: ${fmtInt(current.liveViews)}`);
-    if (current.clicks > 0) lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
-    if (current.purchases > 0) lines.push(`Compras: ${fmtInt(current.purchases)}`);
+    if (current.reach > 0)
+      lines.push(`Alcance: ${fmtInt(current.reach)} pessoas impactadas`);
+    if (current.liveViews > 0)
+      lines.push(`Visualizações da live: ${fmtInt(current.liveViews)}`);
+    if (current.clicks > 0)
+      lines.push(`Cliques nos anúncios: ${fmtInt(current.clicks)}`);
+    if (current.purchases > 0)
+      lines.push(`Compras: ${fmtInt(current.purchases)}`);
     lines.push('');
   }
 

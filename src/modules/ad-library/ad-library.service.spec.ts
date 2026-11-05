@@ -4,8 +4,16 @@ import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { AdLibraryService } from './ad-library.service.js';
-import { SearchAdLibraryDto, AdActiveStatus, AdType, SearchType } from './dto/search-ad-library.dto.js';
-import type { MetaAdLibraryResponse, RawMetaAd } from './interfaces/ad-library.interface.js';
+import {
+  SearchAdLibraryDto,
+  AdActiveStatus,
+  AdType,
+  SearchType,
+} from './dto/search-ad-library.dto.js';
+import type {
+  MetaAdLibraryResponse,
+  RawMetaAd,
+} from './interfaces/ad-library.interface.js';
 
 const makeRawAd = (overrides: Partial<RawMetaAd> = {}): RawMetaAd => ({
   page_id: '111',
@@ -18,7 +26,9 @@ const makeRawAd = (overrides: Partial<RawMetaAd> = {}): RawMetaAd => ({
   ad_delivery_start_time: '2024-03-01',
   publisher_platforms: ['INSTAGRAM'],
   languages: ['pt'],
-  demographic_distribution: [{ age: '25-34', gender: 'female', percentage: '0.45' }],
+  demographic_distribution: [
+    { age: '25-34', gender: 'female', percentage: '0.45' },
+  ],
   delivery_by_region: [{ region: 'São Paulo', percentage: '0.40' }],
   target_ages: ['18', '24'],
   target_gender: 'All',
@@ -27,7 +37,9 @@ const makeRawAd = (overrides: Partial<RawMetaAd> = {}): RawMetaAd => ({
   ...overrides,
 });
 
-const makeAxiosResponse = (data: MetaAdLibraryResponse): AxiosResponse<MetaAdLibraryResponse> => ({
+const makeAxiosResponse = (
+  data: MetaAdLibraryResponse,
+): AxiosResponse<MetaAdLibraryResponse> => ({
   data,
   status: 200,
   statusText: 'OK',
@@ -83,7 +95,12 @@ describe('AdLibraryService', () => {
     it('retorna resultado com data, paging e total', async () => {
       const raw = makeRawAd();
       (httpService.get as jest.Mock).mockReturnValue(
-        of(makeAxiosResponse({ data: [raw], paging: { cursors: { before: 'abc', after: 'xyz' } } })),
+        of(
+          makeAxiosResponse({
+            data: [raw],
+            paging: { cursors: { before: 'abc', after: 'xyz' } },
+          }),
+        ),
       );
 
       const result = await service.search(dto);
@@ -95,7 +112,9 @@ describe('AdLibraryService', () => {
 
     it('mapeia campos snake_case → camelCase corretamente', async () => {
       const raw = makeRawAd();
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [raw] })));
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [raw] })),
+      );
 
       const result = await service.search(dto);
       const advertiser = result.data[0];
@@ -103,17 +122,33 @@ describe('AdLibraryService', () => {
       expect(advertiser.pageId).toBe('111');
       expect(advertiser.pageName).toBe('Loja Teste');
       expect(advertiser.fundingEntity).toBe('Empresa Teste LTDA');
-      expect(advertiser.spend).toEqual({ lowerBound: '200', upperBound: '499' });
-      expect(advertiser.impressions).toEqual({ lowerBound: '2000', upperBound: '4999' });
+      expect(advertiser.spend).toEqual({
+        lowerBound: '200',
+        upperBound: '499',
+      });
+      expect(advertiser.impressions).toEqual({
+        lowerBound: '2000',
+        upperBound: '4999',
+      });
       expect(advertiser.brTotalReach).toBe(3000);
       expect(advertiser.publisherPlatforms).toEqual(['INSTAGRAM']);
       expect(advertiser.targetGender).toBe('All');
     });
 
     it('deduplica por page_id mantendo o ad_delivery_start_time mais recente', async () => {
-      const older = makeRawAd({ page_id: '111', ad_delivery_start_time: '2024-01-01', pageName: 'Antigo' } as never);
-      const newer = makeRawAd({ page_id: '111', ad_delivery_start_time: '2024-06-01', page_name: 'Recente' });
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [older, newer] })));
+      const older = makeRawAd({
+        page_id: '111',
+        ad_delivery_start_time: '2024-01-01',
+        pageName: 'Antigo',
+      } as never);
+      const newer = makeRawAd({
+        page_id: '111',
+        ad_delivery_start_time: '2024-06-01',
+        page_name: 'Recente',
+      });
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [older, newer] })),
+      );
 
       const result = await service.search(dto);
 
@@ -122,9 +157,17 @@ describe('AdLibraryService', () => {
     });
 
     it('filtra por minSpend — descarta anunciante com spend abaixo do mínimo', async () => {
-      const low = makeRawAd({ page_id: '111', spend: { lower_bound: '50', upper_bound: '99' } });
-      const high = makeRawAd({ page_id: '222', spend: { lower_bound: '200', upper_bound: '499' } });
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [low, high] })));
+      const low = makeRawAd({
+        page_id: '111',
+        spend: { lower_bound: '50', upper_bound: '99' },
+      });
+      const high = makeRawAd({
+        page_id: '222',
+        spend: { lower_bound: '200', upper_bound: '499' },
+      });
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [low, high] })),
+      );
 
       const result = await service.search({ ...dto, minSpend: 100 });
 
@@ -133,9 +176,17 @@ describe('AdLibraryService', () => {
     });
 
     it('filtra por minImpressions — descarta anunciante com impressions abaixo do mínimo', async () => {
-      const low = makeRawAd({ page_id: '111', impressions: { lower_bound: '300', upper_bound: '499' } });
-      const high = makeRawAd({ page_id: '222', impressions: { lower_bound: '1500', upper_bound: '2999' } });
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [low, high] })));
+      const low = makeRawAd({
+        page_id: '111',
+        impressions: { lower_bound: '300', upper_bound: '499' },
+      });
+      const high = makeRawAd({
+        page_id: '222',
+        impressions: { lower_bound: '1500', upper_bound: '2999' },
+      });
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [low, high] })),
+      );
 
       const result = await service.search({ ...dto, minImpressions: 1000 });
 
@@ -144,7 +195,9 @@ describe('AdLibraryService', () => {
     });
 
     it('retorna resultado vazio quando Meta API retorna lista vazia', async () => {
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [] })));
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [] })),
+      );
 
       const result = await service.search(dto);
 
@@ -154,7 +207,9 @@ describe('AdLibraryService', () => {
     });
 
     it('usa app access token no formato APP_ID|APP_SECRET', async () => {
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [] })));
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [] })),
+      );
 
       await service.search(dto);
 
@@ -176,7 +231,9 @@ describe('AdLibraryService', () => {
         ad_delivery_start_time: '2024-01-01',
         ad_snapshot_url: 'https://facebook.com/ads/archive/render_ad/?id=3',
       };
-      (httpService.get as jest.Mock).mockReturnValue(of(makeAxiosResponse({ data: [minimal] })));
+      (httpService.get as jest.Mock).mockReturnValue(
+        of(makeAxiosResponse({ data: [minimal] })),
+      );
 
       const result = await service.search(dto);
       const advertiser = result.data[0];

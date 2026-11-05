@@ -18,7 +18,9 @@ describe('WhatsAppGroups (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     dataSource = app.get(DataSource);
@@ -26,7 +28,10 @@ describe('WhatsAppGroups (e2e)', () => {
     const clientRes = await request(app.getHttpServer())
       .post('/api/v1/clients')
       .set('x-api-key', API_KEY)
-      .send({ name: 'Cliente WA Test', email: `wa-test-${Date.now()}@test.com` });
+      .send({
+        name: 'Cliente WA Test',
+        email: `wa-test-${Date.now()}@test.com`,
+      });
 
     clientId = clientRes.body.id;
   });
@@ -65,7 +70,11 @@ describe('WhatsAppGroups (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/whatsapp-groups')
         .set('x-api-key', API_KEY)
-        .send({ clientId, groupJid: '120363000001@g.us', label: 'Grupo Principal' })
+        .send({
+          clientId,
+          groupJid: '120363000001@g.us',
+          label: 'Grupo Principal',
+        })
         .expect(201);
 
       expect(res.body.id).toBeDefined();
@@ -111,7 +120,11 @@ describe('WhatsAppGroups (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/whatsapp-groups')
         .set('x-api-key', API_KEY)
-        .send({ clientId, groupJid: '120363000002@g.us', label: 'Grupo PATCH' });
+        .send({
+          clientId,
+          groupJid: '120363000002@g.us',
+          label: 'Grupo PATCH',
+        });
       groupId = res.body.id;
     });
 
@@ -133,7 +146,11 @@ describe('WhatsAppGroups (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/whatsapp-groups')
         .set('x-api-key', API_KEY)
-        .send({ clientId, groupJid: '120363000003@g.us', label: 'Grupo DELETE' });
+        .send({
+          clientId,
+          groupJid: '120363000003@g.us',
+          label: 'Grupo DELETE',
+        });
       groupId = res.body.id;
     });
 

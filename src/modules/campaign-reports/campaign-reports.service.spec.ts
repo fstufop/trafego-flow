@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CampaignReportsService } from './campaign-reports.service.js';
@@ -8,8 +12,17 @@ import { MetaAdsService } from './meta-ads.service.js';
 import { AesCryptoService } from '../../common/crypto/aes.service.js';
 import { CsvFormatterService } from '../../common/csv/csv-formatter.service.js';
 import { AdAccountEntity } from '../ad-accounts/entities/ad-account.entity.js';
-import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from './dto/get-insights-query.dto.js';
-import { MetaAdset, MetaApiPaginatedResponse, MetaCampaign, MetaInsights } from './interfaces/meta-campaign.interface.js';
+import {
+  MetaDatePreset,
+  MetaInsightsLevel,
+  MetaTimeIncrement,
+} from './dto/get-insights-query.dto.js';
+import {
+  MetaAdset,
+  MetaApiPaginatedResponse,
+  MetaCampaign,
+  MetaInsights,
+} from './interfaces/meta-campaign.interface.js';
 import { MetaInsightsColumn } from './enums/insights-column.enum.js';
 import { ExportInsightsCsvDto } from './dto/export-insights-csv.dto.js';
 
@@ -28,7 +41,13 @@ const mockAccount: AdAccountEntity = {
 };
 
 const mockCampaigns: MetaCampaign[] = [
-  { id: '111', name: 'Campanha A', status: 'ACTIVE', objective: 'OUTCOME_TRAFFIC', created_time: '2026-01-01T00:00:00Z' },
+  {
+    id: '111',
+    name: 'Campanha A',
+    status: 'ACTIVE',
+    objective: 'OUTCOME_TRAFFIC',
+    created_time: '2026-01-01T00:00:00Z',
+  },
 ];
 
 const mockInsights: MetaInsights[] = [
@@ -112,11 +131,15 @@ describe('CampaignReportsService', () => {
     it('should use base cache key without cursor', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaigns.mockResolvedValue(mockCampaignsApiResponse);
+      mockMetaAdsService.fetchCampaigns.mockResolvedValue(
+        mockCampaignsApiResponse,
+      );
 
       await service.listCampaigns('act_123456789');
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:campaigns:act_123456789');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:campaigns:act_123456789',
+      );
       expect(mockCache.set).toHaveBeenCalledWith(
         'meta:campaigns:act_123456789',
         expect.objectContaining({ data: mockCampaigns }),
@@ -127,35 +150,53 @@ describe('CampaignReportsService', () => {
     it('should use cursor-namespaced cache key when cursor provided', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaigns.mockResolvedValue(mockCampaignsApiResponse);
+      mockMetaAdsService.fetchCampaigns.mockResolvedValue(
+        mockCampaignsApiResponse,
+      );
 
       await service.listCampaigns('act_123456789', 'cursor_abc');
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:campaigns:act_123456789:cursor:cursor_abc');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:campaigns:act_123456789:cursor:cursor_abc',
+      );
     });
 
     it('should return PaginatedResult with paging.next from cursors.after', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaigns.mockResolvedValue(mockCampaignsApiResponse);
+      mockMetaAdsService.fetchCampaigns.mockResolvedValue(
+        mockCampaignsApiResponse,
+      );
 
       const result = await service.listCampaigns('act_123456789');
 
-      expect(result).toEqual({ data: mockCampaigns, paging: { next: 'next_cursor' } });
+      expect(result).toEqual({
+        data: mockCampaigns,
+        paging: { next: 'next_cursor' },
+      });
     });
 
     it('should throw UnprocessableEntityException for inactive account', async () => {
       mockCache.get.mockResolvedValue(null);
-      mockAdAccountsService.findByAdAccountId.mockResolvedValue({ ...mockAccount, isActive: false });
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue({
+        ...mockAccount,
+        isActive: false,
+      });
 
-      await expect(service.listCampaigns('act_123456789')).rejects.toThrow(UnprocessableEntityException);
+      await expect(service.listCampaigns('act_123456789')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
     });
 
     it('should propagate NotFoundException from AdAccountsService', async () => {
       mockCache.get.mockResolvedValue(null);
-      mockAdAccountsService.findByAdAccountId.mockRejectedValue(new NotFoundException('not found'));
+      mockAdAccountsService.findByAdAccountId.mockRejectedValue(
+        new NotFoundException('not found'),
+      );
 
-      await expect(service.listCampaigns('act_inexistente')).rejects.toThrow(NotFoundException);
+      await expect(service.listCampaigns('act_inexistente')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -163,7 +204,9 @@ describe('CampaignReportsService', () => {
     beforeEach(() => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchInsights.mockResolvedValue(mockInsightsApiResponse);
+      mockMetaAdsService.fetchInsights.mockResolvedValue(
+        mockInsightsApiResponse,
+      );
     });
 
     it('should use base cache key without timeIncrement or breakdowns', async () => {
@@ -173,7 +216,9 @@ describe('CampaignReportsService', () => {
         level: MetaInsightsLevel.CAMPAIGN,
       });
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:insights:act_123456789:campaign:last_30d');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:act_123456789:campaign:last_30d',
+      );
     });
 
     it('should include timeIncrement in cache key', async () => {
@@ -184,7 +229,9 @@ describe('CampaignReportsService', () => {
         timeIncrement: MetaTimeIncrement.DAILY,
       });
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:insights:act_123456789:campaign:last_30d:ti:1');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:act_123456789:campaign:last_30d:ti:1',
+      );
       expect(mockCache.set).toHaveBeenCalledWith(
         'meta:insights:act_123456789:campaign:last_30d:ti:1',
         expect.anything(),
@@ -217,7 +264,9 @@ describe('CampaignReportsService', () => {
       jest.clearAllMocks();
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchInsights.mockResolvedValue(mockInsightsApiResponse);
+      mockMetaAdsService.fetchInsights.mockResolvedValue(
+        mockInsightsApiResponse,
+      );
 
       // Second call: age,gender
       await service.getInsights('act_123456789', {
@@ -249,7 +298,11 @@ describe('CampaignReportsService', () => {
         datePreset: MetaDatePreset.LAST_30D,
       });
 
-      expect(mockCache.set).toHaveBeenCalledWith(expect.any(String), expect.anything(), 300000);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        300000,
+      );
     });
 
     it('should pass timeIncrement and breakdowns to MetaAdsService.fetchInsights', async () => {
@@ -295,7 +348,10 @@ describe('CampaignReportsService', () => {
     beforeEach(() => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchInsights.mockResolvedValue({ data: adLevelInsights, paging: {} });
+      mockMetaAdsService.fetchInsights.mockResolvedValue({
+        data: adLevelInsights,
+        paging: {},
+      });
     });
 
     it('should throw BadRequestException when includeThumbnails is used without level=ad', async () => {
@@ -349,7 +405,9 @@ describe('CampaignReportsService', () => {
         includeThumbnails: true,
       });
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:insights:act_123456789:ad:last_7d:thumbs');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:act_123456789:ad:last_7d:thumbs',
+      );
     });
 
     it('should NOT call fetchAdCreatives when includeThumbnails is false', async () => {
@@ -362,7 +420,9 @@ describe('CampaignReportsService', () => {
     });
 
     it('should return rows without thumbnails when creative fetch fails (best-effort)', async () => {
-      mockMetaAdsService.fetchAdCreatives.mockRejectedValue(new Error('Meta API down'));
+      mockMetaAdsService.fetchAdCreatives.mockRejectedValue(
+        new Error('Meta API down'),
+      );
 
       const result = await service.getInsights('act_123456789', {
         adAccountId: 'act_123456789',
@@ -375,7 +435,10 @@ describe('CampaignReportsService', () => {
     });
 
     it('should NOT call fetchAdCreatives when no row has ad_id', async () => {
-      mockMetaAdsService.fetchInsights.mockResolvedValue({ data: mockInsights, paging: {} });
+      mockMetaAdsService.fetchInsights.mockResolvedValue({
+        data: mockInsights,
+        paging: {},
+      });
 
       await service.getInsights('act_123456789', {
         adAccountId: 'act_123456789',
@@ -391,7 +454,11 @@ describe('CampaignReportsService', () => {
     it('should return cached single insight on cache hit', async () => {
       mockCache.get.mockResolvedValue(mockInsights[0]);
 
-      const result = await service.getCampaignInsights('111', 'act_123456789', MetaDatePreset.LAST_7D);
+      const result = await service.getCampaignInsights(
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_7D,
+      );
 
       expect(result).toEqual(mockInsights[0]);
       expect(mockMetaAdsService.fetchCampaignInsights).not.toHaveBeenCalled();
@@ -400,9 +467,15 @@ describe('CampaignReportsService', () => {
     it('should return single MetaInsights when no timeIncrement or breakdowns', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue(mockInsights[0]);
+      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue(
+        mockInsights[0],
+      );
 
-      const result = await service.getCampaignInsights('111', 'act_123456789', MetaDatePreset.LAST_7D);
+      const result = await service.getCampaignInsights(
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_7D,
+      );
 
       expect(result).toEqual(mockInsights[0]);
       expect(mockCache.set).toHaveBeenCalledWith(
@@ -415,8 +488,16 @@ describe('CampaignReportsService', () => {
     it('should return PaginatedResult when timeIncrement is provided', async () => {
       const apiResponse: MetaApiPaginatedResponse<MetaInsights> = {
         data: [
-          { ...mockInsights[0], date_start: '2026-06-10', date_stop: '2026-06-10' },
-          { ...mockInsights[0], date_start: '2026-06-11', date_stop: '2026-06-11' },
+          {
+            ...mockInsights[0],
+            date_start: '2026-06-10',
+            date_stop: '2026-06-10',
+          },
+          {
+            ...mockInsights[0],
+            date_start: '2026-06-11',
+            date_stop: '2026-06-11',
+          },
         ],
         paging: {},
       };
@@ -425,10 +506,16 @@ describe('CampaignReportsService', () => {
       mockMetaAdsService.fetchCampaignInsights.mockResolvedValue(apiResponse);
 
       const result = await service.getCampaignInsights(
-        '111', 'act_123456789', MetaDatePreset.LAST_7D, MetaTimeIncrement.DAILY,
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_7D,
+        MetaTimeIncrement.DAILY,
       );
 
-      expect(result).toEqual({ data: apiResponse.data, paging: { next: undefined } });
+      expect(result).toEqual({
+        data: apiResponse.data,
+        paging: { next: undefined },
+      });
     });
 
     it('should return PaginatedResult when breakdowns are provided', async () => {
@@ -444,22 +531,37 @@ describe('CampaignReportsService', () => {
       mockMetaAdsService.fetchCampaignInsights.mockResolvedValue(apiResponse);
 
       const result = await service.getCampaignInsights(
-        '111', 'act_123456789', MetaDatePreset.LAST_30D, undefined, 'age,gender',
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_30D,
+        undefined,
+        'age,gender',
       );
 
-      expect(result).toEqual({ data: apiResponse.data, paging: { next: undefined } });
+      expect(result).toEqual({
+        data: apiResponse.data,
+        paging: { next: undefined },
+      });
     });
 
     it('should use timeIncrement in cache key for getCampaignInsights', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue({ data: mockInsights, paging: {} });
+      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue({
+        data: mockInsights,
+        paging: {},
+      });
 
       await service.getCampaignInsights(
-        '111', 'act_123456789', MetaDatePreset.LAST_7D, MetaTimeIncrement.DAILY,
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_7D,
+        MetaTimeIncrement.DAILY,
       );
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:insights:campaign:111:last_7d:ti:1');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:campaign:111:last_7d:ti:1',
+      );
       expect(mockCache.set).toHaveBeenCalledWith(
         'meta:insights:campaign:111:last_7d:ti:1',
         expect.anything(),
@@ -470,10 +572,17 @@ describe('CampaignReportsService', () => {
     it('should use sorted breakdowns in cache key for getCampaignInsights', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue({ data: mockInsights, paging: {} });
+      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue({
+        data: mockInsights,
+        paging: {},
+      });
 
       await service.getCampaignInsights(
-        '111', 'act_123456789', MetaDatePreset.LAST_30D, undefined, 'gender,age',
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_30D,
+        undefined,
+        'gender,age',
       );
 
       expect(mockCache.get).toHaveBeenCalledWith(
@@ -484,19 +593,34 @@ describe('CampaignReportsService', () => {
     it('should use base cache key when no timeIncrement or breakdowns', async () => {
       mockCache.get.mockResolvedValue(null);
       mockAdAccountsService.findByAdAccountId.mockResolvedValue(mockAccount);
-      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue(mockInsights[0]);
+      mockMetaAdsService.fetchCampaignInsights.mockResolvedValue(
+        mockInsights[0],
+      );
 
-      await service.getCampaignInsights('111', 'act_123456789', MetaDatePreset.LAST_30D);
+      await service.getCampaignInsights(
+        '111',
+        'act_123456789',
+        MetaDatePreset.LAST_30D,
+      );
 
-      expect(mockCache.get).toHaveBeenCalledWith('meta:insights:campaign:111:last_30d');
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'meta:insights:campaign:111:last_30d',
+      );
     });
 
     it('should throw UnprocessableEntityException for inactive account', async () => {
       mockCache.get.mockResolvedValue(null);
-      mockAdAccountsService.findByAdAccountId.mockResolvedValue({ ...mockAccount, isActive: false });
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue({
+        ...mockAccount,
+        isActive: false,
+      });
 
       await expect(
-        service.getCampaignInsights('111', 'act_123456789', MetaDatePreset.LAST_7D),
+        service.getCampaignInsights(
+          '111',
+          'act_123456789',
+          MetaDatePreset.LAST_7D,
+        ),
       ).rejects.toThrow(UnprocessableEntityException);
     });
   });
@@ -523,47 +647,75 @@ describe('CampaignReportsService', () => {
     it('returns csv string from CsvFormatterService', async () => {
       const result = await service.exportInsightsCsv(baseExportDto);
       expect(result).toBe('csv-output');
-      expect(mockCsvFormatter.format).toHaveBeenCalledWith(mockInsights, expect.any(Array));
+      expect(mockCsvFormatter.format).toHaveBeenCalledWith(
+        mockInsights,
+        expect.any(Array),
+      );
     });
 
     it('uses all non-breakdown columns when columns is not provided', async () => {
       await service.exportInsightsCsv(baseExportDto);
-      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [
+        MetaInsights[],
+        MetaInsightsColumn[],
+      ];
       expect(columns).not.toContain(MetaInsightsColumn.AGE);
       expect(columns).not.toContain(MetaInsightsColumn.GENDER);
       expect(columns).toContain(MetaInsightsColumn.SPEND);
     });
 
     it('includes breakdown columns when breakdowns param matches', async () => {
-      await service.exportInsightsCsv({ ...baseExportDto, breakdowns: 'age,gender' });
-      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      await service.exportInsightsCsv({
+        ...baseExportDto,
+        breakdowns: 'age,gender',
+      });
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [
+        MetaInsights[],
+        MetaInsightsColumn[],
+      ];
       expect(columns).toContain(MetaInsightsColumn.AGE);
       expect(columns).toContain(MetaInsightsColumn.GENDER);
       expect(columns).not.toContain(MetaInsightsColumn.COUNTRY);
     });
 
     it('uses only selected columns when columns array is provided', async () => {
-      const selected = [MetaInsightsColumn.CAMPAIGN_NAME, MetaInsightsColumn.SPEND];
+      const selected = [
+        MetaInsightsColumn.CAMPAIGN_NAME,
+        MetaInsightsColumn.SPEND,
+      ];
       await service.exportInsightsCsv({ ...baseExportDto, columns: selected });
-      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [
+        MetaInsights[],
+        MetaInsightsColumn[],
+      ];
       expect(columns).toEqual(selected);
     });
 
     it('throws BadRequestException when datePreset and since are both provided', async () => {
       await expect(
-        service.exportInsightsCsv({ ...baseExportDto, since: '2025-11-01', until: '2025-11-30' }),
+        service.exportInsightsCsv({
+          ...baseExportDto,
+          since: '2025-11-01',
+          until: '2025-11-30',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when since is provided without until', async () => {
       await expect(
-        service.exportInsightsCsv({ adAccountId: 'act_123456789', since: '2025-11-01' }),
+        service.exportInsightsCsv({
+          adAccountId: 'act_123456789',
+          since: '2025-11-01',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when until is provided without since', async () => {
       await expect(
-        service.exportInsightsCsv({ adAccountId: 'act_123456789', until: '2025-11-30' }),
+        service.exportInsightsCsv({
+          adAccountId: 'act_123456789',
+          until: '2025-11-30',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -609,7 +761,10 @@ describe('CampaignReportsService', () => {
 
       await service.exportInsightsCsv(baseExportDto);
 
-      const [rows] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      const [rows] = mockCsvFormatter.format.mock.calls[0] as [
+        MetaInsights[],
+        MetaInsightsColumn[],
+      ];
       expect(rows).toHaveLength(2);
       expect(mockMetaAdsService.fetchInsights).toHaveBeenCalledTimes(2);
     });
@@ -632,20 +787,31 @@ describe('CampaignReportsService', () => {
 
     it('excludes thumbnail_url and instagram_permalink_url columns by default', async () => {
       await service.exportInsightsCsv(baseExportDto);
-      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      const [, columns] = mockCsvFormatter.format.mock.calls[0] as [
+        MetaInsights[],
+        MetaInsightsColumn[],
+      ];
       expect(columns).not.toContain(MetaInsightsColumn.THUMBNAIL_URL);
       expect(columns).not.toContain(MetaInsightsColumn.INSTAGRAM_PERMALINK_URL);
     });
 
     it('throws BadRequestException when includeThumbnails is used without level=ad', async () => {
       await expect(
-        service.exportInsightsCsv({ ...baseExportDto, includeThumbnails: true }),
+        service.exportInsightsCsv({
+          ...baseExportDto,
+          includeThumbnails: true,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('includes thumbnail_url column and enriches rows when includeThumbnails with level=ad', async () => {
-      const adRows: MetaInsights[] = [{ ...mockInsights[0], ad_id: 'ad_1', ad_name: 'Anúncio 1' }];
-      mockMetaAdsService.fetchInsights.mockResolvedValue({ data: adRows, paging: {} });
+      const adRows: MetaInsights[] = [
+        { ...mockInsights[0], ad_id: 'ad_1', ad_name: 'Anúncio 1' },
+      ];
+      mockMetaAdsService.fetchInsights.mockResolvedValue({
+        data: adRows,
+        paging: {},
+      });
       mockMetaAdsService.fetchAdCreatives.mockResolvedValue({
         ad_1: {
           id: 'cr_1',
@@ -660,19 +826,32 @@ describe('CampaignReportsService', () => {
         includeThumbnails: true,
       });
 
-      const [rows, columns] = mockCsvFormatter.format.mock.calls[0] as [MetaInsights[], MetaInsightsColumn[]];
+      const [rows, columns] = mockCsvFormatter.format.mock.calls[0] as [
+        MetaInsights[],
+        MetaInsightsColumn[],
+      ];
       expect(columns).toContain(MetaInsightsColumn.THUMBNAIL_URL);
       expect(columns).toContain(MetaInsightsColumn.INSTAGRAM_PERMALINK_URL);
       expect(rows[0].thumbnail_url).toBe('https://cdn.fb/t1.jpg');
-      expect(rows[0].instagram_permalink_url).toBe('https://www.instagram.com/p/ABC123/');
-      expect(mockMetaAdsService.fetchAdCreatives).toHaveBeenCalledWith(['ad_1'], 'plaintext-token');
+      expect(rows[0].instagram_permalink_url).toBe(
+        'https://www.instagram.com/p/ABC123/',
+      );
+      expect(mockMetaAdsService.fetchAdCreatives).toHaveBeenCalledWith(
+        ['ad_1'],
+        'plaintext-token',
+      );
     });
   });
 
   describe('listAdsets', () => {
     it('decrypts the token and delegates to MetaAdsService.fetchAdsets', async () => {
       const mockAdsets: MetaAdset[] = [
-        { id: 'adset_1', name: 'CJ - Retargeting', updated_time: '2026-08-01T00:00:00+0000', effective_status: 'ACTIVE' },
+        {
+          id: 'adset_1',
+          name: 'CJ - Retargeting',
+          updated_time: '2026-08-01T00:00:00+0000',
+          effective_status: 'ACTIVE',
+        },
       ];
       mockAdAccountsService.findByAdAccountId.mockResolvedValueOnce({
         adAccountId: 'act_123',
@@ -685,7 +864,10 @@ describe('CampaignReportsService', () => {
       const result = await service.listAdsets('act_123');
 
       expect(mockCrypto.decrypt).toHaveBeenCalledWith('encrypted_token');
-      expect(mockMetaAdsService.fetchAdsets).toHaveBeenCalledWith('act_123', 'plain_token');
+      expect(mockMetaAdsService.fetchAdsets).toHaveBeenCalledWith(
+        'act_123',
+        'plain_token',
+      );
       expect(result).toEqual(mockAdsets);
     });
 
@@ -696,7 +878,9 @@ describe('CampaignReportsService', () => {
         isActive: false,
       });
 
-      await expect(service.listAdsets('act_123')).rejects.toThrow(UnprocessableEntityException);
+      await expect(service.listAdsets('act_123')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
     });
   });
 
@@ -711,9 +895,14 @@ describe('CampaignReportsService', () => {
         isActive: true,
       });
       mockCrypto.decrypt.mockReturnValueOnce('plain_token');
-      mockMetaAdsService.fetchAdsetInsights.mockResolvedValueOnce(mockInsight as MetaInsights);
+      mockMetaAdsService.fetchAdsetInsights.mockResolvedValueOnce(mockInsight);
 
-      const result = await service.getAdsetInsights('adset_1', 'act_123', '2026-08-01', '2026-08-09');
+      const result = await service.getAdsetInsights(
+        'adset_1',
+        'act_123',
+        '2026-08-01',
+        '2026-08-09',
+      );
 
       expect(mockMetaAdsService.fetchAdsetInsights).toHaveBeenCalledWith(
         'adset_1',
@@ -741,58 +930,121 @@ describe('CampaignReportsService', () => {
           adset_id: 'adset_1',
           adset_name: 'Adset A',
           spend: '100.00',
-          actions: [{ action_type: 'messaging_conversation_started_7d', value: '10' }],
+          actions: [
+            { action_type: 'messaging_conversation_started_7d', value: '10' },
+          ],
         },
         {
           adset_id: 'adset_2',
           adset_name: 'Adset B',
           spend: '200.00',
-          actions: [{ action_type: 'messaging_conversation_started_7d', value: '5' }],
+          actions: [
+            { action_type: 'messaging_conversation_started_7d', value: '5' },
+          ],
         },
       ]);
       mockMetaAdsService.fetchAdsets.mockResolvedValue([
-        { id: 'adset_1', name: 'Adset A', start_time: '2026-08-01T10:00:00+0000', updated_time: '2026-08-01', effective_status: 'ACTIVE' },
-        { id: 'adset_2', name: 'Adset B', start_time: '2026-08-15T10:00:00+0000', updated_time: '2026-08-15', effective_status: 'ACTIVE' },
+        {
+          id: 'adset_1',
+          name: 'Adset A',
+          start_time: '2026-08-01T10:00:00+0000',
+          updated_time: '2026-08-01',
+          effective_status: 'ACTIVE',
+        },
+        {
+          id: 'adset_2',
+          name: 'Adset B',
+          start_time: '2026-08-15T10:00:00+0000',
+          updated_time: '2026-08-15',
+          effective_status: 'ACTIVE',
+        },
       ]);
 
-      const result = await service.getAdsetMessageRows(adAccountId, since, until);
+      const result = await service.getAdsetMessageRows(
+        adAccountId,
+        since,
+        until,
+      );
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ adsetName: 'Adset A', messagesStarted: 10, costPerMessage: 10, startDate: '01/08/26' });
-      expect(result[1]).toEqual({ adsetName: 'Adset B', messagesStarted: 5, costPerMessage: 40, startDate: '15/08/26' });
+      expect(result[0]).toEqual({
+        adsetName: 'Adset A',
+        messagesStarted: 10,
+        costPerMessage: 10,
+        startDate: '01/08/26',
+      });
+      expect(result[1]).toEqual({
+        adsetName: 'Adset B',
+        messagesStarted: 5,
+        costPerMessage: 40,
+        startDate: '15/08/26',
+      });
     });
 
     it('define costPerMessage como null quando messagesStarted é 0', async () => {
       mockMetaAdsService.fetchAdsetMessageInsights.mockResolvedValue([
-        { adset_id: 'adset_1', adset_name: 'Adset A', spend: '50.00', actions: [] },
+        {
+          adset_id: 'adset_1',
+          adset_name: 'Adset A',
+          spend: '50.00',
+          actions: [],
+        },
       ]);
       mockMetaAdsService.fetchAdsets.mockResolvedValue([
-        { id: 'adset_1', name: 'Adset A', start_time: '2026-08-01T00:00:00+0000', updated_time: '2026-08-01', effective_status: 'ACTIVE' },
+        {
+          id: 'adset_1',
+          name: 'Adset A',
+          start_time: '2026-08-01T00:00:00+0000',
+          updated_time: '2026-08-01',
+          effective_status: 'ACTIVE',
+        },
       ]);
 
-      const result = await service.getAdsetMessageRows(adAccountId, since, until);
+      const result = await service.getAdsetMessageRows(
+        adAccountId,
+        since,
+        until,
+      );
 
       expect(result[0].costPerMessage).toBeNull();
     });
 
     it('define startDate como "–" quando start_time está ausente', async () => {
       mockMetaAdsService.fetchAdsetMessageInsights.mockResolvedValue([
-        { adset_id: 'adset_1', adset_name: 'Adset A', spend: '50.00', actions: [] },
+        {
+          adset_id: 'adset_1',
+          adset_name: 'Adset A',
+          spend: '50.00',
+          actions: [],
+        },
       ]);
       mockMetaAdsService.fetchAdsets.mockResolvedValue([
-        { id: 'adset_1', name: 'Adset A', updated_time: '2026-08-01', effective_status: 'ACTIVE' },
+        {
+          id: 'adset_1',
+          name: 'Adset A',
+          updated_time: '2026-08-01',
+          effective_status: 'ACTIVE',
+        },
       ]);
 
-      const result = await service.getAdsetMessageRows(adAccountId, since, until);
+      const result = await service.getAdsetMessageRows(
+        adAccountId,
+        since,
+        until,
+      );
 
       expect(result[0].startDate).toBe('–');
     });
 
     it('lança UnprocessableEntityException para conta inativa', async () => {
-      mockAdAccountsService.findByAdAccountId.mockResolvedValue({ ...mockAccount, isActive: false });
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue({
+        ...mockAccount,
+        isActive: false,
+      });
 
-      await expect(service.getAdsetMessageRows(adAccountId, since, until))
-        .rejects.toThrow(UnprocessableEntityException);
+      await expect(
+        service.getAdsetMessageRows(adAccountId, since, until),
+      ).rejects.toThrow(UnprocessableEntityException);
     });
   });
 
@@ -807,20 +1059,63 @@ describe('CampaignReportsService', () => {
     it('retorna LiveReportData para as 2 lives mais recentes', async () => {
       mockMetaAdsService.fetchInsights.mockResolvedValue({
         data: [
-          { campaign_id: '1', campaign_name: 'LIVE_01_09_25_CAP', spend: '500', reach: '10000', clicks: '200', actions: [] },
-          { campaign_id: '2', campaign_name: 'LIVE_01_09_25_VENDAS', spend: '300', reach: '5000', clicks: '100', actions: [] },
-          { campaign_id: '3', campaign_name: 'LIVE_15_08_25_CAP', spend: '400', reach: '8000', clicks: '150', actions: [] },
-          { campaign_id: '4', campaign_name: 'LIVE_01_07_25_CAP', spend: '200', reach: '4000', clicks: '80', actions: [] },
+          {
+            campaign_id: '1',
+            campaign_name: 'LIVE_01_09_25_CAP',
+            spend: '500',
+            reach: '10000',
+            clicks: '200',
+            actions: [],
+          },
+          {
+            campaign_id: '2',
+            campaign_name: 'LIVE_01_09_25_VENDAS',
+            spend: '300',
+            reach: '5000',
+            clicks: '100',
+            actions: [],
+          },
+          {
+            campaign_id: '3',
+            campaign_name: 'LIVE_15_08_25_CAP',
+            spend: '400',
+            reach: '8000',
+            clicks: '150',
+            actions: [],
+          },
+          {
+            campaign_id: '4',
+            campaign_name: 'LIVE_01_07_25_CAP',
+            spend: '200',
+            reach: '4000',
+            clicks: '80',
+            actions: [],
+          },
         ],
         paging: {},
       });
       mockMetaAdsService.fetchAdInsightsByPeriod
         .mockResolvedValueOnce([
-          { ad_id: 'ad_1', ad_name: 'Anuncio A', campaign_name: 'LIVE_01_09_25_CAP', reach: '3000' },
-          { ad_id: 'ad_2', ad_name: 'Anuncio B', campaign_name: 'LIVE_01_09_25_CAP', reach: '2000' },
+          {
+            ad_id: 'ad_1',
+            ad_name: 'Anuncio A',
+            campaign_name: 'LIVE_01_09_25_CAP',
+            reach: '3000',
+          },
+          {
+            ad_id: 'ad_2',
+            ad_name: 'Anuncio B',
+            campaign_name: 'LIVE_01_09_25_CAP',
+            reach: '2000',
+          },
         ])
         .mockResolvedValueOnce([
-          { ad_id: 'ad_3', ad_name: 'Anuncio C', campaign_name: 'LIVE_15_08_25_CAP', reach: '4000' },
+          {
+            ad_id: 'ad_3',
+            ad_name: 'Anuncio C',
+            campaign_name: 'LIVE_15_08_25_CAP',
+            reach: '4000',
+          },
         ]);
 
       const result = await service.getLiveReportData(adAccountId);
@@ -840,7 +1135,16 @@ describe('CampaignReportsService', () => {
 
     it('retorna [] quando não há campanhas com data no nome', async () => {
       mockMetaAdsService.fetchInsights.mockResolvedValue({
-        data: [{ campaign_id: '1', campaign_name: 'CAMPANHA_SEM_DATA', spend: '100', reach: '1000', clicks: '10', actions: [] }],
+        data: [
+          {
+            campaign_id: '1',
+            campaign_name: 'CAMPANHA_SEM_DATA',
+            spend: '100',
+            reach: '1000',
+            clicks: '10',
+            actions: [],
+          },
+        ],
         paging: {},
       });
 
@@ -851,7 +1155,16 @@ describe('CampaignReportsService', () => {
 
     it('retorna 1 live quando só há 1 data identificada', async () => {
       mockMetaAdsService.fetchInsights.mockResolvedValue({
-        data: [{ campaign_id: '1', campaign_name: 'LIVE_01_09_25_CAP', spend: '500', reach: '10000', clicks: '200', actions: [] }],
+        data: [
+          {
+            campaign_id: '1',
+            campaign_name: 'LIVE_01_09_25_CAP',
+            spend: '500',
+            reach: '10000',
+            clicks: '200',
+            actions: [],
+          },
+        ],
         paging: {},
       });
       mockMetaAdsService.fetchAdInsightsByPeriod.mockResolvedValue([]);
@@ -866,13 +1179,27 @@ describe('CampaignReportsService', () => {
       mockMetaAdsService.fetchInsights
         .mockResolvedValueOnce({
           data: [
-            { campaign_id: '1', campaign_name: 'LIVE_01_09_25_CAP', spend: '999', reach: '99999', clicks: '999', actions: [] },
+            {
+              campaign_id: '1',
+              campaign_name: 'LIVE_01_09_25_CAP',
+              spend: '999',
+              reach: '99999',
+              clicks: '999',
+              actions: [],
+            },
           ],
           paging: {},
         })
         .mockResolvedValueOnce({
           data: [
-            { campaign_id: '1', campaign_name: 'LIVE_01_09_25_CAP', spend: '500', reach: '10000', clicks: '200', actions: [] },
+            {
+              campaign_id: '1',
+              campaign_name: 'LIVE_01_09_25_CAP',
+              spend: '500',
+              reach: '10000',
+              clicks: '200',
+              actions: [],
+            },
           ],
           paging: {},
         });
@@ -885,8 +1212,13 @@ describe('CampaignReportsService', () => {
     });
 
     it('lança UnprocessableEntityException para conta inativa', async () => {
-      mockAdAccountsService.findByAdAccountId.mockResolvedValue({ ...mockAccount, isActive: false });
-      await expect(service.getLiveReportData(adAccountId)).rejects.toThrow(UnprocessableEntityException);
+      mockAdAccountsService.findByAdAccountId.mockResolvedValue({
+        ...mockAccount,
+        isActive: false,
+      });
+      await expect(service.getLiveReportData(adAccountId)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
     });
   });
 });

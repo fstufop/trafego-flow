@@ -1,4 +1,8 @@
-import { MetaDatePreset, MetaInsightsLevel, MetaTimeIncrement } from '../dto/get-insights-query.dto.js';
+import {
+  MetaDatePreset,
+  MetaInsightsLevel,
+  MetaTimeIncrement,
+} from '../dto/get-insights-query.dto.js';
 
 export interface MetaCampaign {
   id: string;
@@ -102,6 +106,12 @@ export interface MetaAdset {
   id: string;
   name: string;
   updated_time: string; // ISO 8601, e.g. "2026-08-01T10:00:00+0000"
-  effective_status: 'ACTIVE' | 'PAUSED' | 'DELETED' | 'ARCHIVED' | 'IN_PROCESS' | 'WITH_ISSUES';
+  effective_status:
+    | 'ACTIVE'
+    | 'PAUSED'
+    | 'DELETED'
+    | 'ARCHIVED'
+    | 'IN_PROCESS'
+    | 'WITH_ISSUES';
   start_time?: string; // ISO 8601, ex: "2026-08-01T10:00:00+0000"
 }

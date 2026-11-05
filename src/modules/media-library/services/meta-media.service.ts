@@ -15,7 +15,8 @@ export class MetaMediaService {
   private readonly graphUrl: string;
 
   constructor(config: ConfigService) {
-    const base = config.get<string>('meta.graphApiUrl') ?? 'https://graph.facebook.com';
+    const base =
+      config.get<string>('meta.graphApiUrl') ?? 'https://graph.facebook.com';
     const version = config.get<string>('meta.graphApiVersion') ?? 'v21.0';
     this.graphUrl = `${base}/${version}`;
   }
@@ -28,9 +29,21 @@ export class MetaMediaService {
     mimeType: string,
   ): Promise<string> {
     if (VIDEO_MIME.has(mimeType)) {
-      return this.uploadVideo(adAccountId, accessToken, filePath, fileName, mimeType);
+      return this.uploadVideo(
+        adAccountId,
+        accessToken,
+        filePath,
+        fileName,
+        mimeType,
+      );
     }
-    return this.uploadImage(adAccountId, accessToken, filePath, fileName, mimeType);
+    return this.uploadImage(
+      adAccountId,
+      accessToken,
+      filePath,
+      fileName,
+      mimeType,
+    );
   }
 
   private async uploadImage(
@@ -48,12 +61,16 @@ export class MetaMediaService {
     form.append('filename', blob, fileName);
 
     try {
-      this.logger.log(`Uploading image [${fileName}] for ad account [${adAccountId}]`);
+      this.logger.log(
+        `Uploading image [${fileName}] for ad account [${adAccountId}]`,
+      );
       const response = await axios.post(url, form);
       const images = response.data.images as Record<string, { hash: string }>;
       return Object.values(images)[0].hash;
     } catch (err) {
-      this.logger.error(`Image upload failed [${adAccountId}]: ${formatMetaError(err)}`);
+      this.logger.error(
+        `Image upload failed [${adAccountId}]: ${formatMetaError(err)}`,
+      );
       throw err;
     }
   }
@@ -69,9 +86,21 @@ export class MetaMediaService {
     const fileSize = stat.size;
 
     if (fileSize <= VIDEO_CHUNKED_THRESHOLD_BYTES) {
-      return this.uploadVideoSinglePart(adAccountId, accessToken, filePath, fileName, mimeType);
+      return this.uploadVideoSinglePart(
+        adAccountId,
+        accessToken,
+        filePath,
+        fileName,
+        mimeType,
+      );
     }
-    return this.uploadVideoChunked(adAccountId, accessToken, filePath, fileName, fileSize);
+    return this.uploadVideoChunked(
+      adAccountId,
+      accessToken,
+      filePath,
+      fileName,
+      fileSize,
+    );
   }
 
   private async uploadVideoSinglePart(
@@ -93,7 +122,9 @@ export class MetaMediaService {
       const response = await axios.post(url, form);
       return response.data.id as string;
     } catch (err) {
-      this.logger.error(`Video single-part upload failed [${adAccountId}]: ${formatMetaError(err)}`);
+      this.logger.error(
+        `Video single-part upload failed [${adAccountId}]: ${formatMetaError(err)}`,
+      );
       throw err;
     }
   }
@@ -108,49 +139,55 @@ export class MetaMediaService {
     const baseUrl = `${this.graphUrl}/${adAccountId}/advideos`;
 
     try {
-    // Phase 1: start upload session
-    const startForm = new FormData();
-    startForm.append('access_token', accessToken);
-    startForm.append('upload_phase', 'start');
-    startForm.append('file_size', String(fileSize));
-    const startRes = await axios.post(baseUrl, startForm);
-    const { upload_session_id: sessionId, video_id: videoId, start_offset: startOffsetStr } = startRes.data;
+      // Phase 1: start upload session
+      const startForm = new FormData();
+      startForm.append('access_token', accessToken);
+      startForm.append('upload_phase', 'start');
+      startForm.append('file_size', String(fileSize));
+      const startRes = await axios.post(baseUrl, startForm);
+      const {
+        upload_session_id: sessionId,
+        video_id: videoId,
+        start_offset: startOffsetStr,
+      } = startRes.data;
 
-    // Phase 2: transfer chunks
-    const fileHandle = await fs.promises.open(filePath, 'r');
-    try {
-      let startOffset = parseInt(startOffsetStr, 10);
+      // Phase 2: transfer chunks
+      const fileHandle = await fs.promises.open(filePath, 'r');
+      try {
+        let startOffset = parseInt(startOffsetStr, 10);
 
-      while (startOffset < fileSize) {
-        const chunkSize = Math.min(CHUNK_SIZE_BYTES, fileSize - startOffset);
-        const chunk = Buffer.alloc(chunkSize);
-        await fileHandle.read(chunk, 0, chunkSize, startOffset);
+        while (startOffset < fileSize) {
+          const chunkSize = Math.min(CHUNK_SIZE_BYTES, fileSize - startOffset);
+          const chunk = Buffer.alloc(chunkSize);
+          await fileHandle.read(chunk, 0, chunkSize, startOffset);
 
-        const chunkForm = new FormData();
-        chunkForm.append('access_token', accessToken);
-        chunkForm.append('upload_phase', 'transfer');
-        chunkForm.append('upload_session_id', sessionId);
-        chunkForm.append('start_offset', String(startOffset));
-        chunkForm.append('video_file_chunk', new Blob([chunk]), fileName);
+          const chunkForm = new FormData();
+          chunkForm.append('access_token', accessToken);
+          chunkForm.append('upload_phase', 'transfer');
+          chunkForm.append('upload_session_id', sessionId);
+          chunkForm.append('start_offset', String(startOffset));
+          chunkForm.append('video_file_chunk', new Blob([chunk]), fileName);
 
-        const transferRes = await axios.post(baseUrl, chunkForm);
-        startOffset = parseInt(transferRes.data.start_offset, 10);
+          const transferRes = await axios.post(baseUrl, chunkForm);
+          startOffset = parseInt(transferRes.data.start_offset, 10);
+        }
+      } finally {
+        await fileHandle.close();
       }
-    } finally {
-      await fileHandle.close();
-    }
 
-    // Phase 3: finish
-    const finishForm = new FormData();
-    finishForm.append('access_token', accessToken);
-    finishForm.append('upload_phase', 'finish');
-    finishForm.append('upload_session_id', sessionId);
-    finishForm.append('title', fileName);
-    await axios.post(baseUrl, finishForm);
+      // Phase 3: finish
+      const finishForm = new FormData();
+      finishForm.append('access_token', accessToken);
+      finishForm.append('upload_phase', 'finish');
+      finishForm.append('upload_session_id', sessionId);
+      finishForm.append('title', fileName);
+      await axios.post(baseUrl, finishForm);
 
-    return videoId as string;
+      return videoId as string;
     } catch (err) {
-      this.logger.error(`Video chunked upload failed [${adAccountId}]: ${formatMetaError(err)}`);
+      this.logger.error(
+        `Video chunked upload failed [${adAccountId}]: ${formatMetaError(err)}`,
+      );
       throw err;
     }
   }
@@ -158,10 +195,13 @@ export class MetaMediaService {
 
 function formatMetaError(err: unknown): string {
   if (axios.isAxiosError(err) && err.response) {
-    const data = err.response.data as { error?: { message?: string; code?: number } };
+    const data = err.response.data as {
+      error?: { message?: string; code?: number };
+    };
     const msg = data?.error?.message;
     if (msg) {
-      const code = data.error!.code != null ? ` (code: ${data.error!.code})` : '';
+      const code =
+        data.error!.code != null ? ` (code: ${data.error!.code})` : '';
       return `Meta API: ${msg}${code}`;
     }
     return `HTTP ${err.response.status}: ${JSON.stringify(data)}`;

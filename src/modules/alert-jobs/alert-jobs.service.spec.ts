@@ -31,7 +31,9 @@ describe('AlertJobsService', () => {
     it('queries only ACTIVE jobs', async () => {
       mockRepo.find.mockResolvedValueOnce([]);
       await service.findActive();
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { status: AlertJobStatus.ACTIVE } });
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        where: { status: AlertJobStatus.ACTIVE },
+      });
     });
   });
 
@@ -40,7 +42,9 @@ describe('AlertJobsService', () => {
       mockRepo.find.mockResolvedValueOnce([]);
       await service.findAll({ status: AlertJobStatus.INACTIVE });
       expect(mockRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ status: AlertJobStatus.INACTIVE }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({ status: AlertJobStatus.INACTIVE }),
+        }),
       );
     });
 
@@ -48,21 +52,35 @@ describe('AlertJobsService', () => {
       mockRepo.find.mockResolvedValueOnce([]);
       await service.findAll({ type: AlertJobType.ADSET_INSIGHTS });
       expect(mockRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ type: AlertJobType.ADSET_INSIGHTS }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({ type: AlertJobType.ADSET_INSIGHTS }),
+        }),
       );
     });
   });
 
   describe('create', () => {
     it('defaults status to ACTIVE and fields to roas+last_updated when not provided', async () => {
-      const created = { id: 'uuid-1', type: AlertJobType.ADSET_INSIGHTS, status: AlertJobStatus.ACTIVE, clientId: null, fields: ['roas', 'last_updated'] };
+      const created = {
+        id: 'uuid-1',
+        type: AlertJobType.ADSET_INSIGHTS,
+        status: AlertJobStatus.ACTIVE,
+        clientId: null,
+        fields: ['roas', 'last_updated'],
+      };
       mockRepo.create.mockReturnValueOnce(created);
       mockRepo.save.mockResolvedValueOnce(created);
 
-      const result = await service.create({ type: AlertJobType.ADSET_INSIGHTS });
+      const result = await service.create({
+        type: AlertJobType.ADSET_INSIGHTS,
+      });
 
       expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: AlertJobStatus.ACTIVE, fields: ['roas', 'last_updated'], clientId: null }),
+        expect.objectContaining({
+          status: AlertJobStatus.ACTIVE,
+          fields: ['roas', 'last_updated'],
+          clientId: null,
+        }),
       );
       expect(result).toEqual(created);
     });
@@ -71,26 +89,43 @@ describe('AlertJobsService', () => {
   describe('update', () => {
     it('throws NotFoundException when job does not exist', async () => {
       mockRepo.findOne.mockResolvedValueOnce(null);
-      await expect(service.update('nonexistent', { status: AlertJobStatus.INACTIVE })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('nonexistent', { status: AlertJobStatus.INACTIVE }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('updates status without touching fields', async () => {
-      const job = { id: 'uuid-1', status: AlertJobStatus.ACTIVE, fields: ['roas'] };
+      const job = {
+        id: 'uuid-1',
+        status: AlertJobStatus.ACTIVE,
+        fields: ['roas'],
+      };
       mockRepo.findOne.mockResolvedValueOnce(job);
-      mockRepo.save.mockResolvedValueOnce({ ...job, status: AlertJobStatus.INACTIVE });
+      mockRepo.save.mockResolvedValueOnce({
+        ...job,
+        status: AlertJobStatus.INACTIVE,
+      });
 
-      const result = await service.update('uuid-1', { status: AlertJobStatus.INACTIVE });
+      const result = await service.update('uuid-1', {
+        status: AlertJobStatus.INACTIVE,
+      });
 
       expect(result.status).toBe(AlertJobStatus.INACTIVE);
       expect(result.fields).toEqual(['roas']);
     });
 
     it('replaces fields array entirely when provided', async () => {
-      const job = { id: 'uuid-1', status: AlertJobStatus.ACTIVE, fields: ['roas'] };
+      const job = {
+        id: 'uuid-1',
+        status: AlertJobStatus.ACTIVE,
+        fields: ['roas'],
+      };
       mockRepo.findOne.mockResolvedValueOnce(job);
       mockRepo.save.mockResolvedValueOnce({ ...job, fields: ['roas', 'ctr'] });
 
-      const result = await service.update('uuid-1', { fields: ['roas', 'ctr'] });
+      const result = await service.update('uuid-1', {
+        fields: ['roas', 'ctr'],
+      });
 
       expect(result.fields).toEqual(['roas', 'ctr']);
     });

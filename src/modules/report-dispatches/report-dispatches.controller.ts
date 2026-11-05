@@ -40,7 +40,9 @@ export class ReportDispatchesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar histórico de despachos (todos ou por cliente)' })
+  @ApiOperation({
+    summary: 'Listar histórico de despachos (todos ou por cliente)',
+  })
   @ApiQuery({ name: 'clientId', required: false, type: String })
   findLogs(@Query('clientId') clientId?: string) {
     return this.reportDispatchesService.findLogs(clientId);

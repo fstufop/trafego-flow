@@ -110,7 +110,7 @@ export class GoogleDriveService {
       fields: 'size',
       supportsAllDrives: true,
     });
-    return parseInt(response.data.size!, 10);
+    return parseInt(response.data.size, 10);
   }
 
   async createFolder(name: string): Promise<string> {

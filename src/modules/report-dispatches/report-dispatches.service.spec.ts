@@ -2,8 +2,14 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { ReportDispatchesService } from './report-dispatches.service.js';
-import { AdsetMessageRow, LiveReportData } from '../ai/interfaces/ai-provider.interface.js';
-import { ReportDispatchLogEntity, DispatchStatus } from './entities/report-dispatch-log.entity.js';
+import {
+  AdsetMessageRow,
+  LiveReportData,
+} from '../ai/interfaces/ai-provider.interface.js';
+import {
+  ReportDispatchLogEntity,
+  DispatchStatus,
+} from './entities/report-dispatch-log.entity.js';
 import { CampaignReportsService } from '../campaign-reports/campaign-reports.service.js';
 import { AdAccountsService } from '../ad-accounts/ad-accounts.service.js';
 import { WhatsAppGroupsService } from '../whatsapp-groups/whatsapp-groups.service.js';
@@ -25,19 +31,59 @@ async function buildService(overrides: Record<string, any> = {}) {
     providers: [
       ReportDispatchesService,
       { provide: getRepositoryToken(ReportDispatchLogEntity), useValue: repo },
-      { provide: AiService, useValue: { generateReport: jest.fn().mockResolvedValue('texto da IA'), ...overrides.aiService } },
-      { provide: InsightSnapshotsService, useValue: { saveSnapshot: jest.fn(), findPreviousSnapshot: jest.fn().mockResolvedValue(null), ...overrides.snapshotsService } },
-      { provide: ClientsService, useValue: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: null }), ...overrides.clientsService } },
-      { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(null) } },
-      { provide: CampaignReportsService, useValue: {
-        getInsights: jest.fn().mockResolvedValue({ data: [] }),
-        getAdsetMessageRows: jest.fn().mockResolvedValue([]),
-        getLiveReportData: jest.fn().mockResolvedValue([]),
-        ...overrides.campaignReportsService,
-      }},
-      { provide: AdAccountsService, useValue: { findAll: jest.fn().mockResolvedValue([]) } },
-      { provide: WhatsAppGroupsService, useValue: { findAllActiveGroupedByClientId: jest.fn().mockResolvedValue(new Map()) } },
-      { provide: WhatsAppSessionService, useValue: { sendMessage: jest.fn().mockResolvedValue(undefined) } },
+      {
+        provide: AiService,
+        useValue: {
+          generateReport: jest.fn().mockResolvedValue('texto da IA'),
+          ...overrides.aiService,
+        },
+      },
+      {
+        provide: InsightSnapshotsService,
+        useValue: {
+          saveSnapshot: jest.fn(),
+          findPreviousSnapshot: jest.fn().mockResolvedValue(null),
+          ...overrides.snapshotsService,
+        },
+      },
+      {
+        provide: ClientsService,
+        useValue: {
+          findOne: jest
+            .fn()
+            .mockResolvedValue({ aiStrategyContext: null, profileType: null }),
+          ...overrides.clientsService,
+        },
+      },
+      {
+        provide: ConfigService,
+        useValue: { get: jest.fn().mockReturnValue(null) },
+      },
+      {
+        provide: CampaignReportsService,
+        useValue: {
+          getInsights: jest.fn().mockResolvedValue({ data: [] }),
+          getAdsetMessageRows: jest.fn().mockResolvedValue([]),
+          getLiveReportData: jest.fn().mockResolvedValue([]),
+          ...overrides.campaignReportsService,
+        },
+      },
+      {
+        provide: AdAccountsService,
+        useValue: { findAll: jest.fn().mockResolvedValue([]) },
+      },
+      {
+        provide: WhatsAppGroupsService,
+        useValue: {
+          findAllActiveGroupedByClientId: jest
+            .fn()
+            .mockResolvedValue(new Map()),
+        },
+      },
+      {
+        provide: WhatsAppSessionService,
+        useValue: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+      },
     ],
   }).compile();
   return { service: module.get(ReportDispatchesService), repo };
@@ -48,9 +94,15 @@ describe('ReportDispatchesService', () => {
     it('maps MetaInsights string fields to numeric InsightsSummary', async () => {
       const { service } = await buildService();
       const insights = {
-        impressions: '1000', clicks: '50', spend: '100.50',
-        reach: '500', cpm: '10.05', cpc: '2.01', ctr: '5.00',
-        date_start: '2026-07-27', date_stop: '2026-08-02',
+        impressions: '1000',
+        clicks: '50',
+        spend: '100.50',
+        reach: '500',
+        cpm: '10.05',
+        cpc: '2.01',
+        ctr: '5.00',
+        date_start: '2026-07-27',
+        date_stop: '2026-08-02',
         actions: [
           { action_type: 'purchase', value: '3' },
           { action_type: 'add_to_cart', value: '10' },
@@ -65,18 +117,34 @@ describe('ReportDispatchesService', () => {
       const result = (service as any).toInsightsSummary(insights);
 
       expect(result).toEqual({
-        spend: 100.50, reach: 500, impressions: 1000, clicks: 50,
-        ctr: 5.00, cpm: 10.05, purchases: 3, addToCart: 10, pageViews: 80,
-        contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15,
+        spend: 100.5,
+        reach: 500,
+        impressions: 1000,
+        clicks: 50,
+        ctr: 5.0,
+        cpm: 10.05,
+        purchases: 3,
+        addToCart: 10,
+        pageViews: 80,
+        contentViews: 60,
+        checkoutInitiated: 5,
+        messagesStarted: 2,
+        liveViews: 15,
       });
     });
 
     it('returns 0 for action types not present', async () => {
       const { service } = await buildService();
       const insights = {
-        impressions: '100', clicks: '5', spend: '10', reach: '50',
-        cpm: '1', cpc: '2', ctr: '5',
-        date_start: '2026-07-27', date_stop: '2026-08-02',
+        impressions: '100',
+        clicks: '5',
+        spend: '10',
+        reach: '50',
+        cpm: '1',
+        cpc: '2',
+        ctr: '5',
+        date_start: '2026-07-27',
+        date_stop: '2026-08-02',
       } as any;
       const result = (service as any).toInsightsSummary(insights);
       expect(result.purchases).toBe(0);
@@ -93,27 +161,79 @@ describe('ReportDispatchesService', () => {
     it('returns empty object when previous is null', async () => {
       const { service } = await buildService();
       const current = {
-        spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10,
-        purchases: 3, addToCart: 10, pageViews: 80,
-        contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15,
+        spend: 100,
+        reach: 500,
+        impressions: 1000,
+        clicks: 50,
+        ctr: 5,
+        cpm: 10,
+        purchases: 3,
+        addToCart: 10,
+        pageViews: 80,
+        contentViews: 60,
+        checkoutInitiated: 5,
+        messagesStarted: 2,
+        liveViews: 15,
       };
       expect((service as any).computeDeltas(current, null)).toEqual({});
     });
 
     it('computes relative deltas correctly', async () => {
       const { service } = await buildService();
-      const base = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 10, pageViews: 80, contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15 };
-      const current  = { ...base, spend: 110, reach: 565 };
+      const base = {
+        spend: 100,
+        reach: 500,
+        impressions: 1000,
+        clicks: 50,
+        ctr: 5,
+        cpm: 10,
+        purchases: 3,
+        addToCart: 10,
+        pageViews: 80,
+        contentViews: 60,
+        checkoutInitiated: 5,
+        messagesStarted: 2,
+        liveViews: 15,
+      };
+      const current = { ...base, spend: 110, reach: 565 };
       const previous = { ...base };
       const deltas = (service as any).computeDeltas(current, previous);
       expect(deltas.reach).toBeCloseTo(0.13, 2);
-      expect(deltas.spend).toBeCloseTo(0.10, 2);
+      expect(deltas.spend).toBeCloseTo(0.1, 2);
     });
 
     it('returns null for delta where previous value is 0', async () => {
       const { service } = await buildService();
-      const current =  { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 3, addToCart: 0, pageViews: 80, contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15 };
-      const previous = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 0, addToCart: 0, pageViews: 80, contentViews: 60, checkoutInitiated: 5, messagesStarted: 2, liveViews: 15 };
+      const current = {
+        spend: 100,
+        reach: 500,
+        impressions: 1000,
+        clicks: 50,
+        ctr: 5,
+        cpm: 10,
+        purchases: 3,
+        addToCart: 0,
+        pageViews: 80,
+        contentViews: 60,
+        checkoutInitiated: 5,
+        messagesStarted: 2,
+        liveViews: 15,
+      };
+      const previous = {
+        spend: 100,
+        reach: 500,
+        impressions: 1000,
+        clicks: 50,
+        ctr: 5,
+        cpm: 10,
+        purchases: 0,
+        addToCart: 0,
+        pageViews: 80,
+        contentViews: 60,
+        checkoutInitiated: 5,
+        messagesStarted: 2,
+        liveViews: 15,
+      };
       const deltas = (service as any).computeDeltas(current, previous);
       expect(deltas.purchases).toBeNull();
       expect(deltas.addToCart).toBeNull();
@@ -123,14 +243,15 @@ describe('ReportDispatchesService', () => {
   describe('getISOWeekNumber', () => {
     it('returns 31 for 2026-07-27', async () => {
       const { service } = await buildService();
-      expect((service as any).getISOWeekNumber(new Date('2026-07-27'))).toBe(31);
+      expect((service as any).getISOWeekNumber(new Date('2026-07-27'))).toBe(
+        31,
+      );
     });
 
     it('returns 1 for 2026-01-05', async () => {
       const { service } = await buildService();
       expect((service as any).getISOWeekNumber(new Date('2026-01-05'))).toBe(2);
     });
-
   });
 
   describe('findLogs', () => {
@@ -169,14 +290,24 @@ describe('ReportDispatchesService', () => {
   describe('buildAndSend — branch por clientProfile', () => {
     it('chama getAdsetMessageRows e inclui adsetRows no payload para MESSAGE_SALES', async () => {
       const adsetRows: AdsetMessageRow[] = [
-        { adsetName: 'Conjunto A', messagesStarted: 10, costPerMessage: 5, startDate: '01/08/26' },
+        {
+          adsetName: 'Conjunto A',
+          messagesStarted: 10,
+          costPerMessage: 5,
+          startDate: '01/08/26',
+        },
       ];
       const mockGetAdsetRows = jest.fn().mockResolvedValue(adsetRows);
       const mockGetLiveData = jest.fn().mockResolvedValue([]);
       const generateReport = jest.fn().mockResolvedValue('texto');
 
       const { service } = await buildService({
-        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'message_sales' }) },
+        clientsService: {
+          findOne: jest.fn().mockResolvedValue({
+            aiStrategyContext: null,
+            profileType: 'message_sales',
+          }),
+        },
         campaignReportsService: {
           getInsights: jest.fn().mockResolvedValue({ data: [] }),
           getAdsetMessageRows: mockGetAdsetRows,
@@ -200,14 +331,25 @@ describe('ReportDispatchesService', () => {
 
     it('chama getLiveReportData e inclui liveData no payload para LIVE_SALES', async () => {
       const liveData: LiveReportData[] = [
-        { liveDate: '01/09/2026', captationSpend: 500, captationReach: 10000, captationClicks: 200, adReaches: [] },
+        {
+          liveDate: '01/09/2026',
+          captationSpend: 500,
+          captationReach: 10000,
+          captationClicks: 200,
+          adReaches: [],
+        },
       ];
       const mockGetAdsetRows = jest.fn().mockResolvedValue([]);
       const mockGetLiveData = jest.fn().mockResolvedValue(liveData);
       const generateReport = jest.fn().mockResolvedValue('texto');
 
       const { service } = await buildService({
-        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'live_sales' }) },
+        clientsService: {
+          findOne: jest.fn().mockResolvedValue({
+            aiStrategyContext: null,
+            profileType: 'live_sales',
+          }),
+        },
         campaignReportsService: {
           getInsights: jest.fn().mockResolvedValue({ data: [] }),
           getAdsetMessageRows: mockGetAdsetRows,
@@ -234,7 +376,12 @@ describe('ReportDispatchesService', () => {
       const mockGetLiveData = jest.fn().mockResolvedValue([]);
 
       const { service } = await buildService({
-        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'site_sales' }) },
+        clientsService: {
+          findOne: jest.fn().mockResolvedValue({
+            aiStrategyContext: null,
+            profileType: 'site_sales',
+          }),
+        },
         campaignReportsService: {
           getInsights: jest.fn().mockResolvedValue({ data: [] }),
           getAdsetMessageRows: mockGetAdsetRows,
@@ -258,10 +405,17 @@ describe('ReportDispatchesService', () => {
       const generateReport = jest.fn().mockResolvedValue('texto');
 
       const { service } = await buildService({
-        clientsService: { findOne: jest.fn().mockResolvedValue({ aiStrategyContext: null, profileType: 'message_sales' }) },
+        clientsService: {
+          findOne: jest.fn().mockResolvedValue({
+            aiStrategyContext: null,
+            profileType: 'message_sales',
+          }),
+        },
         campaignReportsService: {
           getInsights: jest.fn().mockResolvedValue({ data: [] }),
-          getAdsetMessageRows: jest.fn().mockRejectedValue(new Error('API timeout')),
+          getAdsetMessageRows: jest
+            .fn()
+            .mockRejectedValue(new Error('API timeout')),
           getLiveReportData: jest.fn().mockResolvedValue([]),
         },
         aiService: { generateReport },

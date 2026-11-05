@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
@@ -8,7 +13,8 @@ import { CreateWhatsAppGroupDto } from './dto/create-whatsapp-group.dto.js';
 import { UpdateWhatsAppGroupDto } from './dto/update-whatsapp-group.dto.js';
 
 const cacheById = (id: string) => `whatsapp:group:id:${id}`;
-const cacheByClient = (clientId: string) => `whatsapp:groups:client:${clientId}`;
+const cacheByClient = (clientId: string) =>
+  `whatsapp:groups:client:${clientId}`;
 
 const GROUPS_TTL_MS = 300_000;
 
@@ -29,7 +35,10 @@ export class WhatsAppGroupsService implements IWhatsAppGroupsService {
       await this.cache.set(cacheById(saved.id), saved, GROUPS_TTL_MS);
       return saved;
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as QueryFailedError & { code: string }).code === '23505') {
+      if (
+        err instanceof QueryFailedError &&
+        (err as QueryFailedError & { code: string }).code === '23505'
+      ) {
         throw new ConflictException('Já existe um grupo com este groupJid');
       }
       throw err;
@@ -37,10 +46,14 @@ export class WhatsAppGroupsService implements IWhatsAppGroupsService {
   }
 
   async findAll(clientId: string): Promise<WhatsAppGroupEntity[]> {
-    const cached = await this.cache.get<WhatsAppGroupEntity[]>(cacheByClient(clientId));
+    const cached = await this.cache.get<WhatsAppGroupEntity[]>(
+      cacheByClient(clientId),
+    );
     if (cached) return cached;
 
-    const groups = await this.repo.find({ where: { clientId, isActive: true } });
+    const groups = await this.repo.find({
+      where: { clientId, isActive: true },
+    });
     await this.cache.set(cacheByClient(clientId), groups, GROUPS_TTL_MS);
     return groups;
   }
@@ -56,7 +69,10 @@ export class WhatsAppGroupsService implements IWhatsAppGroupsService {
     return group;
   }
 
-  async update(id: string, dto: UpdateWhatsAppGroupDto): Promise<WhatsAppGroupEntity> {
+  async update(
+    id: string,
+    dto: UpdateWhatsAppGroupDto,
+  ): Promise<WhatsAppGroupEntity> {
     const group = await this.findOne(id);
     const updated = await this.repo.save({ ...group, ...dto });
     await this.cache.del(cacheById(id));
@@ -71,7 +87,9 @@ export class WhatsAppGroupsService implements IWhatsAppGroupsService {
     await this.cache.del(cacheByClient(group.clientId));
   }
 
-  async findAllActiveGroupedByClientId(): Promise<Map<string, WhatsAppGroupEntity[]>> {
+  async findAllActiveGroupedByClientId(): Promise<
+    Map<string, WhatsAppGroupEntity[]>
+  > {
     const groups = await this.repo.find({ where: { isActive: true } });
     const map = new Map<string, WhatsAppGroupEntity[]>();
     for (const g of groups) {

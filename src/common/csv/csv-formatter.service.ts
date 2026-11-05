@@ -5,32 +5,39 @@ import {
   ColumnType,
   MetaInsightsColumn,
 } from '../../modules/campaign-reports/enums/insights-column.enum.js';
-import { MetaAction, MetaInsights } from '../../modules/campaign-reports/interfaces/meta-campaign.interface.js';
+import {
+  MetaAction,
+  MetaInsights,
+} from '../../modules/campaign-reports/interfaces/meta-campaign.interface.js';
 
 const ACTION_TYPE_MAP: Partial<Record<MetaInsightsColumn, string>> = {
-  [MetaInsightsColumn.LINK_CLICKS]:        'link_click',
+  [MetaInsightsColumn.LINK_CLICKS]: 'link_click',
   [MetaInsightsColumn.LANDING_PAGE_VIEWS]: 'landing_page_view',
-  [MetaInsightsColumn.LEADS]:              'lead',
-  [MetaInsightsColumn.PURCHASES]:          'purchase',
-  [MetaInsightsColumn.MESSAGING_CONVERSATIONS_STARTED]: 'onsite_conversion.messaging_conversation_started_7d',
+  [MetaInsightsColumn.LEADS]: 'lead',
+  [MetaInsightsColumn.PURCHASES]: 'purchase',
+  [MetaInsightsColumn.MESSAGING_CONVERSATIONS_STARTED]:
+    'onsite_conversion.messaging_conversation_started_7d',
 };
 
-const VIDEO_FIELD_MAP: Partial<Record<MetaInsightsColumn, keyof MetaInsights>> = {
-  [MetaInsightsColumn.VIDEO_PLAYS]: 'video_play_actions',
-  [MetaInsightsColumn.VIDEO_P25]:   'video_p25_watched_actions',
-  [MetaInsightsColumn.VIDEO_P50]:   'video_p50_watched_actions',
-  [MetaInsightsColumn.VIDEO_P75]:   'video_p75_watched_actions',
-  [MetaInsightsColumn.VIDEO_P100]:  'video_p100_watched_actions',
-};
+const VIDEO_FIELD_MAP: Partial<Record<MetaInsightsColumn, keyof MetaInsights>> =
+  {
+    [MetaInsightsColumn.VIDEO_PLAYS]: 'video_play_actions',
+    [MetaInsightsColumn.VIDEO_P25]: 'video_p25_watched_actions',
+    [MetaInsightsColumn.VIDEO_P50]: 'video_p50_watched_actions',
+    [MetaInsightsColumn.VIDEO_P75]: 'video_p75_watched_actions',
+    [MetaInsightsColumn.VIDEO_P100]: 'video_p100_watched_actions',
+  };
 
 const UTF8_BOM = '﻿';
 
 @Injectable()
 export class CsvFormatterService {
   format(rows: MetaInsights[], columns: MetaInsightsColumn[]): string {
-    const header = columns.map(col => this.escapeCsvField(COLUMN_META[col].label)).join(',');
-    const dataLines = rows.map(row =>
-      columns.map(col => this.formatCell(row, col)).join(','),
+    const header = columns
+      .map((col) => this.escapeCsvField(COLUMN_META[col].label))
+      .join(',');
+    const dataLines = rows.map((row) =>
+      columns.map((col) => this.formatCell(row, col)).join(','),
     );
     return UTF8_BOM + [header, ...dataLines].join('\r\n');
   }
@@ -42,7 +49,10 @@ export class CsvFormatterService {
     return this.escapeCsvField(this.formatValue(raw, type));
   }
 
-  private extractValue(row: MetaInsights, col: MetaInsightsColumn): string | undefined {
+  private extractValue(
+    row: MetaInsights,
+    col: MetaInsightsColumn,
+  ): string | undefined {
     // breakdown and simple fields
     if (BREAKDOWN_COLUMNS.includes(col) || this.isSimpleField(col)) {
       return row[col as keyof MetaInsights] as string | undefined;
@@ -93,20 +103,29 @@ export class CsvFormatterService {
     return simple.includes(col);
   }
 
-  private findAction(actions: MetaAction[] | undefined, actionType: string): string | undefined {
-    return actions?.find(a => a.action_type === actionType)?.value;
+  private findAction(
+    actions: MetaAction[] | undefined,
+    actionType: string,
+  ): string | undefined {
+    return actions?.find((a) => a.action_type === actionType)?.value;
   }
 
   private formatValue(raw: string, type: ColumnType): string {
     switch (type) {
       case 'monetary':
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(raw));
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        }).format(Number(raw));
       case 'percentage':
         return `${Number(raw).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
       case 'count':
         return Math.round(Number(raw)).toLocaleString('pt-BR');
       case 'decimal':
-        return Number(raw).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return Number(raw).toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
       case 'date':
         // Parse manual para evitar offset de timezone (Meta envia YYYY-MM-DD sem timezone)
         return this.parseDate(raw);
@@ -123,7 +142,12 @@ export class CsvFormatterService {
   }
 
   private escapeCsvField(value: string): string {
-    if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
+    if (
+      value.includes(',') ||
+      value.includes('"') ||
+      value.includes('\n') ||
+      value.includes('\r')
+    ) {
       return `"${value.replace(/"/g, '""')}"`;
     }
     return value;

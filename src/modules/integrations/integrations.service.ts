@@ -73,7 +73,10 @@ export class IntegrationsService implements IIntegrationsService {
     const cached = await this.cache.get<IntegrationEntity>(cacheByPage(pageId));
     if (cached) return cached;
 
-    const integration = await this.repo.findOne({ where: { pageId } });
+    const integration = await this.repo.findOne({
+      where: { pageId },
+      relations: { client: true },
+    });
     if (!integration)
       throw new NotFoundException(`Integration for pageId ${pageId} not found`);
 

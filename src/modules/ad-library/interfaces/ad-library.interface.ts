@@ -63,7 +63,11 @@ export interface RawMetaAd {
   ad_delivery_stop_time?: string;
   publisher_platforms?: string[];
   languages?: string[];
-  demographic_distribution?: Array<{ age?: string; gender?: string; percentage: string }>;
+  demographic_distribution?: Array<{
+    age?: string;
+    gender?: string;
+    percentage: string;
+  }>;
   delivery_by_region?: Array<{ region?: string; percentage: string }>;
   target_ages?: string[];
   target_gender?: string;

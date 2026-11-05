@@ -17,7 +17,12 @@ export class ClientEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone: string | null;
 
-  @Column({ name: 'whatsapp_group_code', type: 'varchar', length: 200, nullable: true })
+  @Column({
+    name: 'whatsapp_group_code',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
   whatsappGroupCode: string | null;
 
   @Column({ name: 'google_drive_folder_url', type: 'text', nullable: true })

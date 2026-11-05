@@ -17,17 +17,29 @@ export class RenameTimestampColumnsToSnakeCase1780500000000 implements Migration
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     for (const table of TABLES) {
-      await queryRunner.query(`ALTER TABLE "${table}" RENAME COLUMN "createdAt" TO "created_at"`);
-      await queryRunner.query(`ALTER TABLE "${table}" RENAME COLUMN "updatedAt" TO "updated_at"`);
-      await queryRunner.query(`ALTER TABLE "${table}" RENAME COLUMN "deletedAt" TO "deleted_at"`);
+      await queryRunner.query(
+        `ALTER TABLE "${table}" RENAME COLUMN "createdAt" TO "created_at"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${table}" RENAME COLUMN "updatedAt" TO "updated_at"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${table}" RENAME COLUMN "deletedAt" TO "deleted_at"`,
+      );
     }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     for (const table of [...TABLES].reverse()) {
-      await queryRunner.query(`ALTER TABLE "${table}" RENAME COLUMN "deleted_at" TO "deletedAt"`);
-      await queryRunner.query(`ALTER TABLE "${table}" RENAME COLUMN "updated_at" TO "updatedAt"`);
-      await queryRunner.query(`ALTER TABLE "${table}" RENAME COLUMN "created_at" TO "createdAt"`);
+      await queryRunner.query(
+        `ALTER TABLE "${table}" RENAME COLUMN "deleted_at" TO "deletedAt"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${table}" RENAME COLUMN "updated_at" TO "updatedAt"`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "${table}" RENAME COLUMN "created_at" TO "createdAt"`,
+      );
     }
   }
 }

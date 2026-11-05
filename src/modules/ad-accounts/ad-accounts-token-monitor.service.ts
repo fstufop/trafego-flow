@@ -11,10 +11,13 @@ export class AdAccountsTokenMonitorService {
 
   @Cron('0 8 * * *', { timeZone: 'America/Sao_Paulo' })
   async checkExpiringTokens(): Promise<void> {
-    const expiring = await this.adAccountsService.findAllExpiring(this.DAYS_AHEAD);
+    const expiring = await this.adAccountsService.findAllExpiring(
+      this.DAYS_AHEAD,
+    );
     for (const account of expiring) {
       const daysLeft = Math.ceil(
-        (account.tokenExpiresAt!.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        (account.tokenExpiresAt!.getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24),
       );
       this.logger.warn(
         `[TOKEN_EXPIRING] adAccountId=${account.adAccountId} clientId=${account.clientId} expiresIn=${daysLeft}d`,

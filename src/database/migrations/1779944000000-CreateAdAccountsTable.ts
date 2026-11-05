@@ -29,7 +29,9 @@ export class CreateAdAccountsTable1779944000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "ad_accounts" DROP CONSTRAINT "FK_ad_accounts_client_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "ad_accounts" DROP CONSTRAINT "FK_ad_accounts_client_id"`,
+    );
     await queryRunner.query(`DROP TABLE "ad_accounts"`);
   }
 }

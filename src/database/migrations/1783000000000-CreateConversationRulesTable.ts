@@ -38,7 +38,9 @@ export class CreateConversationRulesTable1783000000000 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "conversation_rules" DROP CONSTRAINT "FK_conversation_rules_client_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "conversation_rules" DROP CONSTRAINT "FK_conversation_rules_client_id"`,
+    );
     await queryRunner.query(`DROP INDEX "UQ_conv_rules_client_type_trigger"`);
     await queryRunner.query(`DROP TABLE "conversation_rules"`);
     await queryRunner.query(`DROP TYPE "rule_type_enum"`);

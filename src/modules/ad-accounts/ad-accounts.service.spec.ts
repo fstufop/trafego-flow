@@ -71,8 +71,14 @@ describe('AdAccountsService', () => {
 
       expect(mockCrypto.encrypt).toHaveBeenCalledWith('plaintext-token');
       expect(result).toEqual(mockAccount);
-      expect(mockCache.set).toHaveBeenCalledWith('ad-account:id:uuid-acc-1', mockAccount);
-      expect(mockCache.set).toHaveBeenCalledWith('ad-account:act:act_123456789', mockAccount);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'ad-account:id:uuid-acc-1',
+        mockAccount,
+      );
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'ad-account:act:act_123456789',
+        mockAccount,
+      );
     });
 
     it('should throw ConflictException on duplicate adAccountId', async () => {
@@ -82,7 +88,11 @@ describe('AdAccountsService', () => {
       mockRepo.save.mockRejectedValue(dbError);
 
       await expect(
-        service.create({ clientId: 'c', adAccountId: 'act_123456789', accessToken: 'tok' }),
+        service.create({
+          clientId: 'c',
+          adAccountId: 'act_123456789',
+          accessToken: 'tok',
+        }),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -92,7 +102,9 @@ describe('AdAccountsService', () => {
       mockRepo.find.mockResolvedValue([mockAccount]);
       const result = await service.findAll('uuid-client-1');
       expect(result).toEqual([mockAccount]);
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { clientId: 'uuid-client-1', isActive: true } });
+      expect(mockRepo.find).toHaveBeenCalledWith({
+        where: { clientId: 'uuid-client-1', isActive: true },
+      });
     });
   });
 
@@ -110,13 +122,18 @@ describe('AdAccountsService', () => {
 
       const result = await service.findOne('uuid-acc-1');
       expect(result).toEqual(mockAccount);
-      expect(mockCache.set).toHaveBeenCalledWith('ad-account:id:uuid-acc-1', mockAccount);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'ad-account:id:uuid-acc-1',
+        mockAccount,
+      );
     });
 
     it('should throw NotFoundException when account does not exist', async () => {
       mockCache.get.mockResolvedValue(null);
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -134,27 +151,42 @@ describe('AdAccountsService', () => {
 
       await service.findByAdAccountId('act_123456789');
 
-      expect(mockCache.set).toHaveBeenCalledWith('ad-account:id:uuid-acc-1', mockAccount);
-      expect(mockCache.set).toHaveBeenCalledWith('ad-account:act:act_123456789', mockAccount);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'ad-account:id:uuid-acc-1',
+        mockAccount,
+      );
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'ad-account:act:act_123456789',
+        mockAccount,
+      );
     });
 
     it('should throw NotFoundException when adAccountId does not exist', async () => {
       mockCache.get.mockResolvedValue(null);
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.findByAdAccountId('act_inexistente')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findByAdAccountId('act_inexistente'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('should encrypt new accessToken and invalidate both cache keys', async () => {
       mockCache.get.mockResolvedValue(mockAccount);
-      mockRepo.save.mockResolvedValue({ ...mockAccount, accessToken: 'new-encrypted' });
+      mockRepo.save.mockResolvedValue({
+        ...mockAccount,
+        accessToken: 'new-encrypted',
+      });
 
-      await service.update('uuid-acc-1', { accessToken: 'new-plaintext-token' });
+      await service.update('uuid-acc-1', {
+        accessToken: 'new-plaintext-token',
+      });
 
       expect(mockCrypto.encrypt).toHaveBeenCalledWith('new-plaintext-token');
       expect(mockCache.del).toHaveBeenCalledWith('ad-account:id:uuid-acc-1');
-      expect(mockCache.del).toHaveBeenCalledWith('ad-account:act:act_123456789');
+      expect(mockCache.del).toHaveBeenCalledWith(
+        'ad-account:act:act_123456789',
+      );
     });
 
     it('should not encrypt if accessToken is not in dto', async () => {
@@ -176,7 +208,9 @@ describe('AdAccountsService', () => {
 
       expect(mockRepo.softRemove).toHaveBeenCalledWith(mockAccount);
       expect(mockCache.del).toHaveBeenCalledWith('ad-account:id:uuid-acc-1');
-      expect(mockCache.del).toHaveBeenCalledWith('ad-account:act:act_123456789');
+      expect(mockCache.del).toHaveBeenCalledWith(
+        'ad-account:act:act_123456789',
+      );
     });
   });
 

@@ -8,7 +8,11 @@ export class AlertJobEntity extends BaseEntity {
   @Column({ type: 'enum', enum: AlertJobType })
   type: AlertJobType;
 
-  @Column({ type: 'enum', enum: AlertJobStatus, default: AlertJobStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: AlertJobStatus,
+    default: AlertJobStatus.ACTIVE,
+  })
   status: AlertJobStatus;
 
   @Column({ name: 'client_id', type: 'varchar', nullable: true })

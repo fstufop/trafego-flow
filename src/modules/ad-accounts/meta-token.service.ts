@@ -17,7 +17,8 @@ export class MetaTokenService {
   private readonly debugUrl: string;
 
   constructor(config: ConfigService) {
-    const base = config.get<string>('meta.graphApiUrl') ?? 'https://graph.facebook.com';
+    const base =
+      config.get<string>('meta.graphApiUrl') ?? 'https://graph.facebook.com';
     const version = config.get<string>('meta.graphApiVersion') ?? 'v21.0';
     this.debugUrl = `${base}/${version}/debug_token`;
   }
@@ -33,7 +34,9 @@ export class MetaTokenService {
         valid: (d.is_valid as boolean) ?? false,
         appId: (d.app_id as string) ?? null,
         type: (d.type as string) ?? null,
-        expiresAt: d.expires_at ? new Date((d.expires_at as number) * 1000).toISOString() : null,
+        expiresAt: d.expires_at
+          ? new Date((d.expires_at as number) * 1000).toISOString()
+          : null,
         scopes: (d.scopes as string[]) ?? [],
         userId: (d.user_id as string) ?? null,
       };

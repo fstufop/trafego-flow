@@ -51,8 +51,11 @@ export class WhatsAppSessionService
 
   private async startSocket(): Promise<void> {
     try {
-      const { default: makeWASocket, DisconnectReason, fetchLatestWaWebVersion } =
-        await import('@whiskeysockets/baileys');
+      const {
+        default: makeWASocket,
+        DisconnectReason,
+        fetchLatestWaWebVersion,
+      } = await import('@whiskeysockets/baileys');
       const { default: pino } = await import('pino');
 
       // Duas conexões vivas com a mesma sessão avançam o ratchet do Signal
@@ -66,7 +69,7 @@ export class WhatsAppSessionService
       );
 
       const { version } = await fetchLatestWaWebVersion();
-      this.logger.log(`Versão WhatsApp Web: ${version.join('.')}`)
+      this.logger.log(`Versão WhatsApp Web: ${version.join('.')}`);
 
       this.sock = makeWASocket({
         auth: state,
@@ -84,7 +87,11 @@ export class WhatsAppSessionService
 
         if (qr) {
           this.currentQr = qr;
-          if (!state.creds.registered && this.phoneNumber && !this.pairingRequested) {
+          if (
+            !state.creds.registered &&
+            this.phoneNumber &&
+            !this.pairingRequested
+          ) {
             // WS conectado aos servidores do WA — agora é seguro solicitar o código
             await this.requestPairingCode();
           } else {

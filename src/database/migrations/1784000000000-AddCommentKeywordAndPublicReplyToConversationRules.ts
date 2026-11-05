@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCommentKeywordAndPublicReplyToConversationRules1784000000000
-  implements MigrationInterface
-{
+export class AddCommentKeywordAndPublicReplyToConversationRules1784000000000 implements MigrationInterface {
   name = 'AddCommentKeywordAndPublicReplyToConversationRules1784000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

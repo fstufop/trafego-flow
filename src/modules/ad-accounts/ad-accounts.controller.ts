@@ -63,7 +63,9 @@ export class AdAccountsController {
   }
 
   @Get(':id/validate-token')
-  @ApiOperation({ summary: 'Validate the stored Meta token and return its permissions' })
+  @ApiOperation({
+    summary: 'Validate the stored Meta token and return its permissions',
+  })
   validateToken(@Param('id', ParseUUIDPipe) id: string) {
     return this.adAccountsService.validateToken(id);
   }

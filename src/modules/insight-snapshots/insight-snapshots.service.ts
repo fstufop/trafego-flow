@@ -19,9 +19,14 @@ export class InsightSnapshotsService {
   ): Promise<InsightSnapshotEntity> {
     await this.repo.upsert(
       { adAccountId, clientId, weekStartDate, snapshotJson },
-      { conflictPaths: ['adAccountId', 'weekStartDate'], skipUpdateIfNoValuesChanged: true },
+      {
+        conflictPaths: ['adAccountId', 'weekStartDate'],
+        skipUpdateIfNoValuesChanged: true,
+      },
     );
-    return this.repo.findOne({ where: { adAccountId, weekStartDate } }) as Promise<InsightSnapshotEntity>;
+    return this.repo.findOne({
+      where: { adAccountId, weekStartDate },
+    }) as Promise<InsightSnapshotEntity>;
   }
 
   async findPreviousSnapshot(
@@ -30,6 +35,8 @@ export class InsightSnapshotsService {
   ): Promise<InsightSnapshotEntity | null> {
     const prevWeek = new Date(weekStartDate);
     prevWeek.setDate(prevWeek.getDate() - 7);
-    return this.repo.findOne({ where: { adAccountId, weekStartDate: prevWeek } });
+    return this.repo.findOne({
+      where: { adAccountId, weekStartDate: prevWeek },
+    });
   }
 }

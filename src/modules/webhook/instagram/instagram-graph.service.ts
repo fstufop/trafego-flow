@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AesCryptoService } from '../../../common/crypto/aes.service.js';
 import { IntegrationsService } from '../../integrations/integrations.service.js';
-import { IInstagramGraphService } from './interfaces/instagram-graph.interface.js';
+import {
+  IInstagramGraphService,
+  InstagramFollowStatus,
+} from './interfaces/instagram-graph.interface.js';
 import { OAuthTokenExpiredException } from './exceptions/oauth-token-expired.exception.js';
 import { GraphApiRateLimitException } from './exceptions/graph-api-rate-limit.exception.js';
 import { MessagingWindowExpiredException } from './exceptions/messaging-window-expired.exception.js';
@@ -55,6 +58,43 @@ export class InstagramGraphService implements IInstagramGraphService {
         })),
       },
     });
+  }
+
+  async getFollowStatus(
+    pageId: string,
+    igsid: string,
+  ): Promise<InstagramFollowStatus> {
+    const token = await this.getDecryptedToken(pageId);
+    const url = `${this.baseUrl}/${igsid}`;
+
+    this.logger.log(
+      `[follow-status] Requesting profile for igsid=${igsid} pageId=${pageId}`,
+    );
+
+    const response = await firstValueFrom(
+      this.httpService.get<InstagramFollowStatus>(url, {
+        params: {
+          access_token: token,
+          fields:
+            'name,username,follower_count,is_user_follow_business,is_business_follow_user',
+        },
+      }),
+    ).catch(
+      (err: {
+        response?: { status?: number; data?: { error?: { code?: number } } };
+      }) => {
+        this.logger.warn(
+          `[follow-status] Graph API error for igsid=${igsid} pageId=${pageId}: ${JSON.stringify(err?.response?.data)}`,
+        );
+        return this.handleCommonGraphError(pageId, err);
+      },
+    );
+
+    this.logger.log(
+      `[follow-status] Result for igsid=${igsid}: ${JSON.stringify(response.data)}`,
+    );
+
+    return response.data;
   }
 
   async sendCommentPrivateReply(

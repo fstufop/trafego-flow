@@ -140,6 +140,52 @@ describe('InstagramGraphService', () => {
     });
   });
 
+  describe('getFollowStatus', () => {
+    const mockHttpGet = jest.fn();
+
+    beforeEach(() => {
+      (mockHttpService as unknown as { get: jest.Mock }).get = mockHttpGet;
+    });
+
+    it('should call the IGSID node with the right fields and return the profile', async () => {
+      mockHttpGet.mockReturnValue(
+        of({
+          data: {
+            id: 'IGSID_USER',
+            username: 'joao',
+            is_user_follow_business: true,
+            is_business_follow_user: false,
+          },
+        }),
+      );
+
+      const result = await service.getFollowStatus('PAGE123', 'IGSID_USER');
+
+      expect(mockHttpGet).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/IGSID_USER',
+        {
+          params: {
+            access_token: 'plaintext-token',
+            fields:
+              'name,username,follower_count,is_user_follow_business,is_business_follow_user',
+          },
+        },
+      );
+      expect(result.is_user_follow_business).toBe(true);
+    });
+
+    it('should propagate the raw Graph API error when the lookup fails (e.g. consent required)', async () => {
+      const consentError = {
+        response: { data: { error: { code: 100, message: 'No consent' } } },
+      };
+      mockHttpGet.mockReturnValue(throwError(() => consentError));
+
+      await expect(
+        service.getFollowStatus('PAGE123', 'IGSID_USER'),
+      ).rejects.toBe(consentError);
+    });
+  });
+
   describe('sendCommentPrivateReply', () => {
     it('should call Graph API with recipient.comment_id instead of an IGSID', async () => {
       mockHttpService.post.mockReturnValue(

@@ -1,8 +1,16 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class UpdateAdAccountDto {
-  @ApiPropertyOptional({ description: 'Novo User Access Token (rotação de credencial)' })
+  @ApiPropertyOptional({
+    description: 'Novo User Access Token (rotação de credencial)',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()

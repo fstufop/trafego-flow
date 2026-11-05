@@ -47,7 +47,8 @@ export class ExportInsightsCsvDto {
 
   @ApiPropertyOptional({
     example: '2025-11-01',
-    description: 'Data inicial do intervalo customizado (YYYY-MM-DD). Requer until.',
+    description:
+      'Data inicial do intervalo customizado (YYYY-MM-DD). Requer until.',
   })
   @IsOptional()
   @IsDateString()
@@ -56,14 +57,18 @@ export class ExportInsightsCsvDto {
 
   @ApiPropertyOptional({
     example: '2025-11-30',
-    description: 'Data final do intervalo customizado (YYYY-MM-DD). Requer since.',
+    description:
+      'Data final do intervalo customizado (YYYY-MM-DD). Requer since.',
   })
   @IsOptional()
   @IsDateString()
   @ValidateIf((o: ExportInsightsCsvDto) => !o.datePreset)
   until?: string;
 
-  @ApiPropertyOptional({ enum: MetaInsightsLevel, default: MetaInsightsLevel.CAMPAIGN })
+  @ApiPropertyOptional({
+    enum: MetaInsightsLevel,
+    default: MetaInsightsLevel.CAMPAIGN,
+  })
   @IsOptional()
   @IsEnum(MetaInsightsLevel)
   level?: MetaInsightsLevel = MetaInsightsLevel.CAMPAIGN;

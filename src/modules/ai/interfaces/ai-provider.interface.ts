@@ -10,10 +10,10 @@ export interface InsightsSummary {
   purchases: number;
   addToCart: number;
   pageViews: number;
-  messagesStarted: number;   // action_type: messaging_conversation_started_7d
-  contentViews: number;      // action_type: view_content
+  messagesStarted: number; // action_type: messaging_conversation_started_7d
+  contentViews: number; // action_type: view_content
   checkoutInitiated: number; // action_type: initiate_checkout
-  liveViews: number;         // action_type: video_play
+  liveViews: number; // action_type: video_play
 }
 
 export interface AdsetMessageRow {
@@ -29,7 +29,7 @@ export interface AdReachRow {
 }
 
 export interface LiveReportData {
-  liveDate: string;        // 'DD/MM/AAAA' para exibição
+  liveDate: string; // 'DD/MM/AAAA' para exibição
   captationSpend: number;
   captationReach: number;
   captationClicks: number;
@@ -38,19 +38,19 @@ export interface LiveReportData {
 
 export interface AiReportPayload {
   period: {
-    since: string;       // 'YYYY-MM-DD'
-    until: string;       // 'YYYY-MM-DD'
-    weekNumber: number;  // ISO 8601 week
+    since: string; // 'YYYY-MM-DD'
+    until: string; // 'YYYY-MM-DD'
+    weekNumber: number; // ISO 8601 week
   };
-  current: InsightsSummary;         // total aggregated (acquisition + sales)
+  current: InsightsSummary; // total aggregated (acquisition + sales)
   previous: InsightsSummary | null; // previous week total from snapshot
   deltas: Record<string, number | null>;
   acquisition: InsightsSummary | null; // campaigns with CAP/CAPT in name
-  sales: InsightsSummary | null;       // remaining campaigns
+  sales: InsightsSummary | null; // remaining campaigns
   clientProfile: ClientProfileType;
   clientContext: string | null;
-  adsetRows?: AdsetMessageRow[];  // MESSAGE_SALES
-  liveData?: LiveReportData[];    // LIVE_SALES, até 2 entradas
+  adsetRows?: AdsetMessageRow[]; // MESSAGE_SALES
+  liveData?: LiveReportData[]; // LIVE_SALES, até 2 entradas
 }
 
 export interface IAiProvider {

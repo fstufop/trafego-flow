@@ -22,11 +22,15 @@ describe('GoogleDriveController', () => {
   });
 
   it('returns folderUrl from GoogleDriveService.createFolder', async () => {
-    driveService.createFolder.mockResolvedValue('https://drive.google.com/drive/folders/abc123');
+    driveService.createFolder.mockResolvedValue(
+      'https://drive.google.com/drive/folders/abc123',
+    );
 
     const result = await controller.createFolder({ name: 'Cliente Teste' });
 
     expect(driveService.createFolder).toHaveBeenCalledWith('Cliente Teste');
-    expect(result).toEqual({ folderUrl: 'https://drive.google.com/drive/folders/abc123' });
+    expect(result).toEqual({
+      folderUrl: 'https://drive.google.com/drive/folders/abc123',
+    });
   });
 });

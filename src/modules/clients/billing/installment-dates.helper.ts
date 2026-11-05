@@ -1,4 +1,8 @@
-export function generateInstallmentDates(startDate: Date, dueDay: number, durationMonths: number): Date[] {
+export function generateInstallmentDates(
+  startDate: Date,
+  dueDay: number,
+  durationMonths: number,
+): Date[] {
   const clampedDueDay = Math.min(dueDay, 30);
   let year = startDate.getFullYear();
   let month = startDate.getMonth(); // 0-indexed
@@ -7,7 +11,10 @@ export function generateInstallmentDates(startDate: Date, dueDay: number, durati
   const candidate = dateForMonth(year, month, clampedDueDay);
   if (candidate <= startDate) {
     month += 1;
-    if (month > 11) { month = 0; year++; }
+    if (month > 11) {
+      month = 0;
+      year++;
+    }
   }
 
   const dates: Date[] = [];

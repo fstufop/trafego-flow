@@ -6,7 +6,9 @@ export interface BullRedisConnection {
   tls?: Record<string, never>;
 }
 
-export function buildBullRedisConnection(redisUrl: string): BullRedisConnection {
+export function buildBullRedisConnection(
+  redisUrl: string,
+): BullRedisConnection {
   const url = new URL(redisUrl);
   return {
     host: url.hostname,

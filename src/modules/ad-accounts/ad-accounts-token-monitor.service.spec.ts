@@ -4,7 +4,11 @@ import { AdAccountsTokenMonitorService } from './ad-accounts-token-monitor.servi
 import { AdAccountsService } from './ad-accounts.service.js';
 import { AdAccountEntity } from './entities/ad-account.entity.js';
 
-const makeAccount = (adAccountId: string, clientId: string, daysFromNow: number): AdAccountEntity => {
+const makeAccount = (
+  adAccountId: string,
+  clientId: string,
+  daysFromNow: number,
+): AdAccountEntity => {
   const tokenExpiresAt = new Date();
   tokenExpiresAt.setDate(tokenExpiresAt.getDate() + daysFromNow);
   return {
@@ -32,7 +36,9 @@ describe('AdAccountsTokenMonitorService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    warnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,7 +47,9 @@ describe('AdAccountsTokenMonitorService', () => {
       ],
     }).compile();
 
-    service = module.get<AdAccountsTokenMonitorService>(AdAccountsTokenMonitorService);
+    service = module.get<AdAccountsTokenMonitorService>(
+      AdAccountsTokenMonitorService,
+    );
   });
 
   afterEach(() => {
@@ -71,9 +79,7 @@ describe('AdAccountsTokenMonitorService', () => {
 
       await service.checkExpiringTokens();
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('act_111'),
-      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('act_111'));
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('uuid-client-1'),
       );
@@ -105,7 +111,9 @@ describe('AdAccountsTokenMonitorService', () => {
       expect(mockAdAccountsService.findAllExpiring).toHaveBeenCalledTimes(1);
       const serviceKeys = Object.keys(mockAdAccountsService);
       const writeMethods = serviceKeys.filter(
-        (k) => k !== 'findAllExpiring' && typeof (mockAdAccountsService as never)[k] === 'function',
+        (k) =>
+          k !== 'findAllExpiring' &&
+          typeof (mockAdAccountsService as never)[k] === 'function',
       );
       writeMethods.forEach((method) => {
         expect((mockAdAccountsService as never)[method]).not.toHaveBeenCalled();

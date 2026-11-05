@@ -60,14 +60,18 @@ export class AdsetAlertsService {
       ? allClients.filter((c) => c.id === job.clientId)
       : allClients;
 
-    this.logger.debug(`[DIAG] job=${job.id} clientId=${job.clientId} allClients=${allClients.length} filtered=${clients.length}`);
+    this.logger.debug(
+      `[DIAG] job=${job.id} clientId=${job.clientId} allClients=${allClients.length} filtered=${clients.length}`,
+    );
 
     for (const client of clients) {
       const clientName = client.name ?? client.id;
       const adAccounts = await this.adAccountsService.findAll(client.id);
       const activeAccounts = adAccounts.filter((a) => a.isActive);
 
-      this.logger.debug(`[DIAG] client=${client.id} adAccounts=${adAccounts.length} active=${activeAccounts.length}`);
+      this.logger.debug(
+        `[DIAG] client=${client.id} adAccounts=${adAccounts.length} active=${activeAccounts.length}`,
+      );
 
       for (const account of activeAccounts) {
         let adsets: MetaAdset[] = [];
@@ -88,7 +92,9 @@ export class AdsetAlertsService {
           (a) => a.effective_status === 'ACTIVE',
         );
 
-        this.logger.debug(`[DIAG] account=${account.adAccountId} adsets=${adsets.length} active=${activeAdsets.length}`);
+        this.logger.debug(
+          `[DIAG] account=${account.adAccountId} adsets=${adsets.length} active=${activeAdsets.length}`,
+        );
 
         for (const adset of activeAdsets) {
           const since = adset.updated_time.slice(0, 10);
@@ -172,7 +178,9 @@ export class AdsetAlertsService {
       if (!adsets.length) continue;
       lines.push(`*Nome do cliente*: ${clientName}`);
       lines.push('');
-      lines.push('📋 *Conjunto de anúncios* | 📈 *ROAS* | 🗓 *Última atualização*');
+      lines.push(
+        '📋 *Conjunto de anúncios* | 📈 *ROAS* | 🗓 *Última atualização*',
+      );
       const sorted = [...adsets].sort((a, b) => {
         if (a.roas === null && b.roas === null) return 0;
         if (a.roas === null) return 1;

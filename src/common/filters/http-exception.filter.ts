@@ -31,14 +31,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
         body = raw as Record<string, unknown>;
         const msg = (raw as any).message;
         // ValidationPipe sends message as string[]
-        logDetail = Array.isArray(msg) ? msg.join(' | ') : String(msg ?? exception.message);
+        logDetail = Array.isArray(msg)
+          ? msg.join(' | ')
+          : String(msg ?? exception.message);
       } else {
         body = { statusCode: status, message: raw };
         logDetail = String(raw);
       }
     } else {
       body = { statusCode: status, message: 'Internal server error' };
-      logDetail = exception instanceof Error ? exception.message : String(exception);
+      logDetail =
+        exception instanceof Error ? exception.message : String(exception);
     }
 
     const prefix = `${req.method} ${req.originalUrl} ${status}`;

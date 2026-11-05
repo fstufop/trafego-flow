@@ -41,10 +41,20 @@ export class ClientBillingEntity extends BaseEntity {
   @Column({ name: 'duration_months' })
   durationMonths: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, transformer: decimalTransformer })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   amount: number;
 
-  @Column({ name: 'discount_type', type: 'enum', enum: DiscountType, nullable: true })
+  @Column({
+    name: 'discount_type',
+    type: 'enum',
+    enum: DiscountType,
+    nullable: true,
+  })
   discountType: DiscountType | null;
 
   @Column({
@@ -66,6 +76,8 @@ export class ClientBillingEntity extends BaseEntity {
   @Column({ name: 'contract_status', type: 'enum', enum: ContractStatus })
   contractStatus: ContractStatus;
 
-  @OneToMany(() => ClientBillingInstallmentEntity, (inst) => inst.billing, { cascade: true })
+  @OneToMany(() => ClientBillingInstallmentEntity, (inst) => inst.billing, {
+    cascade: true,
+  })
   installments: ClientBillingInstallmentEntity[];
 }

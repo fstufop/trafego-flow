@@ -5,7 +5,20 @@ import { MediaIntention } from '../dto/upload-media.dto.js';
 import { MediaUploadLog } from '../entities/media-upload-log.entity.js';
 
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm']);
-const PT_MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const PT_MONTHS = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez',
+];
 
 function mediaType(ext: string): 'VID' | 'IMG' {
   return VIDEO_EXTS.has(ext.toLowerCase()) ? 'VID' : 'IMG';

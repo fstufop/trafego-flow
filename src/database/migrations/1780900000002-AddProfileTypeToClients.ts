@@ -16,7 +16,9 @@ export class AddProfileTypeToClients1780900000002 implements MigrationInterface 
   }
 
   async down(runner: QueryRunner): Promise<void> {
-    await runner.query(`ALTER TABLE "clients" DROP COLUMN IF EXISTS "profile_type"`);
+    await runner.query(
+      `ALTER TABLE "clients" DROP COLUMN IF EXISTS "profile_type"`,
+    );
     await runner.query(`DROP TYPE IF EXISTS "client_profile_type_enum"`);
   }
 }

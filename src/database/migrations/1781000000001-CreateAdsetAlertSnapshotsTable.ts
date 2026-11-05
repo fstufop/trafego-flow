@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateAdsetAlertSnapshotsTable1781000000001
-  implements MigrationInterface
-{
+export class CreateAdsetAlertSnapshotsTable1781000000001 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE adset_alert_snapshots (

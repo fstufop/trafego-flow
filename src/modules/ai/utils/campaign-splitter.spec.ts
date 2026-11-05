@@ -1,11 +1,19 @@
 import { splitAndAggregateCampaigns } from './campaign-splitter.js';
 import { MetaInsights } from '../../campaign-reports/interfaces/meta-campaign.interface.js';
 
-function makeRow(overrides: Partial<MetaInsights> & { campaign_name?: string }): MetaInsights {
+function makeRow(
+  overrides: Partial<MetaInsights> & { campaign_name?: string },
+): MetaInsights {
   return {
-    impressions: '0', clicks: '0', spend: '0', reach: '0',
-    cpm: '0', cpc: '0', ctr: '0',
-    date_start: '2026-07-28', date_stop: '2026-08-03',
+    impressions: '0',
+    clicks: '0',
+    spend: '0',
+    reach: '0',
+    cpm: '0',
+    cpc: '0',
+    ctr: '0',
+    date_start: '2026-07-28',
+    date_stop: '2026-08-03',
     ...overrides,
   };
 }
@@ -19,7 +27,11 @@ describe('splitAndAggregateCampaigns', () => {
   });
 
   it('classifies row with CAP in name as acquisition', () => {
-    const row = makeRow({ campaign_name: 'MF_ENG_FRIO_CAP_JUL26', spend: '100', clicks: '50' });
+    const row = makeRow({
+      campaign_name: 'MF_ENG_FRIO_CAP_JUL26',
+      spend: '100',
+      clicks: '50',
+    });
     const result = splitAndAggregateCampaigns([row]);
     expect(result.acquisition).not.toBeNull();
     expect(result.acquisition!.spend).toBeCloseTo(100);
@@ -28,14 +40,21 @@ describe('splitAndAggregateCampaigns', () => {
   });
 
   it('classifies row with CAPT in name as acquisition (case-insensitive)', () => {
-    const row = makeRow({ campaign_name: 'mf_eng_frio_capt_jul26', spend: '200' });
+    const row = makeRow({
+      campaign_name: 'mf_eng_frio_capt_jul26',
+      spend: '200',
+    });
     const result = splitAndAggregateCampaigns([row]);
     expect(result.acquisition).not.toBeNull();
     expect(result.acquisition!.spend).toBeCloseTo(200);
   });
 
   it('classifies row without CAP/CAPT as sales', () => {
-    const row = makeRow({ campaign_name: 'MF_VENDA_HOT_JUL26', spend: '1000', clicks: '300' });
+    const row = makeRow({
+      campaign_name: 'MF_VENDA_HOT_JUL26',
+      spend: '1000',
+      clicks: '300',
+    });
     const result = splitAndAggregateCampaigns([row]);
     expect(result.sales).not.toBeNull();
     expect(result.sales!.spend).toBeCloseTo(1000);
@@ -50,8 +69,20 @@ describe('splitAndAggregateCampaigns', () => {
   });
 
   it('splits mixed rows correctly and total equals sum', () => {
-    const captRow = makeRow({ campaign_name: 'MF_CAPT', spend: '100', clicks: '50', reach: '500', impressions: '1000' });
-    const vendaRow = makeRow({ campaign_name: 'MF_VENDA', spend: '900', clicks: '300', reach: '2000', impressions: '5000' });
+    const captRow = makeRow({
+      campaign_name: 'MF_CAPT',
+      spend: '100',
+      clicks: '50',
+      reach: '500',
+      impressions: '1000',
+    });
+    const vendaRow = makeRow({
+      campaign_name: 'MF_VENDA',
+      spend: '900',
+      clicks: '300',
+      reach: '2000',
+      impressions: '5000',
+    });
     const result = splitAndAggregateCampaigns([captRow, vendaRow]);
     expect(result.acquisition!.spend).toBeCloseTo(100);
     expect(result.sales!.spend).toBeCloseTo(900);

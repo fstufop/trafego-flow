@@ -12,9 +12,20 @@ import { ClientsService } from '../clients/clients.service.js';
 import { AiService } from '../ai/ai.service.js';
 import { InsightSnapshotsService } from '../insight-snapshots/insight-snapshots.service.js';
 import { MetaInsightsLevel } from '../campaign-reports/dto/get-insights-query.dto.js';
-import { PaginatedResult, MetaInsights } from '../campaign-reports/interfaces/meta-campaign.interface.js';
-import { InsightsSummary, AiReportPayload, AdsetMessageRow, LiveReportData } from '../ai/interfaces/ai-provider.interface.js';
-import { ReportDispatchLogEntity, DispatchStatus } from './entities/report-dispatch-log.entity.js';
+import {
+  PaginatedResult,
+  MetaInsights,
+} from '../campaign-reports/interfaces/meta-campaign.interface.js';
+import {
+  InsightsSummary,
+  AiReportPayload,
+  AdsetMessageRow,
+  LiveReportData,
+} from '../ai/interfaces/ai-provider.interface.js';
+import {
+  ReportDispatchLogEntity,
+  DispatchStatus,
+} from './entities/report-dispatch-log.entity.js';
 import { IReportDispatchesService } from './interfaces/report-dispatches-service.interface.js';
 import { TriggerDispatchDto } from './dto/trigger-dispatch.dto.js';
 
@@ -35,36 +46,58 @@ export class ReportDispatchesService implements IReportDispatchesService {
     private readonly configService: ConfigService,
   ) {}
 
-  async triggerForClient(dto: TriggerDispatchDto): Promise<{ dispatched: number; failed: number }> {
-    const weekStart = dto.weekStartDate ? new Date(dto.weekStartDate) : this.getLastMonday();
-    const groupsByClient = await this.whatsAppGroupsService.findAllActiveGroupedByClientId();
+  async triggerForClient(
+    dto: TriggerDispatchDto,
+  ): Promise<{ dispatched: number; failed: number }> {
+    const weekStart = dto.weekStartDate
+      ? new Date(dto.weekStartDate)
+      : this.getLastMonday();
+    const groupsByClient =
+      await this.whatsAppGroupsService.findAllActiveGroupedByClientId();
 
     let dispatched = 0;
     let failed = 0;
 
-    const clientIds = dto.clientId ? [dto.clientId] : Array.from(groupsByClient.keys());
+    const clientIds = dto.clientId
+      ? [dto.clientId]
+      : Array.from(groupsByClient.keys());
 
     for (const clientId of clientIds) {
       const groups = groupsByClient.get(clientId);
       if (!groups?.length) continue;
 
-      let activeAccounts: { adAccountId: string; accountName: string | null; isActive: boolean }[] = [];
+      let activeAccounts: {
+        adAccountId: string;
+        accountName: string | null;
+        isActive: boolean;
+      }[] = [];
       try {
         const adAccounts = await this.adAccountsService.findAll(clientId);
-        activeAccounts = adAccounts.filter(a => a.isActive);
+        activeAccounts = adAccounts.filter((a) => a.isActive);
       } catch (err) {
-        this.logger.error(`Erro ao buscar contas de anúncio para cliente ${clientId}`, err);
+        this.logger.error(
+          `Erro ao buscar contas de anúncio para cliente ${clientId}`,
+          err,
+        );
         failed++;
         continue;
       }
 
       for (const account of activeAccounts) {
         try {
-          const result = await this.buildAndSend(clientId, account, groups, weekStart);
+          const result = await this.buildAndSend(
+            clientId,
+            account,
+            groups,
+            weekStart,
+          );
           dispatched += result.dispatched;
           failed += result.failed;
         } catch (err) {
-          this.logger.error(`Erro inesperado ao processar conta ${account.adAccountId} (cliente ${clientId})`, err);
+          this.logger.error(
+            `Erro inesperado ao processar conta ${account.adAccountId} (cliente ${clientId})`,
+            err,
+          );
           failed++;
         }
       }
@@ -76,17 +109,23 @@ export class ReportDispatchesService implements IReportDispatchesService {
   async triggerAll(): Promise<void> {
     this.logger.log('Iniciando envio semanal de relatórios');
     const weekStart = this.getLastMonday();
-    const groupsByClient = await this.whatsAppGroupsService.findAllActiveGroupedByClientId();
+    const groupsByClient =
+      await this.whatsAppGroupsService.findAllActiveGroupedByClientId();
 
     for (const [clientId, groups] of groupsByClient.entries()) {
       if (!groups.length) continue;
 
-      let activeAccounts: Awaited<ReturnType<typeof this.adAccountsService.findAll>>;
+      let activeAccounts: Awaited<
+        ReturnType<typeof this.adAccountsService.findAll>
+      >;
       try {
         const adAccounts = await this.adAccountsService.findAll(clientId);
-        activeAccounts = adAccounts.filter(a => a.isActive);
+        activeAccounts = adAccounts.filter((a) => a.isActive);
       } catch (err) {
-        this.logger.error(`Erro ao buscar contas de anúncio para cliente ${clientId}`, err);
+        this.logger.error(
+          `Erro ao buscar contas de anúncio para cliente ${clientId}`,
+          err,
+        );
         continue;
       }
 
@@ -94,7 +133,10 @@ export class ReportDispatchesService implements IReportDispatchesService {
         try {
           await this.buildAndSend(clientId, account, groups, weekStart);
         } catch (err) {
-          this.logger.error(`Erro inesperado ao processar conta ${account.adAccountId} (cliente ${clientId})`, err);
+          this.logger.error(
+            `Erro inesperado ao processar conta ${account.adAccountId} (cliente ${clientId})`,
+            err,
+          );
         }
       }
     }
@@ -116,26 +158,34 @@ export class ReportDispatchesService implements IReportDispatchesService {
     weekStart: Date,
   ): Promise<{ dispatched: number; failed: number }> {
     const since = this.formatDate(weekStart);
-    const until = this.formatDate(new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000));
+    const until = this.formatDate(
+      new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000),
+    );
 
     let rawInsights: InsightsSummary | null = null;
     let acquisition: InsightsSummary | null = null;
     let sales: InsightsSummary | null = null;
 
     try {
-      const result = await this.campaignReportsService.getInsights(account.adAccountId, {
-        adAccountId: account.adAccountId,
-        level: MetaInsightsLevel.CAMPAIGN,
-        since,
-        until,
-      } as any);
-      const rows = (result as PaginatedResult<MetaInsights>).data ?? [];
+      const result = await this.campaignReportsService.getInsights(
+        account.adAccountId,
+        {
+          adAccountId: account.adAccountId,
+          level: MetaInsightsLevel.CAMPAIGN,
+          since,
+          until,
+        },
+      );
+      const rows = result.data ?? [];
       const split = splitAndAggregateCampaigns(rows);
       rawInsights = split.total;
       acquisition = split.acquisition;
       sales = split.sales;
     } catch (err) {
-      this.logger.error(`Erro ao buscar insights para conta ${account.adAccountId}`, err);
+      this.logger.error(
+        `Erro ao buscar insights para conta ${account.adAccountId}`,
+        err,
+      );
     }
 
     let text: string;
@@ -149,22 +199,27 @@ export class ReportDispatchesService implements IReportDispatchesService {
           rawInsights,
         );
       } catch (err) {
-        this.logger.error(`Erro ao salvar snapshot para conta ${account.adAccountId}`, err);
+        this.logger.error(
+          `Erro ao salvar snapshot para conta ${account.adAccountId}`,
+          err,
+        );
       }
 
-      const previousSnapshot = await this.insightSnapshotsService.findPreviousSnapshot(
-        account.adAccountId,
-        weekStart,
-      ).catch((err) => {
-        this.logger.error(`Erro ao buscar snapshot anterior para conta ${account.adAccountId}`, err);
-        return null;
-      });
+      const previousSnapshot = await this.insightSnapshotsService
+        .findPreviousSnapshot(account.adAccountId, weekStart)
+        .catch((err) => {
+          this.logger.error(
+            `Erro ao buscar snapshot anterior para conta ${account.adAccountId}`,
+            err,
+          );
+          return null;
+        });
 
       const current = rawInsights;
       const snapshotData = previousSnapshot?.snapshotJson;
       const previous = snapshotData
         ? typeof (snapshotData as any).spend === 'number'
-          ? snapshotData as InsightsSummary
+          ? snapshotData
           : this.toInsightsSummary(snapshotData as unknown as MetaInsights)
         : null;
       const deltas = this.computeDeltas(current, previous);
@@ -186,7 +241,10 @@ export class ReportDispatchesService implements IReportDispatchesService {
         adsetRows = await this.campaignReportsService
           .getAdsetMessageRows(account.adAccountId, since, until)
           .catch((err) => {
-            this.logger.error(`Erro ao buscar adset message rows para ${account.adAccountId}`, err);
+            this.logger.error(
+              `Erro ao buscar adset message rows para ${account.adAccountId}`,
+              err,
+            );
             return undefined;
           });
       }
@@ -195,7 +253,10 @@ export class ReportDispatchesService implements IReportDispatchesService {
         liveData = await this.campaignReportsService
           .getLiveReportData(account.adAccountId)
           .catch((err) => {
-            this.logger.error(`Erro ao buscar live report data para ${account.adAccountId}`, err);
+            this.logger.error(
+              `Erro ao buscar live report data para ${account.adAccountId}`,
+              err,
+            );
             return undefined;
           });
       }
@@ -218,23 +279,54 @@ export class ReportDispatchesService implements IReportDispatchesService {
         if (aiText && aiText.trim().length > 0) {
           text = aiText;
         } else {
-          this.logger.warn(`IA retornou saída vazia para ${account.adAccountId}, usando fallback estático`);
-          text = this.formatReportText(account.accountName ?? account.adAccountId, since, until, rawInsights);
+          this.logger.warn(
+            `IA retornou saída vazia para ${account.adAccountId}, usando fallback estático`,
+          );
+          text = this.formatReportText(
+            account.accountName ?? account.adAccountId,
+            since,
+            until,
+            rawInsights,
+          );
         }
       } catch (err) {
-        this.logger.error(`Falha na geração IA para conta ${account.adAccountId}`, err);
-        text = this.formatReportText(account.accountName ?? account.adAccountId, since, until, rawInsights);
+        this.logger.error(
+          `Falha na geração IA para conta ${account.adAccountId}`,
+          err,
+        );
+        text = this.formatReportText(
+          account.accountName ?? account.adAccountId,
+          since,
+          until,
+          rawInsights,
+        );
       }
     } else {
-      text = this.formatErrorText(account.accountName ?? account.adAccountId, since, until);
+      text = this.formatErrorText(
+        account.accountName ?? account.adAccountId,
+        since,
+        until,
+      );
     }
 
     let dispatched = 0;
     let failed = 0;
 
     for (const group of groups) {
-      await this.sendToGroup(clientId, account.adAccountId, group.groupJid, weekStart, text, since, until);
-      const status = await this.getLastLogStatus(clientId, group.groupJid, weekStart);
+      await this.sendToGroup(
+        clientId,
+        account.adAccountId,
+        group.groupJid,
+        weekStart,
+        text,
+        since,
+        until,
+      );
+      const status = await this.getLastLogStatus(
+        clientId,
+        group.groupJid,
+        weekStart,
+      );
       if (status === DispatchStatus.SENT) dispatched++;
       else failed++;
       await this.randomDelay();
@@ -256,7 +348,9 @@ export class ReportDispatchesService implements IReportDispatchesService {
       await this.whatsAppSessionService.sendMessage(groupJid, text);
       await this.logRepo.save(
         this.logRepo.create({
-          clientId, groupJid, adAccountId,
+          clientId,
+          groupJid,
+          adAccountId,
           weekStartDate: weekStart,
           status: DispatchStatus.SENT,
           errorMessage: null,
@@ -268,14 +362,22 @@ export class ReportDispatchesService implements IReportDispatchesService {
       this.logger.error(`Falha ao enviar para ${groupJid}: ${errorMessage}`);
       await this.logRepo.save(
         this.logRepo.create({
-          clientId, groupJid, adAccountId,
+          clientId,
+          groupJid,
+          adAccountId,
           weekStartDate: weekStart,
           status: DispatchStatus.FAILED,
           errorMessage,
           sentAt: null,
         }),
       );
-      await this.sendManagerAlert(clientId, adAccountId, since, until, errorMessage);
+      await this.sendManagerAlert(
+        clientId,
+        adAccountId,
+        since,
+        until,
+        errorMessage,
+      );
     }
   }
 
@@ -286,7 +388,8 @@ export class ReportDispatchesService implements IReportDispatchesService {
     until: string,
     errorMessage: string,
   ): Promise<void> {
-    const managerGroupJid = this.configService.get<string>('MANAGERS_GROUP_JID');
+    const managerGroupJid =
+      this.configService.get<string>('MANAGERS_GROUP_JID');
     if (!managerGroupJid) return;
     const text =
       `⚠️ Falha no dispatch — ${clientId} / ${adAccountId}\n` +
@@ -301,7 +404,10 @@ export class ReportDispatchesService implements IReportDispatchesService {
 
   private toInsightsSummary(insights: MetaInsights): InsightsSummary {
     const findAction = (type: string) =>
-      parseInt(insights.actions?.find(a => a.action_type === type)?.value ?? '0', 10);
+      parseInt(
+        insights.actions?.find((a) => a.action_type === type)?.value ?? '0',
+        10,
+      );
 
     return {
       spend: parseFloat(insights.spend ?? '0'),
@@ -326,28 +432,46 @@ export class ReportDispatchesService implements IReportDispatchesService {
   ): Record<string, number | null> {
     if (!previous) return {};
     const keys: (keyof InsightsSummary)[] = [
-      'spend', 'reach', 'impressions', 'clicks', 'ctr', 'cpm',
-      'purchases', 'addToCart', 'pageViews',
-      'contentViews', 'checkoutInitiated', 'messagesStarted', 'liveViews',
+      'spend',
+      'reach',
+      'impressions',
+      'clicks',
+      'ctr',
+      'cpm',
+      'purchases',
+      'addToCart',
+      'pageViews',
+      'contentViews',
+      'checkoutInitiated',
+      'messagesStarted',
+      'liveViews',
     ];
     return Object.fromEntries(
-      keys.map(key => [
+      keys.map((key) => [
         key,
-        previous[key] > 0 ? (current[key] - previous[key]) / previous[key] : null,
+        previous[key] > 0
+          ? (current[key] - previous[key]) / previous[key]
+          : null,
       ]),
     );
   }
 
   private getISOWeekNumber(date: Date): number {
     // Work in UTC to avoid local-timezone shifts when the input is a UTC date string
-    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const d = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
     const day = d.getUTCDay() || 7; // Mon=1 … Sun=7
     d.setUTCDate(d.getUTCDate() + 4 - day);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 
-  private async getLastLogStatus(clientId: string, groupJid: string, weekStart: Date): Promise<DispatchStatus> {
+  private async getLastLogStatus(
+    clientId: string,
+    groupJid: string,
+    weekStart: Date,
+  ): Promise<DispatchStatus> {
     const log = await this.logRepo.findOne({
       where: { clientId, groupJid, weekStartDate: weekStart },
       order: { createdAt: 'DESC' },
@@ -355,12 +479,23 @@ export class ReportDispatchesService implements IReportDispatchesService {
     return log?.status ?? DispatchStatus.FAILED;
   }
 
-  private formatReportText(accountName: string, since: string, until: string, insights: InsightsSummary): string {
-    const spend = insights.spend.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  private formatReportText(
+    accountName: string,
+    since: string,
+    until: string,
+    insights: InsightsSummary,
+  ): string {
+    const spend = insights.spend.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+    });
     const impressions = insights.impressions.toLocaleString('pt-BR');
     const clicks = insights.clicks.toLocaleString('pt-BR');
-    const ctr = insights.ctr.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const cpm = insights.cpm.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const ctr = insights.ctr.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+    });
+    const cpm = insights.cpm.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+    });
     return [
       `Relatório Semanal`,
       `Período: ${since} a ${until}`,
@@ -376,7 +511,11 @@ export class ReportDispatchesService implements IReportDispatchesService {
     ].join('\n');
   }
 
-  private formatErrorText(accountName: string, since: string, until: string): string {
+  private formatErrorText(
+    accountName: string,
+    since: string,
+    until: string,
+  ): string {
     return [
       `Relatório Semanal`,
       `Conta: ${accountName}`,
@@ -404,6 +543,6 @@ export class ReportDispatchesService implements IReportDispatchesService {
 
   private randomDelay(): Promise<void> {
     const ms = 5_000 + Math.random() * 10_000;
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

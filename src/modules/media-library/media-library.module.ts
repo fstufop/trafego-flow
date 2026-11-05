@@ -22,6 +22,11 @@ import { MediaUploadLog } from './entities/media-upload-log.entity.js';
     BullModule.registerQueue({ name: 'media-upload' }),
   ],
   controllers: [MediaLibraryController],
-  providers: [MediaLibraryService, FileNamerService, MetaMediaService, MetaUploadProcessor],
+  providers: [
+    MediaLibraryService,
+    FileNamerService,
+    MetaMediaService,
+    MetaUploadProcessor,
+  ],
 })
 export class MediaLibraryModule {}

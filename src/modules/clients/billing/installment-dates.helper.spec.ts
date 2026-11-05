@@ -4,13 +4,21 @@ describe('generateInstallmentDates', () => {
   it('starts next month when dueDay is before startDate day', () => {
     // startDate Jan 15, dueDay 10 → first due Feb 10
     const result = generateInstallmentDates(new Date(2026, 0, 15), 10, 3);
-    expect(result).toEqual([new Date(2026, 1, 10), new Date(2026, 2, 10), new Date(2026, 3, 10)]);
+    expect(result).toEqual([
+      new Date(2026, 1, 10),
+      new Date(2026, 2, 10),
+      new Date(2026, 3, 10),
+    ]);
   });
 
   it('starts current month when dueDay is after startDate day', () => {
     // startDate Jan 5, dueDay 10 → first due Jan 10
     const result = generateInstallmentDates(new Date(2026, 0, 5), 10, 3);
-    expect(result).toEqual([new Date(2026, 0, 10), new Date(2026, 1, 10), new Date(2026, 2, 10)]);
+    expect(result).toEqual([
+      new Date(2026, 0, 10),
+      new Date(2026, 1, 10),
+      new Date(2026, 2, 10),
+    ]);
   });
 
   it('starts next month when dueDay equals startDate day', () => {
@@ -36,7 +44,7 @@ describe('generateInstallmentDates', () => {
     expect(result).toEqual([
       new Date(2026, 10, 15), // Nov 15
       new Date(2026, 11, 15), // Dec 15
-      new Date(2027, 0, 15),  // Jan 15
+      new Date(2027, 0, 15), // Jan 15
     ]);
   });
 

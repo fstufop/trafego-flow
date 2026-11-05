@@ -9,7 +9,11 @@ import { ClientBillingService } from './billing/client-billing.service.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ClientEntity, ClientBillingEntity, ClientBillingInstallmentEntity]),
+    TypeOrmModule.forFeature([
+      ClientEntity,
+      ClientBillingEntity,
+      ClientBillingInstallmentEntity,
+    ]),
   ],
   controllers: [ClientsController],
   providers: [ClientsService, ClientBillingService],

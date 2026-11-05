@@ -27,14 +27,36 @@ describe('InsightSnapshotsService', () => {
   describe('saveSnapshot', () => {
     it('calls repo.upsert with correct fields', async () => {
       const weekStart = new Date('2026-07-27');
-      const snapshot = { spend: 100, reach: 500, impressions: 1000, clicks: 50, ctr: 5, cpm: 10, purchases: 0, addToCart: 0, pageViews: 0, contentViews: 0, checkoutInitiated: 0, messagesStarted: 0, liveViews: 0 };
+      const snapshot = {
+        spend: 100,
+        reach: 500,
+        impressions: 1000,
+        clicks: 50,
+        ctr: 5,
+        cpm: 10,
+        purchases: 0,
+        addToCart: 0,
+        pageViews: 0,
+        contentViews: 0,
+        checkoutInitiated: 0,
+        messagesStarted: 0,
+        liveViews: 0,
+      };
       repo.findOne.mockResolvedValue({ id: 'uuid', adAccountId: 'act_1' });
 
       await service.saveSnapshot('act_1', 'client_1', weekStart, snapshot);
 
       expect(repo.upsert).toHaveBeenCalledWith(
-        { adAccountId: 'act_1', clientId: 'client_1', weekStartDate: weekStart, snapshotJson: snapshot },
-        { conflictPaths: ['adAccountId', 'weekStartDate'], skipUpdateIfNoValuesChanged: true },
+        {
+          adAccountId: 'act_1',
+          clientId: 'client_1',
+          weekStartDate: weekStart,
+          snapshotJson: snapshot,
+        },
+        {
+          conflictPaths: ['adAccountId', 'weekStartDate'],
+          skipUpdateIfNoValuesChanged: true,
+        },
       );
     });
   });
@@ -54,7 +76,10 @@ describe('InsightSnapshotsService', () => {
 
     it('returns null when no previous snapshot exists', async () => {
       repo.findOne.mockResolvedValue(null);
-      const result = await service.findPreviousSnapshot('act_1', new Date('2026-07-27'));
+      const result = await service.findPreviousSnapshot(
+        'act_1',
+        new Date('2026-07-27'),
+      );
       expect(result).toBeNull();
     });
   });

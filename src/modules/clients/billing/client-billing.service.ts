@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { ClientBillingEntity, ContractStatus } from '../entities/client-billing.entity.js';
+import {
+  ClientBillingEntity,
+  ContractStatus,
+} from '../entities/client-billing.entity.js';
 import { ClientBillingInstallmentEntity } from '../entities/client-billing-installment.entity.js';
 import { CreateClientBillingDto } from '../dto/create-client-billing.dto.js';
 import { RenewClientBillingDto } from '../dto/renew-client-billing.dto.js';
@@ -28,11 +31,15 @@ export class ClientBillingService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async createBilling(clientId: string, dto: CreateClientBillingDto): Promise<ClientBillingResponseDto> {
+  async createBilling(
+    clientId: string,
+    dto: CreateClientBillingDto,
+  ): Promise<ClientBillingResponseDto> {
     const existing = await this.billingRepo.findOne({
       where: { clientId, contractStatus: ContractStatus.ACTIVE },
     });
-    if (existing) throw new ConflictException('Client already has an active contract');
+    if (existing)
+      throw new ConflictException('Client already has an active contract');
 
     return this.dataSource.transaction(async (manager) => {
       const billing = await manager.save(
@@ -49,7 +56,11 @@ export class ClientBillingService {
         }),
       );
 
-      const dueDates = generateInstallmentDates(new Date(dto.startDate), dto.dueDay, dto.durationMonths);
+      const dueDates = generateInstallmentDates(
+        new Date(dto.startDate),
+        dto.dueDay,
+        dto.durationMonths,
+      );
       const installments = await manager.save(
         dueDates.map((dueDate, i) =>
           manager.create(ClientBillingInstallmentEntity, {
@@ -79,7 +90,8 @@ export class ClientBillingService {
       where: { clientId, contractStatus: ContractStatus.ACTIVE },
       relations: { installments: true },
     });
-    if (!billing) throw new NotFoundException(`No active contract for client ${clientId}`);
+    if (!billing)
+      throw new NotFoundException(`No active contract for client ${clientId}`);
     return toClientBillingResponseDto(billing, billing.installments);
   }
 
@@ -88,14 +100,23 @@ export class ClientBillingService {
     billingId: string,
     dto: RenewClientBillingDto,
   ): Promise<ClientBillingResponseDto> {
-    const current = await this.billingRepo.findOne({ where: { id: billingId, clientId } });
-    if (!current) throw new NotFoundException(`Contract ${billingId} not found for client ${clientId}`);
+    const current = await this.billingRepo.findOne({
+      where: { id: billingId, clientId },
+    });
+    if (!current)
+      throw new NotFoundException(
+        `Contract ${billingId} not found for client ${clientId}`,
+      );
     if (current.contractStatus !== ContractStatus.ACTIVE) {
       throw new BadRequestException('Only active contracts can be renewed');
     }
 
     return this.dataSource.transaction(async (manager) => {
-      await manager.update(ClientBillingEntity, { id: billingId }, { contractStatus: ContractStatus.EXPIRED });
+      await manager.update(
+        ClientBillingEntity,
+        { id: billingId },
+        { contractStatus: ContractStatus.EXPIRED },
+      );
 
       const effectiveDueDay = dto.dueDay ?? current.dueDay;
       const newBilling = await manager.save(
@@ -112,7 +133,11 @@ export class ClientBillingService {
         }),
       );
 
-      const dueDates = generateInstallmentDates(new Date(dto.startDate), effectiveDueDay, dto.durationMonths);
+      const dueDates = generateInstallmentDates(
+        new Date(dto.startDate),
+        effectiveDueDay,
+        dto.durationMonths,
+      );
       const installments = await manager.save(
         dueDates.map((dueDate, i) =>
           manager.create(ClientBillingInstallmentEntity, {
@@ -128,17 +153,26 @@ export class ClientBillingService {
     });
   }
 
-  async cancelBilling(clientId: string, billingId: string): Promise<ClientBillingResponseDto> {
+  async cancelBilling(
+    clientId: string,
+    billingId: string,
+  ): Promise<ClientBillingResponseDto> {
     const billing = await this.billingRepo.findOne({
       where: { id: billingId, clientId },
       relations: { installments: true },
     });
-    if (!billing) throw new NotFoundException(`Contract ${billingId} not found for client ${clientId}`);
+    if (!billing)
+      throw new NotFoundException(
+        `Contract ${billingId} not found for client ${clientId}`,
+      );
     if (billing.contractStatus === ContractStatus.CANCELLED) {
       throw new BadRequestException('Contract is already cancelled');
     }
 
-    await this.billingRepo.update({ id: billingId }, { contractStatus: ContractStatus.CANCELLED });
+    await this.billingRepo.update(
+      { id: billingId },
+      { contractStatus: ContractStatus.CANCELLED },
+    );
     billing.contractStatus = ContractStatus.CANCELLED;
     return toClientBillingResponseDto(billing, billing.installments);
   }
@@ -148,14 +182,21 @@ export class ClientBillingService {
     billingId: string,
     installmentId: string,
   ): Promise<InstallmentResponseDto> {
-    const billing = await this.billingRepo.findOne({ where: { id: billingId, clientId } });
-    if (!billing) throw new NotFoundException(`Contract ${billingId} not found for client ${clientId}`);
+    const billing = await this.billingRepo.findOne({
+      where: { id: billingId, clientId },
+    });
+    if (!billing)
+      throw new NotFoundException(
+        `Contract ${billingId} not found for client ${clientId}`,
+      );
 
     const installment = await this.installmentRepo.findOne({
       where: { id: installmentId, clientBillingId: billingId },
     });
-    if (!installment) throw new NotFoundException(`Installment ${installmentId} not found`);
-    if (installment.paidAt) throw new BadRequestException('Installment is already paid');
+    if (!installment)
+      throw new NotFoundException(`Installment ${installmentId} not found`);
+    if (installment.paidAt)
+      throw new BadRequestException('Installment is already paid');
 
     installment.paidAt = new Date();
     const saved = await this.installmentRepo.save(installment);
