@@ -7,6 +7,7 @@ import { IntegrationsService } from '../../integrations/integrations.service.js'
 import {
   IInstagramGraphService,
   InstagramFollowStatus,
+  InstagramTokenDebugInfo,
 } from './interfaces/instagram-graph.interface.js';
 import { OAuthTokenExpiredException } from './exceptions/oauth-token-expired.exception.js';
 import { GraphApiRateLimitException } from './exceptions/graph-api-rate-limit.exception.js';
@@ -95,6 +96,34 @@ export class InstagramGraphService implements IInstagramGraphService {
     );
 
     return response.data;
+  }
+
+  async getTokenDebugInfo(pageId: string): Promise<InstagramTokenDebugInfo> {
+    const token = await this.getDecryptedToken(pageId);
+    const url = `${this.baseUrl}/debug_token`;
+
+    this.logger.log(`[token-debug] Inspecting token for pageId=${pageId}`);
+
+    const response = await firstValueFrom(
+      this.httpService.get<{ data: InstagramTokenDebugInfo }>(url, {
+        params: { input_token: token, access_token: token },
+      }),
+    ).catch(
+      (err: {
+        response?: { status?: number; data?: { error?: { code?: number } } };
+      }) => {
+        this.logger.warn(
+          `[token-debug] Graph API error for pageId=${pageId}: ${JSON.stringify(err?.response?.data)}`,
+        );
+        return this.handleCommonGraphError(pageId, err);
+      },
+    );
+
+    this.logger.log(
+      `[token-debug] Result for pageId=${pageId}: ${JSON.stringify(response.data)}`,
+    );
+
+    return response.data.data;
   }
 
   async subscribeAccountToWebhooks(

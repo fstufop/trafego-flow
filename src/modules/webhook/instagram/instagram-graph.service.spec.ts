@@ -186,6 +186,50 @@ describe('InstagramGraphService', () => {
     });
   });
 
+  describe('getTokenDebugInfo', () => {
+    const mockHttpGet = jest.fn();
+
+    beforeEach(() => {
+      (mockHttpService as unknown as { get: jest.Mock }).get = mockHttpGet;
+    });
+
+    it('should call /debug_token and return which app owns the token', async () => {
+      mockHttpGet.mockReturnValue(
+        of({
+          data: {
+            data: {
+              app_id: '1001996369089789',
+              application: 'Trafego Tribo Rosa',
+              is_valid: true,
+            },
+          },
+        }),
+      );
+
+      const result = await service.getTokenDebugInfo('PAGE123');
+
+      expect(mockHttpGet).toHaveBeenCalledWith(
+        'https://graph.facebook.com/v21.0/debug_token',
+        {
+          params: {
+            input_token: 'plaintext-token',
+            access_token: 'plaintext-token',
+          },
+        },
+      );
+      expect(result.app_id).toBe('1001996369089789');
+    });
+
+    it('should propagate the raw Graph API error when debug_token fails', async () => {
+      const err = {
+        response: { data: { error: { code: 100, message: 'bad token' } } },
+      };
+      mockHttpGet.mockReturnValue(throwError(() => err));
+
+      await expect(service.getTokenDebugInfo('PAGE123')).rejects.toBe(err);
+    });
+  });
+
   describe('subscribeAccountToWebhooks', () => {
     it('should POST to /{pageId}/subscribed_apps with comma-separated subscribed_fields', async () => {
       mockHttpService.post.mockReturnValue(of({ data: { success: true } }));

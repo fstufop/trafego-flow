@@ -7,11 +7,23 @@ export interface InstagramFollowStatus {
   is_business_follow_user?: boolean;
 }
 
+export interface InstagramTokenDebugInfo {
+  app_id?: string;
+  type?: string;
+  application?: string;
+  data_access_expires_at?: number;
+  expires_at?: number;
+  is_valid?: boolean;
+  scopes?: string[];
+  user_id?: string;
+}
+
 export interface IInstagramGraphService {
   getFollowStatus(
     pageId: string,
     igsid: string,
   ): Promise<InstagramFollowStatus>;
+  getTokenDebugInfo(pageId: string): Promise<InstagramTokenDebugInfo>;
   subscribeAccountToWebhooks(
     pageId: string,
     fields: string[],

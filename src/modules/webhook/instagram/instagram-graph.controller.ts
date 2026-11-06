@@ -8,7 +8,10 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '../../../common/guards/auth.guard.js';
 import { InstagramGraphService } from './instagram-graph.service.js';
-import { InstagramFollowStatus } from './interfaces/instagram-graph.interface.js';
+import {
+  InstagramFollowStatus,
+  InstagramTokenDebugInfo,
+} from './interfaces/instagram-graph.interface.js';
 
 @ApiTags('webhook')
 @ApiBearerAuth()
@@ -30,6 +33,18 @@ export class InstagramGraphController {
     @Query('igsid') igsid: string,
   ): Promise<InstagramFollowStatus> {
     return this.graphService.getFollowStatus(pageId, igsid);
+  }
+
+  @Get('token-debug')
+  @ApiOperation({
+    summary:
+      '[Debug] Inspect which Meta app a stored access token belongs to',
+  })
+  @ApiQuery({ name: 'pageId', required: true })
+  getTokenDebugInfo(
+    @Query('pageId') pageId: string,
+  ): Promise<InstagramTokenDebugInfo> {
+    return this.graphService.getTokenDebugInfo(pageId);
   }
 
   @Post('subscribe')
